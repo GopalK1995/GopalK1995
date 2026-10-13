@@ -1,18 +1,18 @@
 # Synthenei
 
-Krishna's team workspace for finding and delivering freelance projects.
-Single source of truth: update these files, not chat history.
+Synthan AI-Edventures team workspace: how we build and market for clients (LAWSOME first). Single source of truth — update files here, not chat.
 
-| Folder | What lives here |
-|---|---|
-| `00-team/` | Who does what |
-| `01-strategy/` | Business model, pitch logic, risks |
-| `02-tasks/` | Sprint task lists + backlog (owners, status) |
-| `03-projects/` | One file per client/project (Legal CRM, Green Pulse, Marketing platform) |
-| `04-open-questions/` | Questions blocking us. Answer here, then move to decisions |
-| `05-decisions/` | Decision log (date, decision, why) |
-| `06-skills/` | Reusable playbooks (how we pitch, scrape, onboard a client, update status) |
-| `07-data/` | Seed/synthetic data + scraping notes (never real client PII) |
-| `apps/` | Code. `apps/crm` = Next.js CRM (not scaffolded until stack questions answered) |
+| Folder | What lives here | Audience |
+|---|---|---|
+| `00-team/` | Roles, owners, working agreements | internal |
+| `01-strategy/` | Business model, LAWSOME positioning, claims policy, compliance watch-list | internal |
+| `02-tasks/` | Sprint task lists + backlog (owners, status) | internal |
+| `03-projects/` | One file per project: `lawsome-product`, `lawsome-landing` (runbook), `growth-crm/`, `green-pulse`, `marketing-platform` | internal |
+| `04-open-questions/` | Blocking questions | internal |
+| `05-decisions/` | Dated decision log | internal |
+| `06-skills/` | Playbooks: demo script, email campaign, (more to add) | internal |
+| `07-data/` | Synthetic seed data + scraping/compliance notes | internal |
+| `08-external/` | Client/prospect-facing documents (rules in its README) | external |
+| `apps/` | Code: `lawsome-landing` (done), `growth-crm` (in progress) | — |
 
-Conventions: one file per project; every task has an owner + status (`todo/doing/done/blocked`); every decision gets a dated line in `05-decisions/`.
+Conventions: one file per project; every task has an owner + status; every decision gets a dated line; nothing real/personal in the repo.
