@@ -4,6 +4,11 @@
 -- invitation, assignment and stage triggers exercised. Not applied to any remote DB by the spec agent.
 -- Spec: synthenei/03-projects/growth-crm/03-product-spec.md (sections 6, 8, 10).
 --
+-- SOURCE OF TRUTH (agreed 2026-10-13): from this commit on, supabase/migrations/ (owned by the backend
+-- agent) is the truth for the live "Lawsome" project. This file is the reference design the migrations
+-- were cut from; the spec agent no longer edits it. Regenerate it as a concatenation of the migrations
+-- when they change, and keep this header.
+--
 -- Model:   one database, tenant_id on every business row. RLS on EVERY table, policies by
 --          tenant + role. Role/tenant come from public.profiles via SECURITY DEFINER helpers
 --          (no recursive RLS on profiles).
@@ -101,7 +106,7 @@ create table public.invitations (
   accepted_at timestamptz,
   created_at  timestamptz not null default now()
 );
-create unique index invitations_pending_email on public.invitations (lower(email)) where accepted_at is null;
+create unique index invitations_pending_email on public.invitations (tenant_id, lower(email)) where accepted_at is null;
 
 -- ---------- 3. RLS helper functions (SECURITY DEFINER, no recursion) ----------
 create or replace function public.current_tenant_id() returns uuid
@@ -640,6 +645,9 @@ declare
   r_old jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) end;
   r     jsonb := coalesce(r_new, r_old);
   diff  jsonb;
+  -- PII columns: the audit log records THAT they changed, never their values, so a DPDP erasure
+  -- of the source row leaves no personal data behind in this append-only table.
+  pii   text[] := array['full_name','email','phone','body','note','address_line','firm_name','display_name'];
 begin
   if tg_op = 'UPDATE' then
     select jsonb_object_agg(n.key, jsonb_build_object('old', o.value, 'new', n.value))
@@ -647,8 +655,11 @@ begin
       from jsonb_each(r_new) n join jsonb_each(r_old) o using (key)
      where n.value is distinct from o.value and n.key not in ('updated_at');
     if diff is null then return new; end if;
-  elsif tg_op = 'INSERT' then diff := r_new;
-  else diff := r_old;
+    select jsonb_object_agg(key, case when key = any(pii) then '{"old":"[pii]","new":"[pii]"}'::jsonb else value end)
+      into diff from jsonb_each(diff);
+  else
+    select jsonb_object_agg(key, case when key = any(pii) and value <> 'null'::jsonb then '"[pii]"'::jsonb else value end)
+      into diff from jsonb_each(coalesce(r_new, r_old));
   end if;
   insert into public.audit_log (tenant_id, actor_id, actor_label, action, table_name, row_id, changes)
   values (
@@ -699,6 +710,9 @@ create or replace function public.handle_new_auth_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare inv public.invitations;
 begin
+  -- Only confirmed addresses can claim an invitation (blocks sign-up-as-invitee if confirmations are off).
+  if new.email_confirmed_at is null then return new; end if;
+  if exists (select 1 from public.profiles where id = new.id) then return new; end if;
   select * into inv from public.invitations
    where lower(email) = lower(new.email) and accepted_at is null and expires_at > now()
    order by created_at desc limit 1;
@@ -714,6 +728,9 @@ begin
 end $$;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_auth_user();
+create trigger on_auth_user_confirmed after update of email_confirmed_at on auth.users
+  for each row when (old.email_confirmed_at is null and new.email_confirmed_at is not null)
+  execute function public.handle_new_auth_user();
 
 -- Lead auto-assignment by district territory + first-response task.
 create or replace function public.lead_assign_on_insert() returns trigger
@@ -864,6 +881,24 @@ begin
     raise exception 'consent for demo follow-up is required' using errcode = '22023'; end if;
   if pg_column_size(p_utm) > 2000 or pg_column_size(p_click_ids) > 1000 then
     raise exception 'payload too large' using errcode = '22023'; end if;
+  if length(coalesce(p_firm_name,'')) > 160 or length(coalesce(p_city,'')) > 60
+     or length(coalesce(p_practice_area,'')) > 60 or length(coalesce(p_notice_version,'')) > 20
+     or length(coalesce(p_landing_path,'')) > 300 or length(coalesce(p_anon_id,'')) > 64 then
+    raise exception 'field too long' using errcode = '22023'; end if;
+  -- role must come from the landing form's fixed list (lawsome-landing LeadForm ROLES)
+  if p_role_title is not null and p_role_title not in ('Managing partner / owner','Senior advocate / practice head',
+       'Associate / lawyer','Legal operations / admin','Other') then
+    raise exception 'invalid role' using errcode = '22023'; end if;
+  -- district: one of Tamil Nadu's 38 districts or Puducherry, else stored as null
+  if p_district is not null and initcap(trim(p_district)) not in ('Ariyalur','Chengalpattu','Chennai','Coimbatore',
+       'Cuddalore','Dharmapuri','Dindigul','Erode','Kallakurichi','Kanchipuram','Kanniyakumari','Karur','Krishnagiri',
+       'Madurai','Mayiladuthurai','Nagapattinam','Namakkal','Nilgiris','Perambalur','Pudukkottai','Ramanathapuram',
+       'Ranipet','Salem','Sivaganga','Tenkasi','Thanjavur','Theni','Thoothukudi','Tiruchirappalli','Tirunelveli',
+       'Tirupathur','Tiruppur','Tiruvallur','Tiruvannamalai','Tiruvarur','Vellore','Viluppuram','Virudhunagar','Puducherry') then
+    p_district := null;
+  elsif p_district is not null then
+    p_district := initcap(trim(p_district));
+  end if;
 
   -- throttle: 5 submissions per email per hour, 300 per tenant per 10 minutes
   if (select count(*) from public.lead_events e join public.leads l on l.id = e.lead_id
@@ -886,19 +921,20 @@ begin
                 end::public.channel_kind;
   select id into v_campaign from public.campaigns where tenant_id = t.id and utm_campaign = p_utm->>'campaign';
 
-  if p_firm_name is not null and length(trim(p_firm_name)) > 1 then
+  select id into v_lead from public.leads
+   where tenant_id = t.id and lower(email) = v_email and deleted_at is null;
+
+  if v_lead is null and p_firm_name is not null and length(trim(p_firm_name)) > 1 then
     select id into v_account from public.accounts
      where tenant_id = t.id and lower(name) = lower(trim(p_firm_name))
        and lower(coalesce(city,'')) = lower(coalesce(trim(p_city),'')) and deleted_at is null;
-    if v_account is null then
+    if v_account is null then  -- accounts are created only for new leads (anti-spam)
       insert into public.accounts (tenant_id, name, city, district)
       values (t.id, trim(p_firm_name), nullif(trim(p_city),''), nullif(trim(p_district),''))
       returning id into v_account;
     end if;
   end if;
 
-  select id into v_lead from public.leads
-   where tenant_id = t.id and lower(email) = v_email and deleted_at is null;
 
   if v_lead is null then
     insert into public.leads (tenant_id, full_name, email, phone, role_title, firm_name, account_id, city, district,
@@ -965,6 +1001,28 @@ begin
           p_anon_id, p_event_name, coalesce(p_utm,'{}'), left(p_path, 300), coalesce(p_props,'{}'));
 end $$;
 
+-- DPDP erasure (Owner only): removes personal data from the lead and its children, keeps
+-- non-personal facts for aggregate metrics, and records erasure_completed in consent_log.
+create or replace function public.erase_lead(p_lead uuid, p_note text default null) returns void
+language plpgsql security definer set search_path = '' as $$
+declare l public.leads;
+begin
+  select * into l from public.leads where id = p_lead and tenant_id = public.current_tenant_id();
+  if l.id is null or not public.has_role('owner') then raise exception 'not allowed' using errcode = '42501'; end if;
+  perform set_config('app.actor_label', 'erasure', true);
+  update public.leads set full_name = 'Erased lead', email = null, phone = null, firm_name = null,
+         utm = '{}', click_ids = '{}', score_factors = '[]', external_ids = '{}', deleted_at = coalesce(deleted_at, now())
+   where id = p_lead;
+  update public.activities set body = null, subject = null where lead_id = p_lead;
+  update public.messages m set body = null from public.conversations c
+   where c.id = m.conversation_id and c.lead_id = p_lead;
+  update public.lead_events set props = '{}', anon_id = null where lead_id = p_lead;
+  delete from public.ai_insights where lead_id = p_lead;
+  insert into public.consent_log (tenant_id, lead_id, subject_ref, purpose, action, notice_version, captured_via, recorded_by, note)
+  select l.tenant_id, p_lead, coalesce((select subject_ref from public.consent_log where lead_id = p_lead limit 1), 'unknown'),
+         'demo_followup', 'erasure_completed', 'n/a', 'request', auth.uid(), left(p_note, 200);
+end $$;
+
 -- =====================================================================
 -- 18. Row Level Security
 -- =====================================================================
@@ -980,258 +1038,276 @@ begin
   end loop;
 end $$;
 
--- Shorthand used below:  T = (tenant_id = public.current_tenant_id())
+-- Helper calls are wrapped as (select fn()) so Postgres evaluates them once per statement (initplan),
+-- not once per row (Supabase advisor: auth_rls_initplan).
 -- tenants
 create policy tenants_select on public.tenants for select to authenticated
-  using (id = public.current_tenant_id());
+  using (id = (select public.current_tenant_id()));
 create policy tenants_update on public.tenants for update to authenticated
-  using (id = public.current_tenant_id() and public.has_role('owner'))
-  with check (id = public.current_tenant_id());
+  using (id = (select public.current_tenant_id()) and (select public.has_role('owner')))
+  with check (id = (select public.current_tenant_id()));
 
 -- profiles (helpers are SECURITY DEFINER, so no recursion)
 create policy profiles_select on public.profiles for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy profiles_update on public.profiles for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (id = auth.uid() or public.has_role('owner','sales_manager')))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id())
+         and (id = (select auth.uid()) or (select public.has_role('owner','sales_manager'))))
+  with check (tenant_id = (select public.current_tenant_id()));
 
 -- invitations: owner any role; sales_manager only rep/viewer
 create policy invitations_select on public.invitations for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')));
 create policy invitations_write on public.invitations for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'))
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner') or (public.has_role('sales_manager') and role in ('sales_rep','viewer'))));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')))
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner')) or ((select public.has_role('sales_manager')) and role in ('sales_rep','viewer'))));
 
 -- config tables: everyone in tenant reads; owner + sales_manager write
 create policy pipeline_stages_select on public.pipeline_stages for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy pipeline_stages_write on public.pipeline_stages for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy territories_select on public.territories for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy territories_write on public.territories for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy sales_targets_select on public.sales_targets for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','viewer') or rep_id = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','viewer')) or rep_id = (select auth.uid())));
 create policy sales_targets_write on public.sales_targets for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')))
+  with check (tenant_id = (select public.current_tenant_id()));
 
 -- accounts (firm-level business data; viewers may read)
 create policy accounts_select on public.accounts for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy accounts_insert on public.accounts for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and public.has_role('owner','sales_manager','sales_rep','marketing','data'));
+  with check (tenant_id = (select public.current_tenant_id())
+              and (select public.has_role('owner','sales_manager','sales_rep','marketing','data')));
 create policy accounts_update on public.accounts for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','data') or (public.has_role('sales_rep') and owner_id = auth.uid())))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','data')) or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid()))))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy accounts_delete on public.accounts for delete to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')));
 
 -- contacts (personal data): no viewer; reps only own contacts or contacts on their accounts
 create policy contacts_select on public.contacts for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing','data')
-              or (public.has_role('sales_rep') and (owner_id = auth.uid()
-                  or exists (select 1 from public.accounts a where a.id = contacts.account_id and a.owner_id = auth.uid())))));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing','data'))
+              or ((select public.has_role('sales_rep')) and (owner_id = (select auth.uid())
+                  or exists (select 1 from public.accounts a where a.id = contacts.account_id and a.owner_id = (select auth.uid()))))));
 create policy contacts_insert on public.contacts for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and public.has_role('owner','sales_manager','sales_rep','marketing','data'));
+  with check (tenant_id = (select public.current_tenant_id())
+              and (select public.has_role('owner','sales_manager','sales_rep','marketing','data'))
+              and (account_id is null or exists (select 1 from public.accounts a where a.id = contacts.account_id)));
 create policy contacts_update on public.contacts for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','data') or (public.has_role('sales_rep') and owner_id = auth.uid())))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','data')) or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid()))))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy contacts_delete on public.contacts for delete to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')));
 
 -- leads: reps see own + unassigned in their territory; viewers use v_leads_masked
 create policy leads_select on public.leads for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing','data')
-              or (public.has_role('sales_rep') and (owner_id = auth.uid()
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing','data'))
+              or ((select public.has_role('sales_rep')) and (owner_id = (select auth.uid())
                   or (owner_id is null and exists (select 1 from public.territories t
-                        where t.tenant_id = leads.tenant_id and t.rep_id = auth.uid()
+                        where t.tenant_id = leads.tenant_id and t.rep_id = (select auth.uid())
                           and lower(t.district) = lower(leads.district)))))));
 create policy leads_insert on public.leads for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager','marketing','data')
-                   or (public.has_role('sales_rep') and owner_id = auth.uid())));
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager','marketing','data'))
+                   or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid())))
+              and (account_id is null or exists (select 1 from public.accounts a where a.id = leads.account_id)));
 create policy leads_update on public.leads for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing','data')
-              or (public.has_role('sales_rep') and (owner_id = auth.uid()
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing','data'))
+              or ((select public.has_role('sales_rep')) and (owner_id = (select auth.uid())
                   or (owner_id is null and exists (select 1 from public.territories t
-                        where t.tenant_id = leads.tenant_id and t.rep_id = auth.uid()
+                        where t.tenant_id = leads.tenant_id and t.rep_id = (select auth.uid())
                           and lower(t.district) = lower(leads.district)))))))
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager','marketing','data') or owner_id = auth.uid()));
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager','marketing','data')) or owner_id = (select auth.uid())));
 create policy leads_delete on public.leads for delete to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')));
 
 -- lead_events
 create policy lead_events_select on public.lead_events for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing','data')
-              or (public.has_role('sales_rep') and exists (select 1 from public.leads l
-                    where l.id = lead_events.lead_id and l.owner_id = auth.uid()))));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing','data'))
+              or ((select public.has_role('sales_rep')) and exists (select 1 from public.leads l
+                    where l.id = lead_events.lead_id and l.owner_id = (select auth.uid())))));
 create policy lead_events_insert on public.lead_events for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and public.has_role('owner','sales_manager','sales_rep','marketing','data'));
+  with check (tenant_id = (select public.current_tenant_id())
+              and (select public.has_role('owner','sales_manager','sales_rep','marketing','data'))
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = lead_events.lead_id)));
 
 -- deals: viewers read (no personal data on deals); reps own only
 create policy deals_select on public.deals for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing','data','viewer') or owner_id = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing','data','viewer')) or owner_id = (select auth.uid())));
 create policy deals_insert on public.deals for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager') or (public.has_role('sales_rep') and owner_id = auth.uid())));
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager')) or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid())))
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = deals.lead_id))
+              and (account_id is null or exists (select 1 from public.accounts a where a.id = deals.account_id))
+              and (primary_contact_id is null or exists (select 1 from public.contacts c where c.id = deals.primary_contact_id)));
 create policy deals_update on public.deals for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager') or (public.has_role('sales_rep') and owner_id = auth.uid())))
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager') or owner_id = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager')) or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid()))))
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager')) or owner_id = (select auth.uid()))
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = deals.lead_id))
+              and (account_id is null or exists (select 1 from public.accounts a where a.id = deals.account_id)));
 create policy deals_delete on public.deals for delete to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')));
 
 create policy dsh_select on public.deal_stage_history for select to authenticated
-  using (tenant_id = public.current_tenant_id()
+  using (tenant_id = (select public.current_tenant_id())
          and exists (select 1 from public.deals d where d.id = deal_stage_history.deal_id));  -- inherits deals RLS
 
 -- activities
 create policy activities_select on public.activities for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing')
-              or owner_id = auth.uid()
-              or (public.has_role('sales_rep') and exists (select 1 from public.leads l
-                    where l.id = activities.lead_id and l.owner_id = auth.uid()))));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing'))
+              or owner_id = (select auth.uid())
+              or ((select public.has_role('sales_rep')) and exists (select 1 from public.leads l
+                    where l.id = activities.lead_id and l.owner_id = (select auth.uid())))));
 create policy activities_insert on public.activities for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager') or (public.has_role('sales_rep') and owner_id = auth.uid())));
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager')) or ((select public.has_role('sales_rep')) and owner_id = (select auth.uid())))
+              -- referenced rows must be visible to the caller (subqueries run under their RLS)
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = activities.lead_id))
+              and (deal_id is null or exists (select 1 from public.deals d where d.id = activities.deal_id))
+              and (contact_id is null or exists (select 1 from public.contacts c where c.id = activities.contact_id)));
 create policy activities_update on public.activities for update to authenticated
-  using (tenant_id = public.current_tenant_id() and (public.has_role('owner','sales_manager') or owner_id = auth.uid()))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and ((select public.has_role('owner','sales_manager')) or owner_id = (select auth.uid())))
+  with check (tenant_id = (select public.current_tenant_id())
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = activities.lead_id)));
 create policy activities_delete on public.activities for delete to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')));
 
 -- tasks
 create policy tasks_select on public.tasks for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager') or assignee_id = auth.uid() or created_by = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager')) or assignee_id = (select auth.uid()) or created_by = (select auth.uid())));
 create policy tasks_insert on public.tasks for insert to authenticated
-  with check (tenant_id = public.current_tenant_id() and not public.has_role('viewer')
-              and (public.has_role('owner','sales_manager') or assignee_id = auth.uid()));
+  with check (tenant_id = (select public.current_tenant_id()) and not (select public.has_role('viewer'))
+              and ((select public.has_role('owner','sales_manager')) or assignee_id = (select auth.uid()))
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = tasks.lead_id))
+              and (deal_id is null or exists (select 1 from public.deals d where d.id = tasks.deal_id)));
 create policy tasks_update on public.tasks for update to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager') or assignee_id = auth.uid()))
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager') or assignee_id = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager')) or assignee_id = (select auth.uid())))
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager')) or assignee_id = (select auth.uid())));
 create policy tasks_delete on public.tasks for delete to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager') or created_by = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager')) or created_by = (select auth.uid())));
 
 -- campaigns: all roles read names (reps see campaign on a lead); owner + marketing write
 create policy campaigns_select on public.campaigns for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy campaigns_write on public.campaigns for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','marketing'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','marketing')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy cdm_select on public.campaign_daily_metrics for select to authenticated
-  using (tenant_id = public.current_tenant_id() and not public.has_role('sales_rep'));
+  using (tenant_id = (select public.current_tenant_id()) and not (select public.has_role('sales_rep')));
 create policy cdm_write on public.campaign_daily_metrics for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','marketing','data'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','marketing','data')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy segments_select on public.audience_segments for select to authenticated
-  using (tenant_id = public.current_tenant_id() and not public.has_role('sales_rep'));
+  using (tenant_id = (select public.current_tenant_id()) and not (select public.has_role('sales_rep')));
 create policy segments_write on public.audience_segments for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','marketing','data'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','marketing','data')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy ga4_select on public.ga4_daily for select to authenticated
-  using (tenant_id = public.current_tenant_id() and not public.has_role('sales_rep'));
+  using (tenant_id = (select public.current_tenant_id()) and not (select public.has_role('sales_rep')));
 
 -- inbox
 create policy templates_select on public.message_templates for select to authenticated
-  using (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()));
 create policy templates_write on public.message_templates for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager','marketing'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager','marketing')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy conversations_select on public.conversations for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager','marketing')
-              or (public.has_role('sales_rep') and assignee_id = auth.uid())));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager','marketing'))
+              or ((select public.has_role('sales_rep')) and assignee_id = (select auth.uid()))));
 create policy conversations_write on public.conversations for all to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (public.has_role('owner','sales_manager') or (public.has_role('sales_rep') and assignee_id = auth.uid())))
-  with check (tenant_id = public.current_tenant_id()
-              and (public.has_role('owner','sales_manager') or assignee_id = auth.uid()));
+  using (tenant_id = (select public.current_tenant_id())
+         and ((select public.has_role('owner','sales_manager')) or ((select public.has_role('sales_rep')) and assignee_id = (select auth.uid()))))
+  with check (tenant_id = (select public.current_tenant_id())
+              and ((select public.has_role('owner','sales_manager')) or assignee_id = (select auth.uid()))
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = conversations.lead_id)));
 create policy messages_select on public.messages for select to authenticated
-  using (tenant_id = public.current_tenant_id()
+  using (tenant_id = (select public.current_tenant_id())
          and exists (select 1 from public.conversations c where c.id = messages.conversation_id));  -- inherits conversations RLS
 create policy messages_insert on public.messages for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and public.has_role('owner','sales_manager','sales_rep')
-              and sent_by = auth.uid()
+  with check (tenant_id = (select public.current_tenant_id())
+              and (select public.has_role('owner','sales_manager','sales_rep'))
+              and sent_by = (select auth.uid())
               and exists (select 1 from public.conversations c where c.id = messages.conversation_id
-                          and (public.has_role('owner','sales_manager') or c.assignee_id = auth.uid())));
+                          and ((select public.has_role('owner','sales_manager')) or c.assignee_id = (select auth.uid()))));
 
 -- integrations
 create policy integrations_select on public.integrations for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager','marketing','data'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager','marketing','data')));
 create policy integrations_write on public.integrations for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy ifm_select on public.integration_field_maps for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager','marketing','data'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager','marketing','data')));
 create policy ifm_write on public.integration_field_maps for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','data'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','data')))
+  with check (tenant_id = (select public.current_tenant_id()));
 create policy sync_runs_select on public.sync_runs for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager','marketing','data'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager','marketing','data')));
 create policy sync_runs_insert on public.sync_runs for insert to authenticated   -- CSV imports from the app
-  with check (tenant_id = public.current_tenant_id() and public.has_role('owner','marketing','data')
-              and kind = 'csv' and started_by = auth.uid());
+  with check (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','marketing','data'))
+              and kind = 'csv' and started_by = (select auth.uid()));
 create policy sync_runs_update on public.sync_runs for update to authenticated
-  using (tenant_id = public.current_tenant_id() and started_by = auth.uid())
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and started_by = (select auth.uid()))
+  with check (tenant_id = (select public.current_tenant_id()));
 
 -- backups (rows are written by the backup job with the service role)
 create policy backup_checks_select on public.backup_checks for select to authenticated
-  using ((tenant_id is null or tenant_id = public.current_tenant_id())
-         and public.has_role('owner','sales_manager','data'));
+  using ((tenant_id is null or tenant_id = (select public.current_tenant_id()))
+         and (select public.has_role('owner','sales_manager','data')));
 create policy backup_rules_select on public.backup_alert_rules for select to authenticated
-  using ((tenant_id is null or tenant_id = public.current_tenant_id())
-         and public.has_role('owner','sales_manager','data'));
+  using ((tenant_id is null or tenant_id = (select public.current_tenant_id()))
+         and (select public.has_role('owner','sales_manager','data')));
 create policy backup_rules_write on public.backup_alert_rules for all to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner'))
-  with check (tenant_id = public.current_tenant_id());
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner')))
+  with check (tenant_id = (select public.current_tenant_id()));
 
 -- AI insights: requester or owner/sales_manager
 create policy ai_select on public.ai_insights for select to authenticated
-  using (tenant_id = public.current_tenant_id()
-         and (user_id = auth.uid() or public.has_role('owner','sales_manager')));
+  using (tenant_id = (select public.current_tenant_id())
+         and (user_id = (select auth.uid()) or (select public.has_role('owner','sales_manager'))));
 create policy ai_insert on public.ai_insights for insert to authenticated
-  with check (tenant_id = public.current_tenant_id() and user_id = auth.uid() and not public.has_role('viewer'));
+  with check (tenant_id = (select public.current_tenant_id()) and user_id = (select auth.uid()) and not (select public.has_role('viewer')));
 create policy ai_update on public.ai_insights for update to authenticated
-  using (tenant_id = public.current_tenant_id() and user_id = auth.uid())
-  with check (tenant_id = public.current_tenant_id() and user_id = auth.uid());
+  using (tenant_id = (select public.current_tenant_id()) and user_id = (select auth.uid()))
+  with check (tenant_id = (select public.current_tenant_id()) and user_id = (select auth.uid()));
 
 -- consent_log: append-only
 create policy consent_select on public.consent_log for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager','data'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager','data')));
 create policy consent_insert on public.consent_log for insert to authenticated
-  with check (tenant_id = public.current_tenant_id()
-              and public.has_role('owner','sales_manager','sales_rep','data')
-              and recorded_by = auth.uid());
+  with check (tenant_id = (select public.current_tenant_id())
+              and (select public.has_role('owner','sales_manager','sales_rep','data'))
+              and recorded_by = (select auth.uid())
+              and (lead_id is null or exists (select 1 from public.leads l where l.id = consent_log.lead_id)));
 
 -- audit_log: read-only for owner + sales_manager; written only by trigger
 create policy audit_select on public.audit_log for select to authenticated
-  using (tenant_id = public.current_tenant_id() and public.has_role('owner','sales_manager'));
+  using (tenant_id = (select public.current_tenant_id()) and (select public.has_role('owner','sales_manager')));
 
 -- =====================================================================
 -- 19. Views (aggregates; deliberately run as view owner, filtered to the caller's tenant
@@ -1246,6 +1322,7 @@ select e.tenant_id,
        count(distinct coalesce(e.lead_id::text, e.anon_id)) as people
   from public.lead_events e
  where e.tenant_id = public.current_tenant_id()
+   and public.has_role('owner','sales_manager','marketing','data','viewer')
  group by 1, 2, 3;
 
 create view public.v_campaign_perf with (security_barrier = true) as
@@ -1314,6 +1391,7 @@ select s.tenant_id, s.id as stage_id, s.key, s.label, s.position, s.probability,
   from public.pipeline_stages s
   left join public.deals d on d.stage_id = s.id and d.deleted_at is null
  where s.tenant_id = public.current_tenant_id()
+   and public.has_role('owner','sales_manager','marketing','data','viewer')   -- reps use their own deals (RLS)
  group by s.tenant_id, s.id;
 
 -- Rep scorecard, current month (IST). Reps see only their own row.
@@ -1404,6 +1482,7 @@ grant execute on function public.tenant_branding(text, text) to anon, authentica
 grant execute on function public.submit_lead(text, text, text, text, text, text, text, text, text,
                           boolean, boolean, boolean, text, jsonb, jsonb, text, text) to anon, authenticated;
 grant execute on function public.track_event(text, text, text, text, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.erase_lead(uuid, text) to authenticated;   -- checks owner role inside
 
 -- =====================================================================
 -- 21. Default pipeline for a new tenant (call after inserting a tenant; service role)
