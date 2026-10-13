@@ -25,7 +25,7 @@ export default async function Inbox() {
     return {
       id: c.id, channel: c.channel, subject: c.subject, unread: c.unread, lastAt: c.lastAt,
       messages: c.messages.map((m) => ({ id: m.id, from: m.from, at: m.at, body: m.body, status: m.status, author: m.from === "us" ? nameOf(m.authorId).split(" ")[0] : first })),
-      draft: { en: c.aiDraft.body, ta: TAMIL_DRAFTS[c.id]?.replaceAll("{first}", first) ?? null, rationale: c.aiDraft.rationale, basedOn: c.aiDraft.basedOn, needsReview: c.aiDraft.needsReview ?? null },
+      draft: { en: c.aiDraft.body.replace(/I've blocked (\d+) minutes and will send/, "I can block $1 minutes and send").replace(/I'll load them/, "I can load them"), ta: TAMIL_DRAFTS[c.id]?.replaceAll("{first}", first) ?? null, rationale: c.aiDraft.rationale, basedOn: c.aiDraft.basedOn.replace(/\b(Arun|Divya|Karthik)'s calendar/, `${nameOf(l.ownerId).split(" ")[0]}'s calendar`), needsReview: c.aiDraft.needsReview ?? null },
       lead: { id: l.id, name: l.name, first, title: l.title, stage: LEAD_STAGE_LABEL[l.stage], score: l.score, ownerId: l.ownerId, ownerName: nameOf(l.ownerId), consent: l.consent, phone: l.phone, email: l.email },
       firm: a ? { id: a.id, name: a.name, district: a.district, lawyers: a.lawyers } : null,
       deal: d ? { id: d.id, stage: DEAL_STAGE_LABEL[d.stage], value: d.value, plan: d.plan, seats: d.seats } : null,

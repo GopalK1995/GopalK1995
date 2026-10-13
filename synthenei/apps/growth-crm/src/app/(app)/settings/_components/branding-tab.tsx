@@ -12,30 +12,8 @@ import { useBrand, useSession } from "@/components/shell/providers";
 import { can } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { saveBranding } from "./actions";
+import { contrastChecks } from "./contrast";
 
-// ---- OKLCH -> sRGB -> WCAG contrast (same formulas as tokens.css values) ----
-function oklchToLinear(L: number, C: number, h: number) {
-  const a = C * Math.cos((h * Math.PI) / 180), b = C * Math.sin((h * Math.PI) / 180);
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  const clamp = (x: number) => Math.min(1, Math.max(0, x));
-  return [
-    clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-    clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-    clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
-  ];
-}
-const lum = (L: number, C: number, h: number) => { const [r, g, b] = oklchToLinear(L, C, h); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-export function contrastChecks(h: number) {
-  const accent = lum(0.52, 0.15, h), accentInk = lum(0.99, 0.005, h), surface = lum(0.995, 0.002, 90), navy = lum(0.22, 0.045, h), navyInk = lum(0.96, 0.01, h);
-  return [
-    { key: "button", label: "Button text on accent", value: ratio(accentInk, accent), min: 4.5 },
-    { key: "link", label: "Accent text on page", value: ratio(accent, surface), min: 4.5 },
-    { key: "nav", label: "Sidebar text on navy", value: ratio(navyInk, navy), min: 4.5 },
-  ];
-}
 /** Token overrides for a preview wrapper (derived tokens are computed on :root, so they must be restated). */
 const previewVars = (h: number) => ({
   "--accent": `oklch(0.52 0.15 ${h})`, "--accent-ink": `oklch(0.99 0.005 ${h})`, "--accent-on-navy": `oklch(0.74 0.13 ${h})`,
@@ -67,7 +45,7 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
   const reason = support ? "Not available in a support session." : !tenant.isPrimaryOwner ? `Only the tenant's primary owner (${primaryOwnerName}) can change branding.` : "Only the Owner can change branding.";
 
   const save = () => start(async () => {
-    const r = await saveBranding({ name, product, hue, contrast: minRatio });
+    const r = await saveBranding({ name, product, hue });
     if (r.ok) setBrand({ name: name.trim(), product: product.trim(), hue });
     toast(r.message, r.detail);
   });

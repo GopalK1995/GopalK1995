@@ -1,7 +1,7 @@
 import { pageCtx } from "@/lib/data/context";
 import { pipelineTotals } from "@/lib/data/metrics";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
-import { dayKey, inrCompact, num } from "@/lib/format";
+import { dayKey, inr, inrCompact, num } from "@/lib/format";
 import { PageHeader } from "@/components/ui/misc";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Board, type DealCard } from "./_components/board";
@@ -59,7 +59,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader eyebrow={role === "sales_rep" ? "Your deals" : canMove ? "All reps" : `Read-only for ${ROLE_LABEL[role]}${masked ? ": firm names only" : ""}`}
         title="Pipeline"
-        sub={`${num(t.openCount)} open deals worth ${inrCompact(t.openValue)}, ${inrCompact(t.weighted)} weighted by stage. Won this month: ${inrCompact(t.wonMonthValue)} from ${t.wonMonthCount} deal${t.wonMonthCount === 1 ? "" : "s"}.`} />
+        sub={`${num(t.openCount)} open deals worth ${inr(t.openValue)}, weighted ${inrCompact(t.weighted)} by stage probability. Won this month: ${inrCompact(t.wonMonthValue)} from ${t.wonMonthCount} deal${t.wonMonthCount === 1 ? "" : "s"}.`} />
       <div className="mb-4"><FilterBar filters={filters} /></div>
       <Board key={JSON.stringify(sp)} deals={cards} canMove={canMove} masked={masked} today={dayKey(now)} />
       {canMove && <p className="mt-3 hidden text-[12px] text-ink-3 md:block">Drag a card to another column, or use its move button (keyboard: Tab to the button, Enter, arrow keys). Cards turn amber after 10 days in a stage and red after 14.</p>}

@@ -111,7 +111,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
 
           <Card>
             <CardHeader title="Deals" sub={role === "sales_rep" ? "Your deals with this firm" : `${open.length} open, ${deals.length - open.length} closed`} action={<span className="text-[12px] text-ink-3 num">{inrCompact(open.reduce((s, d) => s + d.value, 0))} open</span>} />
-            {deals.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title="No deals with this firm yet.">Open a deal once the partners agree to a demo.</Empty></div> : (
+            {deals.length === 0 ? <div className="px-4 pb-4 sm:px-5">{acc.status === "customer" ? <Empty title="Signed before this 90-day window.">The renewal is tracked in the Customer panel; open a deal for added seats or a plan upgrade.</Empty> : <Empty title="No deals with this firm yet.">Open a deal once the partners agree to a demo.</Empty>}</div> : (
               <ul className="divide-y divide-line border-t border-line">{deals.map((d) => (
                 <li key={d.id} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:px-5">
                   <div className="min-w-0">
@@ -148,7 +148,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           </Card>
         </StaggerItem>
 
-        <StaggerItem className="grid content-start gap-4 lg:col-span-4">
+        <StaggerItem className="order-first grid content-start gap-4 lg:order-none lg:col-span-4">
           <NavyPanel className="p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-navy-ink-3">LAWSOME plan fit</div>
             <div className="mt-2 flex items-end justify-between gap-3">

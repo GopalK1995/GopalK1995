@@ -9,7 +9,8 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Avatar } from "@/components/ui/avatar";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
-import { HBar } from "@/components/charts/hbar";
+import { BarList } from "./_components/bar-list";
+import { pipelineTotals } from "@/lib/data/metrics";
 import type { Account, FirmSize } from "@/lib/data/types";
 import { COURT_FILTERS, STATUS_LABEL, STATUS_TONE, courtFocus, firmSites, shortCity } from "./_components/firm";
 import { verdict } from "./_components/perms";
@@ -49,7 +50,6 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
   const districts = [...new Set(accounts.map((a) => a.district))].sort();
   const courtOpts = COURT_FILTERS.filter((c) => rows.some((r) => r.focus.includes(c)));
   const owners = [...new Set(accounts.map((a) => a.ownerId))];
-  const openTotal = rows.reduce((s, r) => s + r.openValue, 0);
   const multi = rows.filter((r) => r.sites >= 2).length;
   const customers = accounts.filter((a) => a.status === "customer");
   const arr = customers.reduce((s, a) => s + a.arr, 0);
@@ -64,7 +64,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
         <Link href={`/accounts/${r.id}`} className="block truncate font-medium text-ink hover:text-accent">{r.name}</Link>
         <span className="block truncate text-[12px] text-ink-3 md:hidden lg:block">{r.locality}, {shortCity(r.city)}</span>
       </div>
-    ), className: "max-w-[220px]" },
+    ), className: "max-w-[200px]" },
     { key: "district", header: "District", mobile: "fact", cell: (r) => r.district },
     { key: "court", header: "Court focus", cell: (r) => (
       <div className="flex items-center gap-1" title={r.courts.join(" · ")}>
@@ -72,7 +72,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
         {r.focus.length > 2 && <span className="text-[11px] text-ink-3 num">+{r.focus.length - 2}</span>}
       </div>
     ) },
-    { key: "areas", header: "Practice", cell: (r) => <span className="block max-w-[132px] truncate text-[12px] text-ink-2" title={r.practiceAreas.join(", ")}>{r.practiceAreas.join(", ")}</span> },
+    { key: "areas", header: "Practice", className: "hidden 2xl:table-cell", cell: (r) => <span className="block max-w-[132px] truncate text-[12px] text-ink-2" title={r.practiceAreas.join(", ")}>{r.practiceAreas.join(", ")}</span> },
     { key: "size", header: "Size", cell: (r) => <span className="num text-ink-2">{r.size}</span>, className: "hidden xl:table-cell" },
     { key: "lawyers", header: "Lawyers", align: "right", cell: (r) => num(r.lawyers) },
     { key: "sites", header: "Sites", align: "right", cell: (r) => num(r.sites) },
@@ -91,7 +91,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
       <Stagger className="grid gap-4">
         <StaggerItem className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi label="Firms in workspace" value={accounts.length} foot={<>{rows.filter((r) => r.openCount).length} with open deals</>} />
-          <Kpi label={rep ? "My open pipeline" : "Open pipeline"} metric="M34" value={openTotal} format="inrCompact" foot={<>{rows.reduce((s, r) => s + r.openCount, 0)} open deals</>} />
+          <Kpi label={rep ? "My open pipeline" : "Open pipeline"} metric="M34" value={pipelineTotals(deals, now).openValue} format="inrCompact" foot={<>{rows.reduce((s, r) => s + r.openCount, 0)} open deals</>} />
           <Kpi label="Multi-site firms" metric="M55" value={ratio(multi, accounts.length)} format="pct" foot={<>{multi} of {accounts.length} firms have 2+ offices</>} />
           <Kpi label="Customer ARR" value={arr} format="inrCompact" foot={<>{customers.length} customer firm{customers.length === 1 ? "" : "s"}</>} />
         </StaggerItem>
@@ -109,7 +109,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
               ]} />
               <p className="text-[12px] text-ink-3 num" aria-live="polite">Showing {filtered.length} of {accounts.length} firms{sp.sort ? "" : ", largest open pipeline first"}</p>
             </div>
-            <DataTable rows={filtered} columns={cols} rowKey={(r) => r.id} minWidth={960} caption="Law firms"
+            <DataTable rows={filtered} columns={cols} rowKey={(r) => r.id} minWidth={880} caption="Law firms"
               empty="No firms match these filters." emptyHint="Clear a filter, or search by city (for example Madurai)." />
           </Card>
         </StaggerItem>
@@ -118,13 +118,13 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
           <Card>
             <CardHeader title="Which districts carry the open pipeline?" sub={`Open deal value by firm district${rep ? ", your deals" : ""}`} action={<span className="font-mono text-[10px] text-ink-3">M34 · M54</span>} />
             <CardBody>
-              {byDistrict.length ? <HBar data={byDistrict} label="Open pipeline by district" format="inrCompact" highlight={byDistrict[0].label} valueLabel="Open deals" />
+              {byDistrict.length ? <BarList rows={byDistrict} format="inrCompact" label="Open pipeline by district" />
                 : <p className="py-6 text-center text-[13px] text-ink-3">No open deals yet. Open a deal from a firm's page to see it here.</p>}
             </CardBody>
           </Card>
           <Card>
             <CardHeader title="Where are the leads coming from?" sub={`Leads by firm district${rep ? ", your leads" : ""}`} action={<span className="font-mono text-[10px] text-ink-3">M54</span>} />
-            <CardBody><HBar data={leadsByDistrict} label="Leads by district" highlight={leadsByDistrict[0]?.label} valueLabel="Leads" /></CardBody>
+            <CardBody><BarList rows={leadsByDistrict} format="num" label="Leads by district" /></CardBody>
             <p className="border-t border-line px-4 py-2.5 text-[12px] text-ink-3 sm:px-5">{pct(ratio(multi, accounts.length), 0)} of firms work from more than one office; they need one shared calendar.</p>
           </Card>
         </StaggerItem>

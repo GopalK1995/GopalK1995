@@ -12,8 +12,9 @@ import { IntegrationGrid, type GridItem } from "./_components/integration-grid";
 import type { SyncRun } from "@/lib/data/types";
 
 export const metadata = { title: "Integrations" };
-const RUN_TONE = { success: "connected", partial: "needs_attention", failed: "error" } as const;
-const RUN_LABEL = { success: "Success", partial: "Partial", failed: "Failed" } as const;
+/** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
+const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;
+const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
 
 export default async function Integrations() {
   const { ds, now, role, support } = await pageCtx();

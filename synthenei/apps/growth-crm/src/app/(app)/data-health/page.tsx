@@ -13,8 +13,9 @@ import type { SyncRun } from "@/lib/data/types";
 
 export const metadata = { title: "Data health" };
 const H = 3600e3, D = 24 * H;
-const RUN_TONE = { success: "connected", partial: "needs_attention", failed: "error" } as const;
-const RUN_LABEL = { success: "Success", partial: "Partial", failed: "Failed" } as const;
+/** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
+const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;
+const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
 /** Planned offsite retention per tenant plan (spec 8: 30 days baseline). Supabase-managed daily backups keep 7 days on Free/Pro. */
 const RETENTION: Record<string, { offsite: number; note: string }> = {
   Pilot: { offsite: 14, note: "Pilot plan" },
@@ -100,7 +101,7 @@ export default async function DataHealth() {
         <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
           <Tile label="Retention" value={`${retention.offsite} days`} foot={<>Offsite dumps, {retention.note} (planned). Supabase daily backups: {snap.retentionDays ?? "–"} days.</>} />
           <Tile label="Point-in-time recovery" value={snap.pitrEnabled ? "On" : "Off"} tone={snap.pitrEnabled ? undefined : "warn"} foot="Paid Supabase add-on. Without it, the worst case loses up to a day of changes." />
-          <Tile label="Supabase daily backup" value={daily?.takenAt ? relTime(daily.takenAt, now) : "–"} foot={<>Managed by Supabase, {bytes(daily?.sizeBytes ?? null)}. Excludes Storage and Edge Functions.</>} />
+          <Tile label="Supabase daily backup (sample)" value={daily?.takenAt ? relTime(daily.takenAt, now) : "–"} foot={<>Plan fact: Pro keeps daily backups 7 days. Size {bytes(daily?.sizeBytes ?? null)} is a sample; the project plan is not confirmed. Excludes Storage and Edge Functions.</>} />
           <Tile label="Last restore drill" value={drillDays !== null ? `${drillDays} days ago` : "Never"} tone={drillDays !== null && drillDays > 90 ? "danger" : undefined}
             foot={<>Target: every 90 days or sooner (M26). <Meter value={drillDays ?? 90} max={90} tone={drillDays !== null && drillDays > 75 ? "warn" : "accent"} className="mt-2" /></>} />
         </div>

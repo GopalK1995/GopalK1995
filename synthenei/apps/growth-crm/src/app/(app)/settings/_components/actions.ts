@@ -7,6 +7,7 @@ import { requireActive } from "@/lib/auth/server";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
 import { MEMBERSHIPS, userById } from "@/lib/tenancy";
 import type { Role } from "@/lib/data/types";
+import { contrastChecks } from "./contrast";
 
 export type ActionResult = { ok: boolean; message: string; detail?: string };
 const DEMO = "Demo: nothing was saved or sent.";
@@ -52,7 +53,7 @@ export async function suspendMember(userId: string): Promise<ActionResult> {
   return { ok: true, message: `${userById(userId)?.name ?? "Member"} suspended in ${active.ws.name}`, detail: `Membership deactivated, sessions revoked, history kept. ${DEMO}` };
 }
 
-export async function saveBranding(input: { name: string; product: string; hue: number; contrast: number }): Promise<ActionResult> {
+export async function saveBranding(input: { name: string; product: string; hue: number }): Promise<ActionResult> {
   const { session, active } = await requireActive();
   if (active.support) return SUPPORT;
   if (!can("branding", { role: active.role, support: active.support }) || active.tenant.primaryOwnerId !== session.uid)
@@ -60,8 +61,8 @@ export async function saveBranding(input: { name: string; product: string; hue: 
   const hue = Math.round(Number(input.hue));
   if (!Number.isFinite(hue) || hue < 0 || hue > 359) return { ok: false, message: "Hue must be 0 to 359." };
   if (!input.name.trim() || input.name.length > 40 || input.product.length > 40) return { ok: false, message: "Name and product name: 1 to 40 characters." };
-  // Recomputed client-side from the same OKLCH formula; the real RPC recomputes it in SQL before saving.
-  if (!(input.contrast >= 4.5)) return { ok: false, message: "Text contrast is below 4.5:1. Pick another hue." };
+  // Recomputed here from the hue (never trusted from the client).
+  if (contrastChecks(hue).some((c) => c.value < c.min)) return { ok: false, message: "Text contrast is below 4.5:1. Pick another hue." };
   return { ok: true, message: `Branding saved for ${active.tenant.name}`, detail: `Hue ${hue} applies to all workspaces of ${active.tenant.name}. Demo: stored in this browser only.` };
 }
 

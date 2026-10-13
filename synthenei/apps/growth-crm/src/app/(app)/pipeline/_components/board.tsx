@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState, useTransition, type PointerEvent as RPE } from "react";
-import { ArrowRightLeft, CalendarClock, Hourglass } from "lucide-react";
+import { ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight, Hourglass } from "lucide-react";
 import type { DealStage } from "@/lib/data/types";
 import { DEAL_STAGES, DEAL_STAGE_LABEL } from "@/lib/data/metrics";
 import { fmtDate, inr, inrCompact, pct } from "@/lib/format";
@@ -43,6 +43,8 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
   const [drag, setDrag] = useState<null | { id: string; x: number; y: number; ox: number; oy: number; w: number; over: DealStage | null }>(null);
   const start = useRef<{ id: string; x: number; y: number; ox: number; oy: number; w: number } | null>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const scrollBoard = (dir: 1 | -1) => boardRef.current?.scrollBy({ left: dir * 520, behavior: reduce ? "auto" : "smooth" });
   const [pending, startT] = useTransition();
   const reduce = useReducedMotion();
 
@@ -165,7 +167,16 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
             </li>
           ))}
         </ol>
-        <Segmented label="Pipeline view" value={view} onChange={setView} options={[{ value: "board", label: "Board" }, { value: "table", label: "Table" }]} />
+        <div className="flex items-center gap-2">
+          {view === "board" && (
+            <span className="hidden items-center gap-1 md:inline-flex">
+              <span className="text-[12px] text-ink-3">7 stages</span>
+              <Button size="icon" variant="secondary" aria-label="Scroll board left" onClick={() => scrollBoard(-1)}><ChevronLeft /></Button>
+              <Button size="icon" variant="secondary" aria-label="Scroll board right to Won and Lost" onClick={() => scrollBoard(1)}><ChevronRight /></Button>
+            </span>
+          )}
+          <Segmented label="Pipeline view" value={view} onChange={setView} options={[{ value: "board", label: "Board" }, { value: "table", label: "Table" }]} />
+        </div>
       </div>
 
       {view === "table" ? (
@@ -196,7 +207,7 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
         <>
           {/* Desktop and tablet board */}
           <LayoutGroup>
-            <div className="scrollbar-thin relative hidden gap-3 overflow-x-auto pb-2 md:flex" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { start.current = null; setDrag(null); }}>
+            <div ref={boardRef} className="scrollbar-thin relative hidden gap-3 overflow-x-auto pb-2 md:flex" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { start.current = null; setDrag(null); }}>
               {DEAL_STAGES.map((s) => (
                 <section key={s} data-stage={s} aria-label={`${DEAL_STAGE_LABEL[s]}: ${byStage[s].length} deals`}
                   className={cn("flex w-[248px] shrink-0 flex-col rounded-md border bg-paper-2/60 transition-colors duration-150",

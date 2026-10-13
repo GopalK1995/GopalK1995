@@ -81,7 +81,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-[13px] font-medium text-ink">{r.title}</span>
-            {r.priority === "high" && <Badge tone="warn">High</Badge>}
+            {r.priority === "high" && r.kind !== "demo" && <Badge tone="warn">High</Badge>}{r.priority === "low" && <span className="text-[11px] text-ink-3">Low</span>}
           </div>
           <div className="truncate text-[12px] text-ink-3">
             {r.lead ? <Link href={`/leads/${r.lead.id}`} className="hover:text-accent">{r.lead.name}, {r.lead.firm}</Link> : "No lead"}

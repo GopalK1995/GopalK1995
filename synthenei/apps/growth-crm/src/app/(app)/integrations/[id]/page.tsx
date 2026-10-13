@@ -5,9 +5,8 @@ import { pageCtx, maskName } from "@/lib/data/context";
 import { fmtDateTime, inr, relTime } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, StatusChip } from "@/components/ui/badge";
-import { Dl, PageHeader, Table, td, th } from "@/components/ui/misc";
+import { Dl, PageHeader } from "@/components/ui/misc";
 import { DataTable } from "@/components/ui/data-table";
-import { cn } from "@/lib/utils";
 import { metaFor, statusLabel } from "../_components/meta";
 import { DirectionTag, Monogram } from "../_components/bits";
 import { FlowDiagram } from "../_components/flow-diagram";
@@ -18,8 +17,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   return { title: `Integration · ${id}` };
 }
-const RUN_TONE = { success: "connected", partial: "needs_attention", failed: "error" } as const;
-const RUN_LABEL = { success: "Success", partial: "Partial", failed: "Failed" } as const;
+/** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
+const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;
+const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
 const WHO_TONE = { Client: "warn", Vendor: "outline", Us: "accent" } as const;
 /** Fields the CRM owns in a two-way sync (spec 7.2 conflict policy). */
 const CRM_OWNED = /stage|value|amount|owner|score|plan/i;
@@ -68,7 +68,7 @@ export default async function IntegrationDetail({ params }: { params: Promise<{ 
       <Link href="/integrations" className="mb-3 inline-flex items-center gap-1 text-[12px] font-medium text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />All integrations</Link>
       <PageHeader eyebrow={`${it.category} · ${it.vendor}`}
         title={<span className="flex items-center gap-3"><Monogram text={it.monogram} size={40} /><span className="min-w-0">{it.name}</span></span>}
-        actions={<><RunSyncButton id={it.id} /><ConnectButton id={it.id} name={it.name} blockers={m.blockers.filter((b) => b.who !== "Us").map((b) => b.label)} /></>}>
+        actions={<><RunSyncButton id={it.id} csv={m.csv} /><ConnectButton id={it.id} name={it.name} blockers={m.blockers.filter((b) => b.who !== "Us").map((b) => b.label)} /></>}>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           <StatusChip status={s.status} label={s.label} />
           <DirectionTag direction={m.direction} />
@@ -95,23 +95,16 @@ export default async function IntegrationDetail({ params }: { params: Promise<{ 
 
           <Card>
             <CardHeader title="What flows" sub={m.trigger.detail} />
-            <Table minWidth={560}>
-              <thead><tr className="border-y border-line bg-paper/60"><th className={th}>Object</th><th className={th}>Direction</th><th className={th}>Trigger</th><th className={th}>Our table</th></tr></thead>
-              <tbody>
-                {flows.map((f) => (
-                  <tr key={f.dir + f.o} className="border-b border-line last:border-0">
-                    <td className={cn(td, "whitespace-normal")}>{f.o}</td>
-                    <td className={td}>
-                      <span className="inline-flex items-center gap-1 text-[12px] text-ink-2">
-                        {f.dir === "in" ? <><ArrowDownLeft className="size-3.5 text-accent" aria-hidden />In</> : <><ArrowUpRight className="size-3.5 text-ink-3" aria-hidden />Out</>}
-                      </span>
-                    </td>
-                    <td className={cn(td, "text-ink-2")}>{f.dir === "in" ? m.trigger.kind : "On our change"}</td>
-                    <td className={cn(td, "font-mono text-[12px] text-ink-2")}>{f.dir === "in" ? m.tables.slice(0, 2).join(", ") : `${m.tables[0]?.replace(/^reads /, "") ?? "–"} (read)`}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            <DataTable rows={flows} rowKey={(f) => f.dir + f.o} minWidth={560} caption="What flows"
+              columns={[
+                { key: "o", header: "Object", mobile: "title", cell: (f) => <span className="whitespace-normal">{f.o}</span> },
+                { key: "d", header: "Direction", mobile: "fact", cell: (f) => (
+                  <span className="inline-flex items-center gap-1 text-[12px] text-ink-2">
+                    {f.dir === "in" ? <><ArrowDownLeft className="size-3.5 text-accent" aria-hidden />In</> : <><ArrowUpRight className="size-3.5 text-ink-3" aria-hidden />Out</>}
+                  </span>) },
+                { key: "t", header: "Trigger", mobile: "fact", cell: (f) => <span className="text-ink-2">{f.dir === "in" ? m.trigger.kind : "On our change"}</span> },
+                { key: "tb", header: "Our table", cell: (f) => <span className="font-mono text-[12px] text-ink-2">{f.dir === "in" ? m.tables.slice(0, 2).join(", ") : `${m.tables[0]?.replace(/^reads /, "") ?? "–"} (read)`}</span> },
+              ]} />
           </Card>
 
           <Card>
