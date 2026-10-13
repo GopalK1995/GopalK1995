@@ -1,0 +1,74 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Growth CRM IA</title>
+<style>
+:root{--navy:#0b1533;--navy2:#16255a;--acc:#2f4fe0;--acc2:#e7ecff;--ink:#0f172a;--mut:#5b6480;--line:#dfe3ee;--bg:#f6f7fb;--ok:#0f8a5f;--warn:#a15c07}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:13px/1.45 Inter,system-ui,sans-serif;color:var(--ink);padding:36px;width:1680px}
+h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{color:var(--mut);margin-bottom:24px}
+.roles{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}.role{background:var(--navy);color:#fff;border-radius:10px;padding:8px 12px;font-weight:600}.role small{display:block;color:#a9b4dd;font-weight:500}
+.top{display:grid;grid-template-columns:260px 1fr;gap:16px;margin-bottom:16px;align-items:start}
+.box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.entry{background:var(--navy2);color:#fff}.entry b{display:block;font-size:14px}.entry span{color:#b9c3ea}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.grp{border-radius:14px;background:#fff;border:1px solid var(--line);overflow:hidden}
+.grp h2{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;background:var(--navy);color:#fff;padding:10px 14px}
+.pg{padding:10px 14px;border-top:1px solid var(--line)}.pg:first-of-type{border-top:0}
+.pg b{font-size:13.5px}.pg code{font-size:11px;color:var(--acc);background:var(--acc2);border-radius:5px;padding:1px 6px;margin-left:6px}
+.pg p{margin:4px 0 6px;color:var(--mut)}
+.act{display:flex;flex-wrap:wrap;gap:4px}.act span{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:1px 8px;color:#38425f;background:#fafbfe}
+.who{font-size:10.5px;color:var(--ok);font-weight:700;letter-spacing:.04em;margin-top:5px}
+.tag{font-size:10px;font-weight:700;color:var(--warn);background:#fff3df;border-radius:5px;padding:1px 6px;margin-left:6px}
+.flow{margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.flow .box{padding:7px 10px;font-weight:600;font-size:12px}.arrow{color:var(--mut);font-size:18px}
+.legend{margin-top:14px;color:var(--mut);font-size:12px}
+</style></head><body>
+<h1>Growth CRM — Information architecture</h1>
+<div class="sub">White-label sales + marketing CRM for LAWSOME · 5 groups · 19 routes · role-aware navigation · demo data, integrations shown as showcase</div>
+<div class="roles">
+<div class="role">Owner / Admin<small>lands on Command Center</small></div>
+<div class="role">Sales Manager (RevOps)<small>Command Center</small></div>
+<div class="role">Sales Rep<small>lands on My day</small></div>
+<div class="role">Marketing<small>lands on Campaigns</small></div>
+<div class="role">Data<small>Leads · Audience · Data health</small></div>
+<div class="role">Viewer<small>read-only dashboards</small></div>
+</div>
+<div class="top">
+<div class="box entry"><b>/login</b><span>Email + password · demo role picker · logout in avatar menu</span></div>
+<div class="box"><b>Global shell</b> — sidebar (collapsible, bottom nav on mobile) · global search (leads, firms, campaigns) · date range · notifications · avatar menu (profile, switch role in demo, logout) · subtle “Demo data” indicator</div>
+</div>
+<div class="grid">
+<div class="grp"><h2>1 · Overview</h2>
+<div class="pg"><b>Command Center</b><code>/</code><p>Pipeline ₹, won this month, funnel, channel mix, campaign ROI, leads trend, team leaderboard</p><div class="act"><span>change period</span><span>drill into funnel step</span><span>export</span></div><div class="who">OWNER · MANAGER · VIEWER</div></div>
+<div class="pg"><b>My day</b><code>/sales</code><p>Calls & WhatsApps due, overdue follow-ups, hot leads by AI score, demos this week, target vs achieved, first-response SLA</p><div class="act"><span>log call</span><span>send WhatsApp template</span><span>schedule demo</span><span>snooze</span></div><div class="who">SALES REP · MANAGER</div></div>
+</div>
+<div class="grp"><h2>2 · Sales</h2>
+<div class="pg"><b>Leads</b><code>/leads</code><p>Dense table, saved views, AI score, source/UTM, owner, stage</p><div class="act"><span>filter</span><span>bulk assign</span><span>import CSV</span><span>export</span></div></div>
+<div class="pg"><b>Lead detail</b><code>/leads/[id]</code><p>Profile, firm, timeline, AI summary + next best action</p><div class="act"><span>call</span><span>WhatsApp</span><span>email</span><span>schedule demo</span><span>change stage</span><span>assign</span></div></div>
+<div class="pg"><b>Pipeline</b><code>/pipeline</code><p>Kanban by stage with ₹ value per column</p><div class="act"><span>drag deal</span><span>quick edit</span><span>mark won/lost</span></div></div>
+<div class="pg"><b>Law firms</b><code>/accounts · /accounts/[id]</code><p>City, courts, practice areas, size, contacts, deals, activity</p><div class="act"><span>add contact</span><span>open deal</span></div></div>
+<div class="pg"><b>Tasks & calendar</b><code>/tasks</code><p>Follow-ups and demo week view</p><div class="act"><span>create task</span><span>complete</span><span>reschedule</span></div></div>
+</div>
+<div class="grp"><h2>3 · Marketing</h2>
+<div class="pg"><b>Campaigns</b><code>/campaigns</code><p>Spend, reach, CTR, CPL, leads, demos · radar comparison</p><div class="act"><span>compare 3</span><span>import stats</span><span>new campaign</span></div><div class="who">MARKETING · OWNER</div></div>
+<div class="pg"><b>Campaign detail</b><code>/campaigns/[id]</code><p>Daily trend, audience, creative, attribution</p><div class="act"><span>pause (showcase)</span><span>duplicate</span></div></div>
+<div class="pg"><b>Audience / ICP</b><code>/audience</code><p>TN districts, firm size, practice areas, roles</p><div class="act"><span>build segment</span><span>send to campaign</span></div></div>
+<div class="pg"><b>Analytics</b><code>/analytics</code><p>GA4-style traffic, sources, pages, devices, first vs last touch</p><div class="act"><span>toggle attribution</span></div></div>
+</div>
+<div class="grp"><h2>4 · Engage & AI</h2>
+<div class="pg"><b>Inbox</b><code>/inbox</code><span class="tag">SHOWCASE</span><p>WhatsApp, email, LinkedIn threads in one place</p><div class="act"><span>reply</span><span>use template</span><span>AI draft → approve</span><span>link to lead</span></div></div>
+<div class="pg"><b>AI copilot</b><code>/ai</code><p>Ask-the-CRM over metrics, lead-score explanations, weekly campaign digest — human approves every action</p><div class="act"><span>ask</span><span>pin insight</span><span>create task from insight</span></div></div>
+</div>
+<div class="grp"><h2>5 · System & admin</h2>
+<div class="pg"><b>Integrations</b><code>/integrations</code><span class="tag">SHOWCASE</span><p>Zoho, HubSpot, WhatsApp, LinkedIn, Mailchimp, Gmail, Outlook, GA4, Meta Ads, Google Ads, Calendly, Cal.com, Slack, Zapier, Make, Razorpay</p><div class="act"><span>filter by category</span><span>open connector</span></div><div class="who">OWNER · MANAGER</div></div>
+<div class="pg"><b>Connector detail</b><code>/integrations/[id]</code><p>Data in/out, trigger, connect steps, field mapping, sync log, flow diagram</p><div class="act"><span>connect (showcase dialog)</span><span>edit mapping</span></div></div>
+<div class="pg"><b>Data health</b><code>/data-health</code><p>Sync runs, backup status, retention, restore drills</p><div class="act"><span>run check</span><span>alert rules</span></div></div>
+<div class="pg"><b>Settings</b><code>/settings</code><p>Tabs: Users & roles · White-label branding (name, logo, hue slider) · Pipeline stages · Consent & privacy (DPDP) · Audit log</p><div class="act"><span>invite user</span><span>change role</span><span>rebrand</span><span>handle deletion request</span></div><div class="who">OWNER / ADMIN</div></div>
+</div>
+</div>
+<div class="flow"><b style="margin-right:6px">Core journey:</b>
+<div class="box">Campaign (email · LinkedIn · Meta · WhatsApp)</div><span class="arrow">→</span>
+<div class="box">LAWSOME landing page</div><span class="arrow">→</span>
+<div class="box">Lead created + auto-assigned</div><span class="arrow">→</span>
+<div class="box">Rep: My day → WhatsApp / call</div><span class="arrow">→</span>
+<div class="box">Demo booked</div><span class="arrow">→</span>
+<div class="box">Pipeline → Won</div><span class="arrow">→</span>
+<div class="box">Command Center + campaign ROI</div></div>
+<div class="legend">Green label = default roles for that page. SHOWCASE = designed and clickable, not live-connected. All data synthetic (Tamil Nadu firms, fictional people).</div>
+</body></html>
