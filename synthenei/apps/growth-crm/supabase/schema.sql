@@ -29,7 +29,7 @@ end $$;
 
 -- ---------- 1. Enums ----------
 create type public.app_role           as enum ('owner','sales_manager','sales_rep','marketing','data','viewer');
-create type public.lead_status        as enum ('new','working','nurturing','qualified','disqualified','converted');
+create type public.lead_status        as enum ('new','contacted','qualified','nurturing','disqualified','converted');
 create type public.channel_kind       as enum ('email','linkedin','meta','google_ads','whatsapp','organic','direct','referral','event','other');
 create type public.activity_kind      as enum ('call','whatsapp','email','meeting','note');
 create type public.task_status        as enum ('open','done','snoozed','cancelled');
@@ -337,7 +337,7 @@ create table public.deals (
   stage_entered_at timestamptz not null default now(),
   value_inr       numeric(14,2) not null default 0 check (value_inr >= 0),
   seats           integer check (seats > 0),
-  plan            text,                       -- placeholder until LAWSOME pricing is shared
+  plan            text check (plan in ('practice','chambers','enterprise')),  -- placeholder names until LAWSOME pricing is shared
   expected_close_on date,
   owner_id        uuid references public.profiles(id) on delete set null,
   next_step       text,
@@ -484,14 +484,15 @@ create table public.ga4_daily (
 create table public.integrations (
   id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid not null references public.tenants(id) on delete cascade,
-  provider      text not null,   -- zoho_crm|whatsapp|linkedin|mailchimp|ga4|meta_ads|google_ads|gmail|outlook|calendly|calcom|slack|zapier|make|razorpay|landing|csv
+  provider      text not null,   -- zoho_crm|hubspot|whatsapp|linkedin|mailchimp|ga4|meta_ads|google_ads|gmail|outlook|calendly|calcom|slack|zapier|make|razorpay|landing|csv
+                                 -- route id in the UI = provider with '_' -> '-' (e.g. /integrations/zoho-crm)
   label         text not null,
-  category      text not null check (category in ('crm','messaging','social_ads','email','analytics','calendar','payments','automation','notifications','internal')),
+  category      text not null check (category in ('crm','messaging','email','ads','analytics','scheduling','payments','automation','internal')),
   direction     text not null check (direction in ('in','out','both')),
   status        public.integration_status not null default 'showcase',
   auth_method   text,
   config_ref    text,            -- NAME of a secret in Vault / env. Never the secret itself.
-  settings      jsonb not null default '{}',
+  settings      jsonb not null default '{}',   -- {"sample_feed":true} = showcase card fed by sample data ('demo fed' in UI)
   last_sync_at  timestamptz,
   last_error    text,
   created_at    timestamptz not null default now(),
@@ -758,7 +759,7 @@ begin
     update public.leads
        set first_response_at = coalesce(first_response_at, new.created_at),
            last_touch_at = greatest(coalesce(last_touch_at, new.created_at), new.created_at),
-           status = case when status = 'new' then 'working'::public.lead_status else status end
+           status = case when status = 'new' then 'contacted'::public.lead_status else status end
      where id = new.lead_id and tenant_id = new.tenant_id;
     update public.tasks set status = 'done', completed_at = now()
      where lead_id = new.lead_id and kind = 'first_response' and status = 'open';
@@ -1419,20 +1420,24 @@ language sql security definer set search_path = '' as $$
     (p_tenant, 'lost',           'Lost',            7, 0, 999, false, true)
   on conflict do nothing;
   insert into public.integrations (tenant_id, provider, label, category, direction, status, auth_method) values
-    (p_tenant, 'zoho_crm',   'Zoho CRM',              'crm',           'both', 'showcase', 'OAuth 2.0'),
-    (p_tenant, 'whatsapp',   'WhatsApp Business',     'messaging',     'both', 'showcase', 'System user token'),
-    (p_tenant, 'linkedin',   'LinkedIn',              'social_ads',    'in',   'showcase', 'OAuth 2.0'),
-    (p_tenant, 'mailchimp',  'Mailchimp',             'email',         'in',   'showcase', 'API key / OAuth 2.0'),
-    (p_tenant, 'ga4',        'Google Analytics 4',    'analytics',     'both', 'showcase', 'Service account'),
-    (p_tenant, 'meta_ads',   'Meta Ads',              'social_ads',    'both', 'showcase', 'System user token'),
-    (p_tenant, 'google_ads', 'Google Ads',            'social_ads',    'both', 'showcase', 'OAuth 2.0 + developer token'),
-    (p_tenant, 'gmail',      'Gmail / Outlook',       'email',         'both', 'showcase', 'OAuth 2.0'),
-    (p_tenant, 'calendly',   'Calendly / Cal.com',    'calendar',      'in',   'showcase', 'OAuth / API key'),
-    (p_tenant, 'slack',      'Slack',                 'notifications', 'out',  'showcase', 'Incoming webhook'),
-    (p_tenant, 'zapier',     'Zapier / Make',         'automation',    'both', 'showcase', 'Signed webhooks'),
-    (p_tenant, 'razorpay',   'Razorpay',              'payments',      'in',   'showcase', 'Key + webhook secret'),
-    (p_tenant, 'landing',    'LAWSOME landing page',  'internal',      'in',   'not_configured', 'submit_lead RPC'),
-    (p_tenant, 'csv',        'CSV import',            'internal',      'in',   'connected', 'User session')
+    (p_tenant, 'zoho_crm',   'Zoho CRM',             'crm',        'both', 'showcase', 'OAuth 2.0 (accounts.zoho.in)'),
+    (p_tenant, 'hubspot',    'HubSpot',              'crm',        'both', 'showcase', 'OAuth 2.0 / private app token'),
+    (p_tenant, 'whatsapp',   'WhatsApp Business',    'messaging',  'both', 'showcase', 'System user token'),
+    (p_tenant, 'linkedin',   'LinkedIn Lead Gen',    'ads',        'in',   'showcase', 'OAuth 2.0'),
+    (p_tenant, 'meta_ads',   'Meta Ads',             'ads',        'both', 'showcase', 'System user token'),
+    (p_tenant, 'google_ads', 'Google Ads',           'ads',        'both', 'showcase', 'OAuth 2.0 + developer token'),
+    (p_tenant, 'ga4',        'Google Analytics 4',   'analytics',  'both', 'showcase', 'Service account'),
+    (p_tenant, 'mailchimp',  'Mailchimp',            'email',      'in',   'showcase', 'API key / OAuth 2.0'),
+    (p_tenant, 'gmail',      'Gmail',                'email',      'both', 'showcase', 'OAuth 2.0 (restricted scopes)'),
+    (p_tenant, 'outlook',    'Outlook',              'email',      'both', 'showcase', 'OAuth 2.0 (Microsoft Graph)'),
+    (p_tenant, 'calendly',   'Calendly',             'scheduling', 'in',   'showcase', 'OAuth 2.0 / personal token'),
+    (p_tenant, 'calcom',     'Cal.com',              'scheduling', 'in',   'showcase', 'API key'),
+    (p_tenant, 'slack',      'Slack',                'automation', 'out',  'showcase', 'Incoming webhook'),
+    (p_tenant, 'zapier',     'Zapier',               'automation', 'both', 'showcase', 'Signed webhooks'),
+    (p_tenant, 'make',       'Make',                 'automation', 'both', 'showcase', 'Signed webhooks'),
+    (p_tenant, 'razorpay',   'Razorpay',             'payments',   'in',   'showcase', 'Key + webhook secret'),
+    (p_tenant, 'landing',    'LAWSOME landing page', 'internal',   'in',   'not_configured', 'submit_lead RPC'),
+    (p_tenant, 'csv',        'CSV import',           'internal',   'in',   'connected', 'User session')
   on conflict do nothing;
 $$;
 revoke execute on function public.seed_tenant_defaults(uuid) from public, anon, authenticated;
