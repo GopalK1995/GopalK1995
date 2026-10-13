@@ -1,5 +1,5 @@
 -- Run ONCE in Supabase SQL Editor (project Lawsome, evybdanqxgkjoybrvzru). 0001-0003 are already applied.
--- Migrations 0004-0009 + seed/seed.sql concatenated in order, inside ONE transaction: if anything fails, nothing is applied.
+-- Migrations 0004-0010 + seed/seed.sql concatenated in order, inside ONE transaction: if anything fails, nothing is applied.
 -- (seed.sql's own begin/commit lines are removed so the outer transaction covers everything.)
 begin;
 
@@ -1638,6 +1638,97 @@ grant execute on function public.track_event(text, text, text, text, jsonb, json
 alter default privileges for role postgres in schema public revoke all on tables from anon;
 alter default privileges for role postgres in schema public revoke all on sequences from anon;
 alter default privileges for role postgres in schema public revoke execute on functions from public, anon;
+
+
+-- ======================= migrations/0010_fk_indexes.sql =======================
+-- 0010 covering indexes for every foreign key that had none (Supabase advisor 0001_unindexed_foreign_keys).
+-- Generated from the catalog after 0009; tenant_id indexes keep tenant-level cascades/reports cheap.
+
+create index if not exists accounts_owner_id_fk on public.accounts (owner_id);
+create index if not exists accounts_tenant_id_fk on public.accounts (tenant_id);
+create index if not exists activities_account_id_fk on public.activities (account_id);
+create index if not exists activities_contact_id_fk on public.activities (contact_id);
+create index if not exists activities_deal_id_fk on public.activities (deal_id);
+create index if not exists activities_lead_id_fk on public.activities (lead_id);
+create index if not exists activities_owner_id_fk on public.activities (owner_id);
+create index if not exists activities_tenant_id_fk on public.activities (tenant_id);
+create index if not exists ai_insights_campaign_id_fk on public.ai_insights (campaign_id);
+create index if not exists ai_insights_conversation_id_fk on public.ai_insights (conversation_id);
+create index if not exists ai_insights_deal_id_fk on public.ai_insights (deal_id);
+create index if not exists ai_insights_lead_id_fk on public.ai_insights (lead_id);
+create index if not exists ai_insights_tenant_id_fk on public.ai_insights (tenant_id);
+create index if not exists ai_insights_user_id_fk on public.ai_insights (user_id);
+create index if not exists audience_segments_created_by_fk on public.audience_segments (created_by);
+create index if not exists audience_segments_tenant_id_fk on public.audience_segments (tenant_id);
+create index if not exists audience_segments_workspace_id_fk on public.audience_segments (workspace_id);
+create index if not exists audit_log_support_session_id_fk on public.audit_log (support_session_id);
+create index if not exists audit_log_tenant_id_fk on public.audit_log (tenant_id);
+create index if not exists backup_alert_rules_tenant_id_fk on public.backup_alert_rules (tenant_id);
+create index if not exists backup_alert_rules_workspace_id_fk on public.backup_alert_rules (workspace_id);
+create index if not exists backup_checks_tenant_id_fk on public.backup_checks (tenant_id);
+create index if not exists backup_checks_workspace_id_fk on public.backup_checks (workspace_id);
+create index if not exists campaign_daily_metrics_tenant_id_fk on public.campaign_daily_metrics (tenant_id);
+create index if not exists campaigns_owner_id_fk on public.campaigns (owner_id);
+create index if not exists campaigns_segment_id_fk on public.campaigns (segment_id);
+create index if not exists campaigns_tenant_id_fk on public.campaigns (tenant_id);
+create index if not exists consent_log_lead_id_fk on public.consent_log (lead_id);
+create index if not exists consent_log_recorded_by_fk on public.consent_log (recorded_by);
+create index if not exists consent_log_tenant_id_fk on public.consent_log (tenant_id);
+create index if not exists contacts_account_id_fk on public.contacts (account_id);
+create index if not exists contacts_owner_id_fk on public.contacts (owner_id);
+create index if not exists contacts_tenant_id_fk on public.contacts (tenant_id);
+create index if not exists conversations_assignee_id_fk on public.conversations (assignee_id);
+create index if not exists conversations_contact_id_fk on public.conversations (contact_id);
+create index if not exists conversations_lead_id_fk on public.conversations (lead_id);
+create index if not exists conversations_tenant_id_fk on public.conversations (tenant_id);
+create index if not exists deal_stage_history_changed_by_fk on public.deal_stage_history (changed_by);
+create index if not exists deal_stage_history_from_stage_id_fk on public.deal_stage_history (from_stage_id);
+create index if not exists deal_stage_history_tenant_id_fk on public.deal_stage_history (tenant_id);
+create index if not exists deal_stage_history_to_stage_id_fk on public.deal_stage_history (to_stage_id);
+create index if not exists deals_account_id_fk on public.deals (account_id);
+create index if not exists deals_lead_id_fk on public.deals (lead_id);
+create index if not exists deals_owner_id_fk on public.deals (owner_id);
+create index if not exists deals_primary_contact_id_fk on public.deals (primary_contact_id);
+create index if not exists deals_stage_id_fk on public.deals (stage_id);
+create index if not exists deals_tenant_id_fk on public.deals (tenant_id);
+create index if not exists ga4_daily_tenant_id_fk on public.ga4_daily (tenant_id);
+create index if not exists integration_field_maps_tenant_id_fk on public.integration_field_maps (tenant_id);
+create index if not exists integration_field_maps_workspace_id_fk on public.integration_field_maps (workspace_id);
+create index if not exists integrations_tenant_id_fk on public.integrations (tenant_id);
+create index if not exists invitations_invited_by_fk on public.invitations (invited_by);
+create index if not exists invitations_tenant_id_fk on public.invitations (tenant_id);
+create index if not exists lead_events_tenant_id_fk on public.lead_events (tenant_id);
+create index if not exists leads_account_id_fk on public.leads (account_id);
+create index if not exists leads_campaign_id_fk on public.leads (campaign_id);
+create index if not exists leads_contact_id_fk on public.leads (contact_id);
+create index if not exists leads_owner_id_fk on public.leads (owner_id);
+create index if not exists leads_tenant_id_fk on public.leads (tenant_id);
+create index if not exists memberships_invited_by_fk on public.memberships (invited_by);
+create index if not exists memberships_tenant_id_fk on public.memberships (tenant_id);
+create index if not exists message_templates_tenant_id_fk on public.message_templates (tenant_id);
+create index if not exists messages_ai_insight_id_fk on public.messages (ai_insight_id);
+create index if not exists messages_sent_by_fk on public.messages (sent_by);
+create index if not exists messages_template_id_fk on public.messages (template_id);
+create index if not exists messages_tenant_id_fk on public.messages (tenant_id);
+create index if not exists messages_workspace_id_fk on public.messages (workspace_id);
+create index if not exists pipeline_stages_tenant_id_fk on public.pipeline_stages (tenant_id);
+create index if not exists platform_admins_granted_by_fk on public.platform_admins (granted_by);
+create index if not exists profiles_last_workspace_id_fk on public.profiles (last_workspace_id);
+create index if not exists sales_targets_rep_id_fk on public.sales_targets (rep_id);
+create index if not exists sales_targets_tenant_id_fk on public.sales_targets (tenant_id);
+create index if not exists support_sessions_tenant_id_fk on public.support_sessions (tenant_id);
+create index if not exists support_sessions_workspace_id_fk on public.support_sessions (workspace_id);
+create index if not exists sync_runs_integration_id_fk on public.sync_runs (integration_id);
+create index if not exists sync_runs_started_by_fk on public.sync_runs (started_by);
+create index if not exists sync_runs_tenant_id_fk on public.sync_runs (tenant_id);
+create index if not exists tasks_assignee_id_fk on public.tasks (assignee_id);
+create index if not exists tasks_created_by_fk on public.tasks (created_by);
+create index if not exists tasks_deal_id_fk on public.tasks (deal_id);
+create index if not exists tasks_lead_id_fk on public.tasks (lead_id);
+create index if not exists tasks_tenant_id_fk on public.tasks (tenant_id);
+create index if not exists tenants_primary_owner_id_fk on public.tenants (primary_owner_id);
+create index if not exists territories_rep_id_fk on public.territories (rep_id);
+create index if not exists territories_tenant_id_fk on public.territories (tenant_id);
 
 
 -- ======================= seed/seed.sql =======================
