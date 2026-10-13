@@ -36,11 +36,11 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 </div>
 <div class="top">
 <div><div class="box entry"><b>/login</b><span>Email + password or magic link · demo role picker · logout in avatar menu</span></div><div class="box entry entry2"><b>/admin/login</b><span>Platform admins only · separate session · MFA required</span></div></div>
-<div class="box"><b>Global shell</b> — <b>workspace switcher</b> at the top of the sidebar (e.g. “LAWSOME · Tamil Nadu”, “LAWSOME · Kerala pilot”, “Kaveri LegalTech (demo)”; sets the <code style="font-size:11px">ws</code> cookie, re-themes to the tenant’s branding, role shown per workspace) · sidebar (collapsible; mobile: drawer + bottom nav, tables become cards at 390px) · global search (leads, firms, campaigns) · date range · notifications · avatar menu (profile, switch role in demo, logout) · subtle “Demo data” indicator · red “Support session” banner when a platform admin is inside a workspace</div>
+<div class="box"><b>Global shell</b> — <b>workspace switcher</b> at the top of the sidebar (e.g. “LAWSOME · Tamil Nadu”, “LAWSOME · Kerala pilot”, “Kaveri LegalTech (demo)”; sets the <code style="font-size:11px">ws</code> cookie, re-themes to the tenant’s branding, role shown per workspace) · sidebar (collapsible; mobile: drawer + bottom nav, tables become cards at 390px) · global search (leads, firms, campaigns) · date range · notifications · avatar menu (profile, switch role in demo, logout) · subtle “Demo data” indicator · amber “Support session” banner (admin, mode, end time, End now) when a platform admin is inside a workspace</div>
 </div>
 <div class="grid">
 <div class="grp"><h2>1 · Overview</h2>
-<div class="pg"><b>Command Center</b><code>/</code><p>Pipeline ₹, won this month, funnel, channel mix, campaign ROI, leads trend, team leaderboard</p><div class="act"><span>change period</span><span>drill into funnel step</span><span>export</span></div><div class="who">OWNER · MANAGER · VIEWER</div></div>
+<div class="pg"><b>Command Center</b><code>/</code><p>Pipeline ₹, won this month, funnel, channel mix, campaign ROI, leads trend, rep scorecard (owner/manager)</p><div class="act"><span>change period</span><span>drill into funnel step</span><span>export</span></div><div class="who">OWNER · MANAGER · VIEWER</div></div>
 <div class="pg"><b>My day</b><code>/sales</code><p>Calls & WhatsApps due, overdue follow-ups, hot leads by AI score, demos this week, target vs achieved, first-response SLA</p><div class="act"><span>log call</span><span>send WhatsApp template</span><span>schedule demo</span><span>snooze</span></div><div class="who">SALES REP · MANAGER</div></div>
 </div>
 <div class="grp"><h2>2 · Sales</h2>
@@ -64,7 +64,7 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 <div class="pg"><b>Integrations</b><code>/integrations</code><span class="tag">SHOWCASE</span><p>Zoho, HubSpot, WhatsApp, LinkedIn, Mailchimp, Gmail, Outlook, GA4, Meta Ads, Google Ads, Calendly, Cal.com, Slack, Zapier, Make, Razorpay</p><div class="act"><span>filter by category</span><span>open connector</span></div><div class="who">OWNER · MANAGER</div></div>
 <div class="pg"><b>Connector detail</b><code>/integrations/[id]</code><p>Data in/out, trigger, connect steps, field mapping, sync log, flow diagram</p><div class="act"><span>connect (showcase dialog)</span><span>edit mapping</span></div></div>
 <div class="pg"><b>Data health</b><code>/data-health</code><p>Sync runs, backup status, retention, restore drills</p><div class="act"><span>run check</span><span>alert rules</span></div></div>
-<div class="pg"><b>Settings</b><code>/settings</code><p>Tabs: Users & roles · White-label branding (name, logo, hue slider) · Pipeline stages · Consent & privacy (DPDP) · Audit log</p><div class="act"><span>invite user</span><span>change role</span><span>rebrand</span><span>handle deletion request</span></div><div class="who">OWNER / ADMIN</div></div>
+<div class="pg"><b>Settings</b><code>/settings</code><p>Tabs: Users & roles (this workspace) · Branding (tenant-wide; editable by tenant primary owner, applies to all workspaces) · Pipeline stages · Consent & privacy (DPDP) · Audit log</p><div class="act"><span>invite to workspace</span><span>change role</span><span>rebrand (primary owner)</span><span>handle deletion request</span></div><div class="who">OWNER / ADMIN</div></div>
 </div>
 </div>
 <div class="grp admin"><h2>6 · Platform admin (super admin only)</h2><div class="inner">
@@ -73,7 +73,7 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 <div class="pg"><b>Tenant detail</b><code>/admin/tenants/[id]</code><p>Branding, workspaces, owners, usage, integrations status</p><div class="act"><span>add workspace</span><span>invite owner</span><span>edit branding</span></div></div>
 <div class="pg"><b>Users</b><code>/admin/users</code><p>All users with memberships per workspace, last sign-in, MFA</p><div class="act"><span>deactivate</span><span>reset access</span></div></div>
 <div class="pg"><b>Audit log</b><code>/admin/audit</code><p>Platform-wide changes and every support-session action</p><div class="act"><span>filter</span><span>export</span></div></div>
-<div class="pg"><b>Support access</b><code>/admin/support</code><p>Start a time-boxed (60 min) read-only session into one workspace with a typed reason; end / history</p><div class="act"><span>start session + reason</span><span>end session</span></div></div>
+<div class="pg"><b>Support access</b><code>/admin/support</code><p>Time-boxed session (15 / 30 / 60 min, default 30) into one workspace, typed reason ≥ 20 chars, mode read-only (as Viewer) or read-write (as Owner minus never-list: export, erase, integrations, AI toggles, branding, roles); end / history</p><div class="act"><span>start session + reason</span><span>end session</span></div></div>
 </div><div class="note">No business data (leads, contacts, messages) is visible in /admin. It is only visible inside a workspace during an active, audited support session, and the workspace owner sees that session in their audit log.</div></div>
 <div class="flow"><b style="margin-right:6px">Core journey:</b>
 <div class="box">Campaign (email · LinkedIn · Meta · WhatsApp)</div><span class="arrow">→</span>

@@ -328,7 +328,7 @@ Conventions for every page:
 ### `/settings`
 Tabs, each its own URL (`/settings?tab=users`):
 - **Users & roles (this workspace):** table (name, email, role in this workspace, other workspaces count, status Active/Invited/Deactivated, last sign-in); **Invite user** (email, role, territory for reps -> creates an `invitations` row for **this workspace** with 7-day expiry; an existing user gets a membership immediately plus a notification, a new user gets a Supabase invite email); Change role; Deactivate (keeps history, revokes sessions); Resend invite. Owner F; Sales Mgr can invite/manage Sales Rep and Viewer only.
-- **Branding (white-label):** product name, logo upload (SVG/PNG, light and dark), primary colour, accent colour (with live preview and WCAG contrast check: blocks save if text contrast < 4.5:1), favicon, email sender name, support email, custom domain (CNAME instructions; manual verification). Owner only.
+- **Branding (white-label, tenant-wide):** shown as editable only to the tenant's **primary owner** (`tenants.primary_owner_id`, set when the super admin creates the tenant); other workspace owners see a read-only preview. A banner says "Changes apply to all workspaces of LAWSOME (2)". The super admin can edit the same tokens from `/admin/tenants/[id]`. Fields: product name, logo upload (SVG/PNG, light and dark), primary colour, accent colour (with live preview and WCAG contrast check: blocks save if text contrast < 4.5:1), favicon, email sender name, support email, custom domain (CNAME instructions; manual verification). Owner only.
 - **Pipeline:** stages (rename, reorder, probability %, max days), lost reasons, SLA hours and business hours, territories (district -> rep). Owner, Sales Mgr.
 - **Targets:** monthly targets per rep (demos, won value INR). Owner, Sales Mgr.
 - **Consent & privacy:** consent log (search by subject; purpose, action, notice version, captured via); requests queue (withdrawal, erasure: received, due, status; Complete erasure runs the erasure function); retention settings (disqualified leads purged after N months, default 12); privacy notice version. Owner F, Data R.
@@ -627,11 +627,13 @@ flowchart LR
   - `is_platform_admin()` -> row in `platform_admins` with `is_active` **and** the JWT `aal = 'aal2'` (MFA).
   - `has_active_support_session(ws uuid)` -> `is_platform_admin()` and a `support_sessions` row for that workspace with `ended_at is null and now() < expires_at`.
   - Typical policy: `using ((select public.is_member(workspace_id)) and (select public.has_ws_role(workspace_id, 'owner','sales_manager')) ...)`. Platform tables (`tenants` list, `workspaces` metadata, `platform_admins`, `support_sessions`) are readable by `is_platform_admin()`; business tables are **never** opened by `is_platform_admin()` alone, only via `has_active_support_session`.
+  - **Never-list (support sessions can't do these, in any mode):** delete or erase a lead (`erase_lead`, `leads_delete`), CSV export, connect/disconnect an integration or edit its secrets, toggle AI features, change branding, invite users or change roles/deactivate members, process privacy requests. Enforcement: these policies and RPCs check `has_member_role(ws, 'owner', ...)`, which reads **real `memberships` only** and ignores support sessions, instead of `has_ws_role()`. In short: `has_ws_role` = membership role **or** support-session role; `has_member_role` = membership role only. The UI hides these actions while the banner is shown, but the database rule is the guarantee.
   - Every write while a support session is active is stamped with `support_session_id` in `audit_log` (from a session GUC set by the server).
 - **Active workspace:** the `ws` cookie only selects which workspace the UI shows. It is never trusted by the database: every query filters `workspace_id = <cookie value>` **and** RLS checks membership, so a forged cookie returns nothing.
 - **Branding:** the layout resolves the active workspace -> tenant -> branding tokens and injects CSS variables; switching workspace across tenants re-themes the shell. Custom domains map to a tenant; on a custom domain, the switcher only lists that tenant's workspaces.
 - **Schema status:** `apps/growth-crm/supabase/schema.sql` is the earlier single-level (tenant-only) reference design. The live source of truth is `apps/growth-crm/supabase/migrations/` (backend agent), which carries this workspace model.
-- **Authorisation:** (earlier tenant-only design, superseded by the workspace helpers above) helper functions `public.current_tenant_id()`, `public.current_app_role()` and `public.has_role(variadic app_role[])` read `profiles` as `security definer` with `search_path = ''`, so policies do not recurse (they only ever return the caller's own tenant/role). The landing page writes through `public.submit_lead(...)` and `public.track_event(...)` (SECURITY DEFINER, validated, throttled, granted to `anon`), so no service-role key is needed on the landing site. Policies are per table and per command (section 10). Aggregate views (`v_funnel_daily`, `v_campaign_perf`, `v_campaign_reach_profile`, `v_pipeline_summary`, `v_rep_scorecard`, `v_leads_masked`, `v_backup_latest`, `v_sync_freshness`) deliberately run as the view owner: each one filters by `public.current_tenant_id()` **and** a role predicate inside the view, and returns no personal data, so Viewers can read dashboards without row access to `leads`. Sales Reps get no rows from team-level views (`v_funnel_daily`, `v_pipeline_summary`, `v_campaign_perf`) and only their own row from `v_rep_scorecard`, matching section 4. The Supabase advisor will flag these as `security_definer_view`; this is accepted and documented, so don't switch them to `security_invoker`. Policies call helpers as `(select fn())` so they are evaluated once per statement. Cross-row references in inserts (activity -> lead, deal -> account, consent -> lead) must point at rows the caller can see. Audit rows store `[pii]` placeholders for personal columns, and `public.erase_lead()` (Owner) completes DPDP erasure.
+- **Authorisation:** every policy is per table and per command (section 10). It calls the workspace helpers above as `(select fn())`, so they are evaluated once per statement. Cross-row references in inserts (activity -> lead, deal -> account, consent -> lead) must point at rows the caller can see. Audit rows store `[pii]` placeholders for personal columns. `erase_lead()` completes DPDP erasure. The landing page writes only through `submit_lead()` / `track_event()` (SECURITY DEFINER, validated, throttled, granted to `anon`).
+- **Aggregate views** (funnel, campaign performance, reach profile, pipeline summary, rep scorecard, masked leads, backup, sync freshness) deliberately run as the view owner. Each filters by the active workspace's membership and a role predicate inside the view and returns no personal data. That is why Viewers can read dashboards without row access, while Sales Reps get no team-level rows. The Supabase advisor's `security_definer_view` warning is accepted and documented.
 - **Audit log:** a generic trigger writes `audit_log` (tenant, actor, action, table, row id, changed columns with old/new values) on insert/update/delete of leads, contacts, accounts, deals, profiles, tenants, integrations, pipeline_stages, consent_log. Table is append-only (no update/delete policy; revoke update/delete). Integration writes record `actor_label = 'integration:<provider>'`.
 - **Backups:** Supabase daily backups (7-day retention on Free/Pro, no Storage objects or Edge Functions included; PITR is a paid add-on) ([Supabase backups [O]](https://supabase.com/docs/guides/platform/backups.md)). We found no official API to read backup status, so: (1) nightly `pg_dump` (`supabase db dump` for schema + data) at 02:00 IST from Krishna's server to an offsite bucket with 30-day retention, encrypted at rest; (2) the job writes a `backup_checks` row (`check_kind='logical_dump'`, size, row counts per table, status) - this is the **heartbeat**; (3) a 09:00 IST cron checks `backup_alert_rules` (e.g. "no successful logical_dump in 26 h", "dump size dropped > 20% vs 7-day median") and posts to Slack/email; (4) quarterly restore drill into a scratch database, logged as `restore_drill`. `/data-health` reads these rows.
 - **Secrets:** provider tokens live in Supabase Vault / Edge Function secrets or the server's env file (`chmod 600`), referenced from `integrations.config_ref` by name only. Per-tenant webhook signing secrets are generated server-side and shown once. `.env.example` lists names, never values. No secrets in the repo, in logs, or in `sync_runs.error`.
@@ -676,26 +678,26 @@ Roles are **per workspace** (`memberships.role`), not per user. A person can be 
 | `viewer` | Viewer | Leadership, investors | Aggregated dashboards and masked lists via `v_leads_masked` (initials, firm, district, status, score). Never phone, email, timeline, inbox or exports. RLS gives Viewer no rows from `leads`, `contacts`, `activities`, `messages`. |
 | `platform_admin` (not a workspace role) | Super admin | Krishna (Synthan platform operator) | `/admin` console: tenants, workspaces, users, platform audit, support access. No business data unless a support session is active; MFA required |
 
-### 10.2 Page access per workspace role (F full, E own/assigned, R read, M read masked/aggregates, S only inside an active audited support session, — none)
+### 10.2 Page access per workspace role (F full, E own/assigned, R read, M read masked/aggregates, S = only inside an active audited support session: in `read_only` the admin acts as Viewer (so pages Viewer can't open stay closed), in `read_write` as Owner minus the never-list in section 8; S-rw = only in a `read_write` session; — none)
 | Page | Owner | Sales Mgr | Sales Rep | Marketing | Data | Viewer | Super admin |
 |---|---|---|---|---|---|---|---|
 | `/` Command Center | F | R | -> `/sales` | -> `/campaigns` | -> `/data-health` | M | S |
-| `/sales` | R | R (any rep) | E | — | — | — | S |
+| `/sales` | R | R (any rep) | E | — | — | — | S-rw |
 | `/leads`, `/leads/[id]` | F | F | E | R (+import, source fields) | R (+import, merge, enrich) | M | S |
 | `/pipeline` | F | F | E | R | R | M | S |
 | `/accounts`, `/accounts/[id]` | F | F | R (+E own) | R | F (no delete) | M | S |
 | `/campaigns`, `/campaigns/[id]` | F | R | — | F | R | M | S |
 | `/audience` | F | R | — | F | F | M | S |
 | `/analytics` | F | R | — | F | R | M | S |
-| `/inbox` | F | F | E | R | — | — | S |
-| `/tasks` | F | F (team) | E | E | E | — | S |
-| `/ai` | F | E (weights, logs) | R | R | R | — | S |
-| `/integrations`, `/integrations/[id]` | F | R | — | R | E (mapping, CSV) | — | S |
-| `/data-health` | F | R | — | — | F (no alert edit) | — | S |
-| `/settings` users | F | E (Rep/Viewer only) | — | — | — | — | S |
-| `/settings` branding | F | — | — | — | — | — | via `/admin/tenants/[id]` |
-| `/settings` pipeline, targets | F | F | — | — | — | — | S |
-| `/settings` consent & privacy | F | R | — | — | R | — | S |
+| `/inbox` | F | F | E | R | — | — | S-rw |
+| `/tasks` | F | F (team) | E | E | E | — | S-rw |
+| `/ai` | F | E (weights, logs) | R | R | R | — | S-rw |
+| `/integrations`, `/integrations/[id]` | F | R | — | R | E (mapping, CSV) | — | S-rw |
+| `/data-health` | F | R | — | — | F (no alert edit) | — | S-rw |
+| `/settings` users | F | E (Rep/Viewer only) | — | — | — | — | S-rw |
+| `/settings` branding (tenant-wide) | F (tenant primary owner only; others R) | — | — | — | — | — | via `/admin/tenants/[id]` |
+| `/settings` pipeline, targets | F | F | — | — | — | — | S-rw |
+| `/settings` consent & privacy | F | R | — | — | R | — | S-rw |
 | `/settings` audit log | R | R | — | — | — | — | via `/admin/audit` |
 | `/admin/*` console | — | — | — | — | — | — | F |
 | Profile | E | E | E | E | E | E | — |
@@ -740,9 +742,9 @@ Enforcement: UI hides what a role cannot do (no disabled-button clutter), **and*
 - **Workspace switch:** sets the `ws` cookie and `profiles.last_workspace_id`, re-themes, and redirects to the role home for the new workspace. Session tokens are unchanged; RLS checks membership per query.
 
 ### 10.5 Platform admin flows
-- **Login:** `/admin/login` with password + TOTP (AAL2). `is_platform_admin()` requires `aal2` in the JWT. Idle timeout is 30 minutes. A platform admin who is also a workspace member uses `/login` for that work, so their member identity and admin identity never mix in one view.
+- **Login:** `/admin/login` with password + TOTP (AAL2). `is_platform_admin()` requires `aal2` in the JWT. Idle timeout is 30 minutes. **Platform admin accounts are separate identities** (e.g. a dedicated `platform+krishna@` address). A trigger rejects a `memberships` row for any `platform_admins` user and vice versa, because the same Supabase session cookie and AAL2 token would otherwise be valid on both `/login` and `/admin`. Admin RPCs check `is_platform_admin()` and are called only from `/admin` routes; workspace pages never call them.
 - **Logout:** ends any open support session (`ended_at = now()`), signs out, returns to `/admin/login`.
-- **Support session:** start from `/admin/support` or a tenant page with a typed reason (min 20 chars), mode and duration (max 60 min). While active, `is_member()`/`has_ws_role()` treat the admin as `viewer` (read_only) or `owner` (read_write) in that one workspace. Every request is logged with `support_session_id`. An amber banner shows in the workspace. The owner is notified and sees the session in their audit log. Export, delete/erase, AI toggles and integration connect are never allowed in a support session.
+- **Support session:** start from `/admin/support` or a tenant page with a typed reason (min 20 chars), mode and duration (max 60 min). While active, `is_member()`/`has_ws_role()` treat the admin as `viewer` (read_only) or `owner` (read_write) in that one workspace. Every request is logged with `support_session_id`. An amber banner shows in the workspace. The owner is notified and sees the session in their audit log. Actions on the never-list in section 8 (delete/erase, export, integrations, AI toggles, branding, invites/roles, privacy requests) are blocked in every support session by `has_member_role()`.
 - **No silent access:** there is no policy that lets `is_platform_admin()` alone read business tables.
 
 ## 11. Design direction (for alignment with the UI build)
@@ -801,7 +803,7 @@ See `04-open-questions/questions.md`: client meeting outcomes (current tools, te
 | Platform role (not a membership) | `platform_admin` Super admin (row in `platform_admins`; MFA/AAL2) |
 | Support session | `mode`: `read_only` · `read_write`; `reason` min 20 chars; duration 15 / 30 / 60 min |
 | Cookie | `ws` = active workspace id (UI selector only; RLS re-checks membership) |
-| RLS helpers | `is_member(ws)` · `has_ws_role(ws, roles...)` · `is_platform_admin()` · `has_active_support_session(ws)` |
+| RLS helpers | `is_member(ws)` · `has_ws_role(ws, roles...)` (membership or support role) · `has_member_role(ws, roles...)` (real membership only; guards the never-list) · `is_platform_admin()` · `has_active_support_session(ws)` |
 | Personas (section 2) | `firm_owner` Firm owner / managing partner (LAWSOME owner) · `practice_head` Senior advocate / practice head (contact only, no login) · `sales_rep` Client salesperson · `marketing_lead` Marketing lead · `revops` Sales Manager / RevOps · `data_steward` Data · `viewer` Viewer · `platform_operator` Synthan super admin |
 | Lead status (`lead_status`) | `new` · `contacted` · `qualified` · `nurturing` · `disqualified` · `converted` (demo progress lives on deals, not leads) |
 | Deal stages (`pipeline_stages.key`, default, probability) | `discovery` 10 · `demo_scheduled` 25 · `demo_done` 40 · `proposal` 60 · `negotiation` 80 · `won` 100 · `lost` 0 |
