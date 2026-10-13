@@ -1,15 +1,3 @@
-create table if not exists public.leads (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now(),
-  name text not null,
-  email text not null,
-  phone text,
-  organisation text,
-  role text,
-  interest text,
-  message text,
-  source text default 'pitch-landing',
-  utm jsonb
-);
-alter table public.leads enable row level security;
--- No public policies: only the server (service role) inserts via /api/leads.
+-- Superseded. Landing leads now go to the Growth CRM schema in the "Lawsome" Supabase project through the
+-- anon-callable RPC public.submit_lead(p_workspace, ...). There is no landing-specific table any more.
+-- Schema and RPC contract: synthenei/apps/growth-crm/supabase/migrations/ and synthenei/apps/growth-crm/supabase/README.md
