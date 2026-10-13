@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, verifySession, verifySupport } from "./lib/auth/session";
+import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, signSession, verifySession, verifySupport } from "./lib/auth/session";
+const ADMIN_IDLE_MS = 30 * 60e3;
 import { HOME_FOR, ROLE_LABEL, accessFor } from "./lib/auth/roles";
 import { resolveActive } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
@@ -25,7 +26,19 @@ export async function middleware(req: NextRequest) {
     if (pathname !== "/" && pathname !== "/admin") url.searchParams.set("next", pathname + search);
     return NextResponse.redirect(url);
   }
-  if (isAdminPath) return session.platformAdmin ? NextResponse.next() : forbid("/admin");
+  // Platform admins: 30-minute idle timeout, sliding (each request re-signs the session).
+  if (session.platformAdmin) {
+    if (Date.now() - session.iat > ADMIN_IDLE_MS) {
+      const res = NextResponse.redirect(new URL("/admin/login?error=idle", req.url));
+      res.cookies.delete(SESSION_COOKIE); res.cookies.delete(SUPPORT_COOKIE);
+      return res;
+    }
+  }
+  const touch = async (res: NextResponse) => {
+    if (session.platformAdmin) res.cookies.set(SESSION_COOKIE, await signSession({ ...session, iat: Date.now() }), cookieOpts(60 * 60 * 12));
+    return res;
+  };
+  if (isAdminPath) return session.platformAdmin ? touch(NextResponse.next()) : forbid("/admin");
   if (pathname === "/forbidden") return NextResponse.next();
 
   // Deep link with ?ws=: switch if member, 403 otherwise.
@@ -43,7 +56,7 @@ export async function middleware(req: NextRequest) {
   if (!active) return NextResponse.redirect(new URL(session.platformAdmin ? "/admin" : "/login?error=no_profile", req.url));
   if (pathname === "/" && HOME_FOR[active.role] !== "/") return NextResponse.redirect(new URL(HOME_FOR[active.role], req.url));
   if (!accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
-  return NextResponse.next();
+  return touch(NextResponse.next());
 }
 
 export const config = { matcher: ["/((?!_next/|api/|icon|favicon|.*\\.(?:png|svg|jpg|ico|woff2?)$).*)"] };

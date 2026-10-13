@@ -1,11 +1,9 @@
 "use client";
-import { motion, useReducedMotion } from "motion/react";
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /** Tiny trend line for KPI tiles. Decorative: the tile's number carries the value (aria-hidden). */
 export function Sparkline({ data, className, tone = "light" }: { data: number[]; className?: string; tone?: "light" | "navy" }) {
-  const reduce = useReducedMotion();
   const id = useId();
   const W = 96, H = 36, p = 3;
   const min = Math.min(...data), max = Math.max(...data), span = max - min || 1;
@@ -17,8 +15,7 @@ export function Sparkline({ data, className, tone = "light" }: { data: number[];
     <svg viewBox={`0 0 ${W} ${H}`} className={cn("overflow-visible", className)} aria-hidden preserveAspectRatio="none">
       <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={stroke} stopOpacity="0.14" /><stop offset="1" stopColor={stroke} stopOpacity="0" /></linearGradient></defs>
       <path d={`${d} L${last[0]},${H} L${pts[0][0]},${H} Z`} fill={`url(#${id})`} />
-      <motion.path d={d} fill="none" stroke={stroke} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }} />
+      <path className="draw-in" pathLength={1} d={d} fill="none" stroke={stroke} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       <circle cx={last[0]} cy={last[1]} r={2.5} fill={stroke} stroke={tone === "navy" ? "var(--navy-900)" : "var(--surface)"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
     </svg>
   );

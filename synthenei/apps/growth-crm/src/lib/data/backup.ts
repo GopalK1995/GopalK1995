@@ -7,8 +7,8 @@
 //  3. Supabase does not back up Storage objects or Edge Functions, so the real adapter must report them as "not covered".
 //  4. Select it with BACKUP_ADAPTER=supabase in getBackupAdapter().
 import { datasetFor } from "./mock/generate-index";
-const dataset = datasetFor("tn");
-const { leads, tasks, consent: consentLog, now: NOW_ISO } = dataset;
+import type { Workspace } from "../tenancy";
+import type { Dataset } from "./types";
 
 export type CheckStatus = "success" | "failed" | "missing" | "unknown";
 export interface BackupCheck { kind: "supabase_daily" | "logical_dump" | "restore_drill"; status: CheckStatus; takenAt: string | null; sizeBytes: number | null; location: string; detail: string }
@@ -23,12 +23,15 @@ export interface BackupSnapshot {
 }
 export interface BackupMonitorAdapter { readonly name: string; getSnapshot(): Promise<BackupSnapshot> }
 
-const H = 3600e3, D = 24 * H, now = new Date(NOW_ISO).getTime();
+const H = 3600e3, D = 24 * H;
 const iso = (ms: number) => new Date(ms).toISOString();
 
-export const mockBackupAdapter: BackupMonitorAdapter = {
+/** Mock adapter scoped to one workspace dataset (row counts are that workspace's). */
+export const mockBackupAdapter = (dataset: Dataset): BackupMonitorAdapter => ({
   name: "mock",
   async getSnapshot() {
+    const { leads, tasks, consent: consentLog, now: NOW_ISO } = dataset;
+    const now = new Date(NOW_ISO).getTime();
     const counts = [
       { table: "leads", current: leads.length, atLastDump: leads.length - 2 },
       { table: "activities", current: dataset.activities.length + 2810, atLastDump: dataset.activities.length + 2760 },
@@ -61,9 +64,9 @@ export const mockBackupAdapter: BackupMonitorAdapter = {
       notCovered: ["Supabase Storage objects (files)", "Edge Functions code and secrets", "Anything outside the Postgres database (e.g. CSV originals)"],
     } satisfies BackupSnapshot;
   },
-};
+});
 
-export function getBackupAdapter(): BackupMonitorAdapter {
+export function getBackupAdapter(ws?: Workspace): BackupMonitorAdapter {
   if (process.env.BACKUP_ADAPTER === "supabase") throw new Error("Supabase backup adapter is not implemented yet. See comments in src/lib/backup.ts.");
-  return mockBackupAdapter;
+  return mockBackupAdapter(datasetFor(ws?.dataset ?? "tn"));
 }

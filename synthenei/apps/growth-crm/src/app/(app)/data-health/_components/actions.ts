@@ -12,7 +12,7 @@ export async function runHealthCheck(): Promise<ActionResult> {
   const { active, ds } = await pageCtx();
   if (active.support?.mode === "read_only") return { ok: false, message: "Read-only support session", detail: "Checks cannot be started." };
   if (!(OPERATORS as readonly string[]).includes(active.role)) return { ok: false, message: "Owner or Data only." };
-  const snap = await getBackupAdapter().getSnapshot();
+  const snap = await getBackupAdapter(active.ws).getSnapshot();
   const dump = snap.checks.find((c) => c.kind === "logical_dump");
   const ageH = dump?.takenAt ? (new Date(ds.now()).getTime() - new Date(dump.takenAt).getTime()) / 3600e3 : Infinity;
   const stale = ageH > snap.staleAfterHours;

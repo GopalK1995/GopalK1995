@@ -97,7 +97,7 @@ export const CAMPAIGNS: CampaignSeed[] = [
     id: "cmp-ecourts-madurai", name: "eCourts made easy — Madurai advocates", channel: "whatsapp", status: "live",
     objective: "Conversations with Madurai Bench practitioners", startDate: "", endDate: null, budget: 85000, startOffset: d(-62), endOffset: null, dailyBudget: 1300,
     audience: "Opted-in advocates from the Madurai bar association event list and website sign-ups (Tamil + English templates)", audienceSize: 3200,
-    creative: { format: "WhatsApp template (utility + marketing)", headline: "Your Madurai Bench cause list, at 7 am, in Tamil", body: "Vanakkam {{1}}, LAWSOME can send tomorrow's listings for your cases every morning. Reply DEMO to see it on your own case numbers.", cta: "Reply DEMO" },
+    creative: { format: "WhatsApp template (marketing)", headline: "Your Madurai Bench hearings, in one calendar", body: "Vanakkam {{1}}, see your next hearings across courts in one calendar, in Tamil or English. Reply DEMO for a 20-minute walk-through.", cta: "Reply DEMO" },
     utmCampaign: "wa_ecourts_mdu", ownerId: "u-nithya", dataSource: "mock",
   },
   {

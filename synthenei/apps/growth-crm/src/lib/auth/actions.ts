@@ -61,10 +61,17 @@ export async function adminLogin(formData: FormData) {
 }
 
 export async function logout() {
-  const sb = await createSupabaseServerClient();
-  if (sb) await sb.auth.signOut();
   const store = await cookies();
-  const wasAdmin = (await verifySession(store.get(SESSION_COOKIE)?.value))?.platformAdmin;
+  const s = await verifySession(store.get(SESSION_COOKIE)?.value);
+  const sup = await verifySupport(store.get(SUPPORT_COOKIE)?.value);
+  const sb = await createSupabaseServerClient();
+  // Logging out ends any open support session (RPC in live mode; audit entry in both).
+  if (s && sup) {
+    if (!s.demo) await sb?.rpc("end_support_session", { p_workspace_id: sup.ws });
+    logSupport({ admin: s.name, ws: sup.ws, action: "support_ended" });
+  }
+  if (sb) await sb.auth.signOut();
+  const wasAdmin = s?.platformAdmin;
   store.delete(SESSION_COOKIE); store.delete(SUPPORT_COOKIE);
   redirect(wasAdmin ? "/admin/login?signed_out=1" : "/login?signed_out=1");
 }

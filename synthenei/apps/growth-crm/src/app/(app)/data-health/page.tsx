@@ -28,7 +28,7 @@ const hrs = (ms: number) => (ms < D ? `${Math.round(ms / H)} h` : `${Math.round(
 export default async function DataHealth() {
   const { ds, now, active } = await pageCtx();
   const [snap, runs, integrations, leads, activities, campaigns, days, deals, accounts, tasks, consent, ga4] = await Promise.all([
-    getBackupAdapter().getSnapshot(), ds.syncRuns(), ds.integrations(), ds.leads(), ds.activities(), ds.campaigns(), ds.campaignDays(),
+    getBackupAdapter(active.ws).getSnapshot(), ds.syncRuns(), ds.integrations(), ds.leads(), ds.activities(), ds.campaigns(), ds.campaignDays(),
     ds.deals(), ds.accounts(), ds.tasks(), ds.consent(), ds.ga4(),
   ]);
   const nowMs = new Date(now).getTime();

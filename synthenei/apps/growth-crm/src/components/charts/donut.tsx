@@ -1,5 +1,4 @@
 "use client";
-import { motion, useReducedMotion } from "motion/react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { FMT, type Fmt, ChartFrame, OTHER, SERIES, TooltipBox, useChartAnim } from "./kit";
 import { pct } from "@/lib/format";
@@ -9,7 +8,6 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
   data: { key: string; label: string; n: number; color?: string }[]; label: string; centerLabel: string; centerValue: string; format?: Fmt; size?: number;
 }) {
   useChartAnim();
-  const reduce = useReducedMotion();
   const format = FMT[fKey];
   const rows = data.slice(0, 5);
   const total = rows.reduce((a, r) => a + r.n, 0);
@@ -17,7 +15,7 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
   const color = (r: { key: string; color?: string }, i: number) => r.color ?? (r.key === "other" ? OTHER : SERIES[i % SERIES.length]);
   return (
     <div className="@container"><div className="flex flex-col items-center gap-4 @[400px]:flex-row @[400px]:items-center">
-      <motion.div className="relative shrink-0" style={{ width: size, height: size }} initial={{ opacity: 0, rotate: -12, scale: 0.96 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}>
+      <div className="spin-in relative shrink-0" style={{ width: size, height: size }}>
         <ChartFrame label={label} height={size}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -33,7 +31,7 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
           <div><div className="text-[20px] font-semibold leading-6 num text-ink">{centerValue}</div><div className="text-[11px] text-ink-3">{centerLabel}</div></div>
         </div>
-      </motion.div>
+      </div>
       <table className="w-full text-[12px]">
         <tbody>
           {rows.map((r, i) => (

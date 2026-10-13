@@ -1,20 +1,18 @@
 "use client";
 // Motion rules: ease-out, <= 280 ms, no bounce, no loops. Everything collapses to instant under reduced motion.
-import { animate, motion, useInView, useReducedMotion, type Variants } from "motion/react";
+import { animate, motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
-const container: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.035, delayChildren: 0.02 } } };
-const item: Variants = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0, transition: { duration: 0.24, ease: EASE } } };
 
-// Never branch markup on useReducedMotion() (null on the server -> hydration mismatch). MotionConfig
-// reducedMotion="user" in Providers drops transforms; durations below shrink to 0 on the client.
+// Entrance stagger is pure CSS (globals.css .stagger): server and client render identical markup, content is
+// visible with JS off, and prefers-reduced-motion disables it in CSS. No hydration-dependent opacity.
 export function Stagger({ children, className }: { children: ReactNode; className?: string }) {
-  return <motion.div className={className} variants={container} initial="hidden" animate="show">{children}</motion.div>;
+  return <div className={cn("stagger", className)}>{children}</div>;
 }
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
-  return <motion.div className={cn("min-w-0", className)} variants={item}>{children}</motion.div>;
+  return <div className={cn("min-w-0", className)}>{children}</div>;
 }
 /** Card hover lift (2px, 160 ms). */
 export function Lift({ children, className }: { children: ReactNode; className?: string }) {
