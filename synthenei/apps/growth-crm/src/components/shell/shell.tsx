@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import * as D from "@radix-ui/react-dialog";
-import { ChevronDown, Database, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, X } from "lucide-react";
+import { ChevronDown, Database, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isActive, mobileNavFor, navFor } from "./nav";
 import { WorkspaceSwitcher } from "./switcher";
@@ -81,6 +81,7 @@ function DemoChip({ collapsed }: { collapsed?: boolean }) {
 
 function UserMenu() {
   const s = useSession();
+  const router = useRouter();
   return (
     <Menu>
       <MenuTrigger className="flex items-center gap-2 rounded-sm py-1 pl-1 pr-1.5 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring" aria-label="User menu">
@@ -95,7 +96,8 @@ function UserMenu() {
         <MenuLabel>Signed in as</MenuLabel>
         <div className="px-2 pb-2 text-[12px]"><div className="font-medium text-ink">{s.name}</div><div className="text-ink-3">{s.email} · {ROLE_LABEL[s.role]}</div></div>
         <MenuSep />
-        {s.demo && <MenuItem onSelect={() => { void logout(); }}><Repeat />Switch demo role</MenuItem>}
+        <MenuItem onSelect={() => router.push("/profile")}><UserRound />Profile</MenuItem>
+        {s.demo && <MenuItem onSelect={() => { void logout(); }}><Repeat />Switch persona</MenuItem>}
         <MenuItem onSelect={() => { void logout(); }}><LogOut />Log out</MenuItem>
       </MenuContent>
     </Menu>
