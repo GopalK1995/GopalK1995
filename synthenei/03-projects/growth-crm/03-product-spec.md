@@ -358,7 +358,7 @@ Separate shell (dark slate header "Synthan platform", no tenant branding, no wor
 - Platform-wide `audit_log` with filters (tenant, workspace, actor, action, table, support session id). Every row written during a support session carries `support_session_id`. Export CSV.
 
 #### `/admin/support`
-- **Start support session:** choose tenant -> workspace, mode (`read_only` default, or `read_write` which requires a second reason line), **typed reason (min 20 chars, e.g. "Ticket #142: CSV import failing for Madurai leads")**, duration (15 / 30 / 60 min, default 30). Creates a `support_sessions` row and opens the workspace in a new tab with a red banner "Support session by Krishna (Synthan) · read-only · ends 11:42 IST · End now". The workspace owner sees the session in their `/settings` audit tab and gets an in-app notification.
+- **Start support session:** choose tenant -> workspace, mode (`read_only` default, or `read_write` which requires a second reason line), **typed reason (min 20 chars, e.g. "Ticket #142: CSV import failing for Madurai leads")**, duration (15 / 30 / 60 min, default 30). Creates a `support_sessions` row and opens the workspace in a new tab with an amber banner "Support session by Krishna (Synthan) · read-only · ends 11:42 IST · End now". The workspace owner sees the session in their `/settings` audit tab and gets an in-app notification.
 - **History:** sessions with admin, workspace, reason, mode, started/ended, actions count. **End session** at any time. Sessions auto-expire and can't be extended; start a new one with a new reason.
 
 ---
@@ -742,7 +742,7 @@ Enforcement: UI hides what a role cannot do (no disabled-button clutter), **and*
 ### 10.5 Platform admin flows
 - **Login:** `/admin/login` with password + TOTP (AAL2). `is_platform_admin()` requires `aal2` in the JWT. Idle timeout is 30 minutes. A platform admin who is also a workspace member uses `/login` for that work, so their member identity and admin identity never mix in one view.
 - **Logout:** ends any open support session (`ended_at = now()`), signs out, returns to `/admin/login`.
-- **Support session:** start from `/admin/support` or a tenant page with a typed reason (min 20 chars), mode and duration (max 60 min). While active, `is_member()`/`has_ws_role()` treat the admin as `viewer` (read_only) or `owner` (read_write) in that one workspace. Every request is logged with `support_session_id`. A red banner shows in the workspace. The owner is notified and sees the session in their audit log. Export, delete/erase, AI toggles and integration connect are never allowed in a support session.
+- **Support session:** start from `/admin/support` or a tenant page with a typed reason (min 20 chars), mode and duration (max 60 min). While active, `is_member()`/`has_ws_role()` treat the admin as `viewer` (read_only) or `owner` (read_write) in that one workspace. Every request is logged with `support_session_id`. An amber banner shows in the workspace. The owner is notified and sees the session in their audit log. Export, delete/erase, AI toggles and integration connect are never allowed in a support session.
 - **No silent access:** there is no policy that lets `is_platform_admin()` alone read business tables.
 
 ## 11. Design direction (for alignment with the UI build)
