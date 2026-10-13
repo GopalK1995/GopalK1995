@@ -102,7 +102,7 @@ export default async function Copilot() {
     <>
       <PageHeader eyebrow="Assist" title="Copilot"
         sub={`What each assistive feature does, what data it sends, and who approves its output. ${rep ? "Answers use your own leads, deals and tasks." : "Features are off until the Owner turns them on."}`} />
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="lg:col-span-8">
           <Card className="h-full">
             <CardHeader title="Ask the CRM" sub="Questions map to approved metrics only. Each answer shows the metric ID, filters and source tables." action={<Badge tone="showcase">Showcase</Badge>} />

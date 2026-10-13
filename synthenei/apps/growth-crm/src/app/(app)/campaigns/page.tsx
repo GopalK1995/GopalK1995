@@ -94,7 +94,7 @@ export default async function Campaigns() {
         sub="Which campaigns turn rupees into demos. Spend and reach come from platform exports; leads and demos are counted in the CRM, so the Gap column shows where they disagree."
         actions={<><ImportCsvDialog campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, channel: c.channel }))} /><NewCampaignDialog districts={districts} yyyymm={yyyymm} /></>} />
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-5 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
           <Kpi label="Spend · 30 days" metric="M8" value={k.cur.spend} format="inrCompact" spark={k.spendW} foot={<>{Number.isFinite(k.d.spend) ? `${k.d.spend >= 0 ? "+" : "−"}${Math.abs(k.d.spend * 100).toFixed(1)}% vs prior 30d` : "no prior period"} · {inrCompact(tot.spend)} in 90d</>} />
           <Kpi label="Leads · 30 days" metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d</>} />

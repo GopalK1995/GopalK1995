@@ -8,7 +8,7 @@ export function Prefs({ name, email }: { name: string; email: string }) {
   const [notify, setNotify] = useState({ sla: true, demo: true, digest: false });
   return (
     <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast("Profile saved", "Demo: preferences are not stored."); }}>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Full name</span><input className={field} defaultValue={name} /></label>
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Email</span><input className={field + " bg-paper-2 text-ink-3"} defaultValue={email} readOnly /></label>
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Mobile (for WhatsApp alerts)</span><input className={field} defaultValue="+91 98xxx xx214" /></label>

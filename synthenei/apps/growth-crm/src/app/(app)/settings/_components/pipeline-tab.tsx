@@ -37,7 +37,7 @@ export function PipelineTab({ initial, wsName }: { initial: Stage[]; wsName: str
   const patch = (key: string, p: Partial<Stage>) => setStages((xs) => xs.map((s) => (s.key === key ? { ...s, ...p } : s)));
 
   return (
-    <div className="grid gap-4 lg:grid-cols-12">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <Card className="lg:col-span-8">
         <CardHeader title={`Stages · ${wsName}`} sub="Order is the order on the board. Probability weights the forecast."
           action={!editable ? <Badge tone="outline">{support?.mode === "read_only" ? "Read-only support session" : `Read only for ${ROLE_LABEL[role]}`}</Badge> : undefined} />

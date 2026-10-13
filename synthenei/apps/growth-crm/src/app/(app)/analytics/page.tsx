@@ -95,7 +95,7 @@ export default async function Analytics() {
         </div>
       )}
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
           <Kpi label="Sessions · 30 days" metric="M20" value={sum(g30, "sessions")} spark={wSpark} delta={ratio(sum(g30, "sessions"), sum(gPrev, "sessions")) - 1} deltaLabel="" foot={<>vs prior 30 days · {num(Math.round(sum(g30, "sessions") / 30))} a day</>} />
           <Kpi label="Engagement rate" metric="M21" value={er} format="pct" delta={er - erPrev} deltaLabel="" foot={<>points vs prior 30 days · engaged ÷ sessions</>} />

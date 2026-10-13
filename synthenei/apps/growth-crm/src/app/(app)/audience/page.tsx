@@ -77,7 +77,7 @@ export default async function Audience() {
     <>
       <PageHeader eyebrow="Marketing · all live leads" title="Audience"
         sub="Who our leads are, by district, firm size, practice and role, and which slices turn into demos. Build a segment, then attach it to a campaign." />
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="lg:col-span-5">
           <NavyPanel className="h-full p-5">
             <div className="flex items-start justify-between gap-2">

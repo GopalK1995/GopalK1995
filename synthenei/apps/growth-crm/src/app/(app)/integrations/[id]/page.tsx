@@ -77,7 +77,7 @@ export default async function IntegrationDetail({ params }: { params: Promise<{ 
         </div>
       </PageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-8">
           {m.blockers.length > 0 && (
             <section aria-labelledby="blockers" className="rounded-md border border-warn/40 bg-warn-soft/60 p-4 sm:p-5">

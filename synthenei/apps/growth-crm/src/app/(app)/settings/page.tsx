@@ -66,7 +66,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     const log = consent.filter((c) => !query || nameOf(c.leadId).toLowerCase().includes(query) || c.leadId.toLowerCase().includes(query)).slice(0, 25);
     const withdrawn30 = consent.filter((c) => c.action === "withdrawn" && new Date(now).getTime() - new Date(c.at).getTime() < 30 * 864e5).length;
     return (
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <Card className="lg:col-span-12">
           <CardHeader title="Requests" sub="DPDP Act requests from data principals. Due 30 days after receipt. Erasure is Owner-only and never available in a support session." />
           <DataTable rows={requests} rowKey={(r) => r.id} minWidth={820} caption="Privacy requests"

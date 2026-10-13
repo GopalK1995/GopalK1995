@@ -77,7 +77,7 @@ export default async function CommandCenter() {
       {/* alerts strip: specific, actionable, never generic */}
       <Stagger className="mb-6 flex flex-wrap gap-2">
         {[
-          { icon: UserX, tone: "danger", text: `${unanswered.length} lead${unanswered.length === 1 ? "" : "s"} past the 2-hour first-response SLA without a reply`, href: "/leads?view=sla" },
+          unanswered.length ? { icon: UserX, tone: "danger", text: `${unanswered.length} lead${unanswered.length === 1 ? "" : "s"} past the 2-hour first-response SLA without a reply`, href: "/leads?view=sla" } : { icon: UserX, tone: "ok", text: "Every new lead got a first reply within the 2-hour SLA", href: "/leads?view=sla" },
           { icon: Clock, tone: "warn", text: quietN ? `${quietN} ${quietCity === "Tiruchirappalli" ? "Trichy" : quietCity} ${quietN === 1 ? "firm has" : "firms have"} had no contact in 5+ days` : "Every prospect firm was contacted in the last 5 days", href: quietN ? `/accounts?city=${quietCity}` : "/accounts" },
           { icon: FileClock, tone: "warn", text: `${staleProposals.length} proposal${staleProposals.length === 1 ? "" : "s"} with no reply for 7+ days`, href: "/pipeline" },
           { icon: DatabaseBackup, tone: "ok", text: "Backup check (sample): last 6 h ago, threshold 26 h", href: "/data-health" },
@@ -92,7 +92,7 @@ export default async function CommandCenter() {
         ))}
       </Stagger>
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* KEY PANEL (navy, 30% structure): the number leadership opens the app for */}
         <StaggerItem className="lg:col-span-5">
           <NavyPanel className="flex h-full flex-col gap-5 p-5">
@@ -107,7 +107,7 @@ export default async function CommandCenter() {
               <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-[3px]" role="img" aria-label="Open pipeline value by stage">
                 {byStage.filter((b) => b.v > 0).map((b) => <div key={b.s} style={{ flexGrow: b.v, background: b.c }} title={`${DEAL_STAGE_LABEL[b.s]}: ${inr(b.v)}`} />)}
               </div>
-              <ul className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-3">
+              <ul className="mt-2.5 grid grid-cols-2 gap-x-6 gap-y-1 text-[11px]">
                 {byStage.map((b) => (
                   <li key={b.s} className="flex items-center justify-between gap-2 text-navy-ink-2">
                     <span className="flex items-center gap-1.5 truncate"><span className="size-2 shrink-0 rounded-[2px]" style={{ background: b.c }} />{DEAL_STAGE_LABEL[b.s]}</span>

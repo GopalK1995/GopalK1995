@@ -11,7 +11,12 @@ export async function middleware(req: NextRequest) {
   const { pathname, search, searchParams } = req.nextUrl;
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  // RSC requests (Link prefetch / client navigation) to a route this role cannot open get an empty 204: no payload
+  // and no browser console error. A non-RSC response makes the router fall back to a full load, which then
+  // renders the 403 page.
+  const isPrefetch = req.nextUrl.searchParams.has("_rsc") || req.headers.get("rsc") === "1" || req.headers.get("next-router-prefetch") === "1";
   const forbid = (page: string, role = "") => {
+    if (isPrefetch) return new NextResponse(null, { status: 204 });
     const url = new URL("/forbidden", req.url); url.searchParams.set("page", page); if (role) url.searchParams.set("role", role);
     return NextResponse.rewrite(url, { status: 403 });
   };

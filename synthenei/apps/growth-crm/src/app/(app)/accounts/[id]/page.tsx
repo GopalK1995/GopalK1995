@@ -62,7 +62,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
         </div>
       </PageHeader>
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid content-start gap-4 lg:col-span-8">
           <Card>
             <CardHeader title="Firm profile" sub={`Founded ${acc.founded} · ${acc.website}`} />

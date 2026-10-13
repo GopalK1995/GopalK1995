@@ -83,7 +83,9 @@ async function visit(page, ctx, persona, width, path, expect) {
     if (!okStatus) why += `status ${status} (expected ${expect}) `;
     if (overflow > 0) why += `overflow ${overflow}px `;
     if (runtime) why += "runtime error overlay ";
-    if (errors.length) why += `console: ${errors[0]}`;
+    // The browser logs the 403 document itself as a console error; that is the expected outcome, not a failure.
+    const real = expect === 403 ? errors.filter((e) => !/status of 403/.test(e)) : errors;
+    if (real.length) why += `console: ${real[0]}`;
     if (SHOTS) {
       const dir = `${OUT}/${width}`; mkdirSync(dir, { recursive: true });
       const name = `${persona.key}${path.replace(/[/?=&]+/g, "_") || "_root"}`;

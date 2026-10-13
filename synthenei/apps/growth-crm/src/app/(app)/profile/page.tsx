@@ -17,7 +17,7 @@ export default async function Profile() {
   return (
     <>
       <PageHeader eyebrow="Your account" title="Profile" sub="Name, language and notifications. Roles are set per workspace by each workspace's Owner." />
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <Card className="lg:col-span-7">
           <CardHeader title="Details and notifications" />
           <CardBody><Prefs name={session.name} email={session.email} /></CardBody>

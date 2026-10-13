@@ -171,7 +171,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
       )}
       {!canWork && accessFor(role, "/leads") === "R" && <p className="mb-5 text-[12px] text-ink-3">Read-only for {ROLE_LABEL[role]}: calls, messages and stage changes are made by the sales team.</p>}
 
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Centre: timeline */}
         <Card className="order-2 lg:order-none lg:col-span-5 lg:col-start-4 lg:row-start-1">
           <CardHeader title="Activity timeline" sub="Calls, WhatsApp, email, meetings and web visits, newest first" />

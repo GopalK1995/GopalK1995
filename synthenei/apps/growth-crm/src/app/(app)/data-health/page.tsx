@@ -70,7 +70,7 @@ export default async function DataHealth() {
         <span><span className="font-medium text-ink">Sample values.</span> The nightly dump job is designed, not running yet. Tiles show what the heartbeat will report; the first real backup record is shown before go-live.</span>
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <NavyPanel className="p-5 lg:col-span-5">
           <div className="flex items-start justify-between gap-3">
             <div>

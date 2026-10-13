@@ -85,7 +85,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         sub={`${touch.length} touches due today, ${overdue.length} overdue, ${demos.filter((t) => dayKey(t.dueAt) >= today).length} demos left this week.`}
         actions={role !== "sales_rep" ? <RepSwitcher reps={reps.map((r) => ({ id: r.id, name: r.name }))} value={repId} /> : undefined} />
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* W1 */}
         <StaggerItem className="lg:col-span-8">
           <Card className="h-full">

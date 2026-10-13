@@ -52,7 +52,7 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
   const resetToTenant = () => { setHue(defaultHue); setName(tenantName); setProduct(tenant.product); };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-12">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="lg:col-span-12">
         <p className="flex items-start gap-2 rounded-sm border border-line bg-surface px-3 py-2 text-[12px] leading-[18px] text-ink-2">
           <Info className="mt-px size-4 shrink-0 text-ink-3" aria-hidden />

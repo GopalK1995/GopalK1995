@@ -161,7 +161,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
         </div>
       </PageHeader>
 
-      <Stagger className="grid gap-4 lg:grid-cols-12">
+      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-4 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
           <Kpi label="Spend" metric="M8" value={s.spend} format="inr" spark={spendW} foot={<>{c.channel === "email" ? "Mailchimp tool cost" : `${inr(ratio(s.spend, myDays.length))} per day average`}</>} />
           <Kpi label="Leads in CRM" metric="M9" value={s.leads} spark={leadsW} foot={<>CPL {s.spend ? inr(s.cpl) : "₹0 (no paid spend)"} · platform says {s.platformLeads}</>} />

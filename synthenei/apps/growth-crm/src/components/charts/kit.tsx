@@ -50,7 +50,9 @@ export function Legend({ items, className }: { items: { label: string; color: st
 
 /** Wrapper that gives every chart an accessible name and a fixed height (no layout shift). */
 export function ChartFrame({ label, height, children, className }: { label: string; height: number; children: ReactNode; className?: string }) {
-  return <figure role="img" aria-label={label} className={cn("w-full min-w-0", className)} style={{ height }}>{children}</figure>;
+  // overflow-x: clip keeps the (hidden) Recharts tooltip wrapper from widening the page on phones, without
+  // creating a scroll container.
+  return <figure role="img" aria-label={label} className={cn("w-full min-w-0 [overflow-x:clip]", className)} style={{ height }}>{children}</figure>;
 }
 
 import { inr, inrCompact, num, numCompact, pct } from "@/lib/format";
