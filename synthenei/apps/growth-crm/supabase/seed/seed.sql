@@ -27,7 +27,7 @@ values ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-0000000
 select public.seed_workspace_defaults(id) from public.workspaces where slug in ('lawsome-tn','lawsome-kl','kaveri-cbe');
 
 -- ---------- firms (accounts) ----------
-create temp table seed_firms (ws text, k int, name text, city text, locality text, district text, practices text[]) on commit drop;
+create temp table seed_firms (ws text, k int, name text, city text, locality text, district text, practices text[]);
 insert into seed_firms values
  ('lawsome-tn', 1,'Ramanathan & Associates','Chennai','Mylapore','Chennai','{civil,property}'),
  ('lawsome-tn', 2,'Cauvery Delta Legal LLP','Chennai','T. Nagar','Chennai','{corporate,tax}'),
@@ -99,7 +99,7 @@ select md5('acct-' || f.ws || '-' || f.k)::uuid, w.id, f.name, f.city, f.distric
 
 -- ---------- campaigns (utm ids identical to the UI mock catalog) ----------
 create temp table seed_campaigns (ws text, k int, name text, channel public.channel_kind, status text, objective text,
-  src text, med text, utm text, start_off int, end_off int, daily int, budget numeric) on commit drop;
+  src text, med text, utm text, start_off int, end_off int, daily int, budget numeric);
 insert into seed_campaigns values
  ('lawsome-tn',1,'Hearing-day visibility — Chennai partners','linkedin','active','Demo requests from managing partners','linkedin','paid_social','li_hearing_day_chn',-78,null,4100,320000),
  ('lawsome-tn',2,'eCourts made easy — Madurai advocates','whatsapp','active','Conversations with Madurai Bench practitioners','whatsapp','message','wa_ecourts_mdu',-62,null,1300,85000),
@@ -146,7 +146,7 @@ select w.id, md5('cmp-' || c.ws || '-' || c.k)::uuid, d::date,
  where x.impr > 0 or c.channel <> 'email';
 
 -- ---------- leads ----------
-create temp table seed_leads on commit drop as
+create temp table seed_leads as
 with ws as (
   select w.id as ws_id, w.slug, n.n_leads, (select count(*) from seed_firms f where f.ws = w.slug) as n_firms
     from public.workspaces w
@@ -279,7 +279,7 @@ select w.id, 'anon-v' || w.slug || '-' || d::date || '-' || v, ev.name,
  where w.slug in ('lawsome-tn','lawsome-kl','kaveri-cbe');
 
 -- ---------- deals (25 in Tamil Nadu, a few elsewhere) ----------
-create temp table seed_deals on commit drop as
+create temp table seed_deals as
 select * from (
 select l.id as lead_id, l.workspace_id, l.account_id, l.firm_name, l.created_at, w.slug,
        row_number() over (partition by l.workspace_id order by abs(hashtext('deal' || l.id::text))) as r

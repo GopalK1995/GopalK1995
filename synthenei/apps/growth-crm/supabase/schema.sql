@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Generated from supabase/migrations — do not edit.
--- Concatenation of supabase/migrations/0001..0009 in order (the live Lawsome project = these migrations).
+-- Concatenation of supabase/migrations/0001..0011 in order (the live Lawsome project = these migrations).
 -- Regenerate: (cd synthenei/apps/growth-crm/supabase && for f in migrations/0*.sql; do echo "-- >>> $f"; cat $f; done)
 -- =====================================================================
 
@@ -2816,3 +2816,171 @@ grant execute on function public.track_event(text, text, text, text, jsonb, json
 alter default privileges for role postgres in schema public revoke all on tables from anon;
 alter default privileges for role postgres in schema public revoke all on sequences from anon;
 alter default privileges for role postgres in schema public revoke execute on functions from public, anon;
+
+-- >>> migrations/0010_fk_indexes.sql
+-- 0010 covering indexes for every foreign key that had none (Supabase advisor 0001_unindexed_foreign_keys).
+-- Generated from the catalog after 0009; tenant_id indexes keep tenant-level cascades/reports cheap.
+
+create index if not exists accounts_owner_id_fk on public.accounts (owner_id);
+create index if not exists accounts_tenant_id_fk on public.accounts (tenant_id);
+create index if not exists activities_account_id_fk on public.activities (account_id);
+create index if not exists activities_contact_id_fk on public.activities (contact_id);
+create index if not exists activities_deal_id_fk on public.activities (deal_id);
+create index if not exists activities_lead_id_fk on public.activities (lead_id);
+create index if not exists activities_owner_id_fk on public.activities (owner_id);
+create index if not exists activities_tenant_id_fk on public.activities (tenant_id);
+create index if not exists ai_insights_campaign_id_fk on public.ai_insights (campaign_id);
+create index if not exists ai_insights_conversation_id_fk on public.ai_insights (conversation_id);
+create index if not exists ai_insights_deal_id_fk on public.ai_insights (deal_id);
+create index if not exists ai_insights_lead_id_fk on public.ai_insights (lead_id);
+create index if not exists ai_insights_tenant_id_fk on public.ai_insights (tenant_id);
+create index if not exists ai_insights_user_id_fk on public.ai_insights (user_id);
+create index if not exists audience_segments_created_by_fk on public.audience_segments (created_by);
+create index if not exists audience_segments_tenant_id_fk on public.audience_segments (tenant_id);
+create index if not exists audience_segments_workspace_id_fk on public.audience_segments (workspace_id);
+create index if not exists audit_log_support_session_id_fk on public.audit_log (support_session_id);
+create index if not exists audit_log_tenant_id_fk on public.audit_log (tenant_id);
+create index if not exists backup_alert_rules_tenant_id_fk on public.backup_alert_rules (tenant_id);
+create index if not exists backup_alert_rules_workspace_id_fk on public.backup_alert_rules (workspace_id);
+create index if not exists backup_checks_tenant_id_fk on public.backup_checks (tenant_id);
+create index if not exists backup_checks_workspace_id_fk on public.backup_checks (workspace_id);
+create index if not exists campaign_daily_metrics_tenant_id_fk on public.campaign_daily_metrics (tenant_id);
+create index if not exists campaigns_owner_id_fk on public.campaigns (owner_id);
+create index if not exists campaigns_segment_id_fk on public.campaigns (segment_id);
+create index if not exists campaigns_tenant_id_fk on public.campaigns (tenant_id);
+create index if not exists consent_log_lead_id_fk on public.consent_log (lead_id);
+create index if not exists consent_log_recorded_by_fk on public.consent_log (recorded_by);
+create index if not exists consent_log_tenant_id_fk on public.consent_log (tenant_id);
+create index if not exists contacts_account_id_fk on public.contacts (account_id);
+create index if not exists contacts_owner_id_fk on public.contacts (owner_id);
+create index if not exists contacts_tenant_id_fk on public.contacts (tenant_id);
+create index if not exists conversations_assignee_id_fk on public.conversations (assignee_id);
+create index if not exists conversations_contact_id_fk on public.conversations (contact_id);
+create index if not exists conversations_lead_id_fk on public.conversations (lead_id);
+create index if not exists conversations_tenant_id_fk on public.conversations (tenant_id);
+create index if not exists deal_stage_history_changed_by_fk on public.deal_stage_history (changed_by);
+create index if not exists deal_stage_history_from_stage_id_fk on public.deal_stage_history (from_stage_id);
+create index if not exists deal_stage_history_tenant_id_fk on public.deal_stage_history (tenant_id);
+create index if not exists deal_stage_history_to_stage_id_fk on public.deal_stage_history (to_stage_id);
+create index if not exists deals_account_id_fk on public.deals (account_id);
+create index if not exists deals_lead_id_fk on public.deals (lead_id);
+create index if not exists deals_owner_id_fk on public.deals (owner_id);
+create index if not exists deals_primary_contact_id_fk on public.deals (primary_contact_id);
+create index if not exists deals_stage_id_fk on public.deals (stage_id);
+create index if not exists deals_tenant_id_fk on public.deals (tenant_id);
+create index if not exists ga4_daily_tenant_id_fk on public.ga4_daily (tenant_id);
+create index if not exists integration_field_maps_tenant_id_fk on public.integration_field_maps (tenant_id);
+create index if not exists integration_field_maps_workspace_id_fk on public.integration_field_maps (workspace_id);
+create index if not exists integrations_tenant_id_fk on public.integrations (tenant_id);
+create index if not exists invitations_invited_by_fk on public.invitations (invited_by);
+create index if not exists invitations_tenant_id_fk on public.invitations (tenant_id);
+create index if not exists lead_events_tenant_id_fk on public.lead_events (tenant_id);
+create index if not exists leads_account_id_fk on public.leads (account_id);
+create index if not exists leads_campaign_id_fk on public.leads (campaign_id);
+create index if not exists leads_contact_id_fk on public.leads (contact_id);
+create index if not exists leads_owner_id_fk on public.leads (owner_id);
+create index if not exists leads_tenant_id_fk on public.leads (tenant_id);
+create index if not exists memberships_invited_by_fk on public.memberships (invited_by);
+create index if not exists memberships_tenant_id_fk on public.memberships (tenant_id);
+create index if not exists message_templates_tenant_id_fk on public.message_templates (tenant_id);
+create index if not exists messages_ai_insight_id_fk on public.messages (ai_insight_id);
+create index if not exists messages_sent_by_fk on public.messages (sent_by);
+create index if not exists messages_template_id_fk on public.messages (template_id);
+create index if not exists messages_tenant_id_fk on public.messages (tenant_id);
+create index if not exists messages_workspace_id_fk on public.messages (workspace_id);
+create index if not exists pipeline_stages_tenant_id_fk on public.pipeline_stages (tenant_id);
+create index if not exists platform_admins_granted_by_fk on public.platform_admins (granted_by);
+create index if not exists profiles_last_workspace_id_fk on public.profiles (last_workspace_id);
+create index if not exists sales_targets_rep_id_fk on public.sales_targets (rep_id);
+create index if not exists sales_targets_tenant_id_fk on public.sales_targets (tenant_id);
+create index if not exists support_sessions_tenant_id_fk on public.support_sessions (tenant_id);
+create index if not exists support_sessions_workspace_id_fk on public.support_sessions (workspace_id);
+create index if not exists sync_runs_integration_id_fk on public.sync_runs (integration_id);
+create index if not exists sync_runs_started_by_fk on public.sync_runs (started_by);
+create index if not exists sync_runs_tenant_id_fk on public.sync_runs (tenant_id);
+create index if not exists tasks_assignee_id_fk on public.tasks (assignee_id);
+create index if not exists tasks_created_by_fk on public.tasks (created_by);
+create index if not exists tasks_deal_id_fk on public.tasks (deal_id);
+create index if not exists tasks_lead_id_fk on public.tasks (lead_id);
+create index if not exists tasks_tenant_id_fk on public.tasks (tenant_id);
+create index if not exists tenants_primary_owner_id_fk on public.tenants (primary_owner_id);
+create index if not exists territories_rep_id_fk on public.territories (rep_id);
+create index if not exists territories_tenant_id_fk on public.territories (tenant_id);
+
+-- >>> migrations/0011_crm_views.sql
+-- 0011 compatibility views for the Next.js data layer (snake_case -> camelCase maps 1:1 to src/lib/data/types.ts).
+-- security_invoker = true: these are plain projections, so the caller's RLS on the base tables applies unchanged
+-- (a viewer gets no rows from v_crm_leads, a rep only own/territory leads, etc.). Filter by workspace_id in the app.
+
+create view public.v_crm_leads with (security_invoker = true) as
+select l.id, l.workspace_id, l.tenant_id,
+       l.full_name as name, l.role_title as title, l.firm_name, l.account_id, l.email, l.phone, l.city, l.district,
+       l.status,
+       -- derived funnel stage (spec section 14)
+       case when d.is_lost or l.status = 'disqualified' then 'lost'
+            when d.is_won then 'won'
+            when d.key = 'demo_scheduled' then 'demo_booked'
+            when d.key = 'demo_done' then 'demo_done'
+            when d.key in ('proposal','negotiation') then 'proposal'
+            when d.key = 'discovery' then 'qualified'
+            when l.status = 'new' then 'new'
+            when l.status in ('contacted','nurturing') then 'contacted'
+            else 'qualified' end as stage,
+       l.owner_id, l.first_touch_channel as channel, l.campaign_id, l.utm,
+       l.utm->>'source' as utm_source, l.utm->>'medium' as utm_medium, l.utm->>'campaign' as utm_campaign,
+       l.first_touch_channel::text as first_touch, l.last_touch_channel::text as last_touch,
+       l.first_touch_campaign, l.last_touch_campaign,
+       l.created_at, l.last_touch_at,
+       round(extract(epoch from (l.first_response_at - l.created_at)) / 60)::int as first_response_mins,
+       l.next_step_at as next_action_at, d.next_step as next_action,
+       l.score, l.score_factors, d.value_inr as potential_value, d.id as deal_id,
+       '{}'::text[] as tags, l.personal_email, l.consent_demo_followup, l.consent_whatsapp, l.consent_marketing,
+       l.is_synthetic
+  from public.leads l
+  left join lateral (
+    select dl.id, dl.value_inr, dl.next_step, s.key, s.is_won, s.is_lost
+      from public.deals dl join public.pipeline_stages s on s.id = dl.stage_id
+     where dl.lead_id = l.id and dl.deleted_at is null
+     order by dl.created_at desc limit 1) d on true
+ where l.deleted_at is null;
+
+create view public.v_crm_accounts with (security_invoker = true) as
+select a.id, a.workspace_id, a.tenant_id, a.name, a.city, a.address_line as locality, a.district,
+       a.court_focus as courts, a.practice_areas, a.size_band as size, a.lawyers_count as lawyers, a.website,
+       a.owner_id, a.customer_status as status, a.current_tools, a.sites_count, a.created_at,
+       (select max(x.created_at) from public.activities x where x.account_id = a.id) as last_activity_at,
+       a.is_synthetic
+  from public.accounts a
+ where a.deleted_at is null;
+
+create view public.v_crm_deals with (security_invoker = true) as
+select d.id, d.workspace_id, d.tenant_id, d.name, d.account_id, d.lead_id, d.owner_id,
+       s.key as stage, s.label as stage_label, s.probability, d.value_inr as value, d.seats, d.plan,
+       d.created_at, d.expected_close_on as expected_close, d.stage_entered_at, d.won_at, d.lost_at,
+       d.lost_reason, d.competitor, d.objections, d.next_step, d.next_step_at, d.is_synthetic
+  from public.deals d join public.pipeline_stages s on s.id = d.stage_id
+ where d.deleted_at is null;
+
+create view public.v_crm_tasks with (security_invoker = true) as
+select t.id, t.workspace_id, t.tenant_id, t.title, t.kind, t.assignee_id as owner_id, t.created_by,
+       case t.priority when 1 then 'high' when 2 then 'normal' else 'low' end as priority,
+       t.due_at, t.status, t.completed_at, t.lead_id, t.deal_id, t.created_at
+  from public.tasks t;
+
+create view public.v_crm_campaigns with (security_invoker = true) as
+select c.id, c.workspace_id, c.tenant_id, c.name, c.channel,
+       case c.status when 'active' then 'live' else c.status end as status,
+       c.objective, c.starts_on as start_date, c.ends_on as end_date, c.budget_inr as budget,
+       c.utm_source, c.utm_medium, c.utm_campaign, c.owner_id, c.notes, c.is_synthetic, c.created_at
+  from public.campaigns c;
+
+create view public.v_crm_campaign_days with (security_invoker = true) as
+select m.workspace_id, m.tenant_id, m.campaign_id, m.day as date, m.spend_inr as spend, m.impressions, m.reach,
+       m.clicks, m.platform_leads, (m.reactions + m.comments + m.shares) as engagements, m.opens, m.bounces,
+       m.unsubscribes, m.source
+  from public.campaign_daily_metrics m;
+
+revoke all on public.v_crm_leads, public.v_crm_accounts, public.v_crm_deals, public.v_crm_tasks,
+              public.v_crm_campaigns, public.v_crm_campaign_days from anon;
+grant select on public.v_crm_leads, public.v_crm_accounts, public.v_crm_deals, public.v_crm_tasks,
+                public.v_crm_campaigns, public.v_crm_campaign_days to authenticated;
