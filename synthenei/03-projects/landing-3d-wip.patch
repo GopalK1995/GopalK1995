@@ -1,0 +1,1721 @@
+diff --git a/synthenei/apps/lawsome-landing/next.config.mjs b/synthenei/apps/lawsome-landing/next.config.mjs
+index f845da0..a60a17d 100644
+--- a/synthenei/apps/lawsome-landing/next.config.mjs
++++ b/synthenei/apps/lawsome-landing/next.config.mjs
+@@ -1,2 +1,11 @@
++// STATIC_EXPORT=1 next build  ->  plain static site in out/ (any static host).
++// In that mode the API routes are left out (pageExtensions only picks up .tsx pages), and the
++// lead form calls the Supabase submit_lead RPC from the browser (see src/lib/submitLead.ts).
++const isStatic = process.env.STATIC_EXPORT === "1";
++
+ /** @type {import('next').NextConfig} */
+-export default { reactStrictMode: true };
++export default {
++  reactStrictMode: true,
++  env: { NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "" },
++  ...(isStatic ? { output: "export", trailingSlash: true, images: { unoptimized: true }, pageExtensions: ["tsx", "jsx"] } : {}),
++};
+diff --git a/synthenei/apps/lawsome-landing/package-lock.json b/synthenei/apps/lawsome-landing/package-lock.json
+index 72a91a8..ba50f7e 100644
+--- a/synthenei/apps/lawsome-landing/package-lock.json
++++ b/synthenei/apps/lawsome-landing/package-lock.json
+@@ -8,17 +8,37 @@
+       "name": "lawsome-landing",
+       "version": "0.1.0",
+       "dependencies": {
++        "@react-three/fiber": "^9.3.0",
++        "motion": "^12.23.12",
+         "next": "15.5.27",
+         "react": "19.1.1",
+-        "react-dom": "19.1.1"
++        "react-dom": "19.1.1",
++        "three": "^0.180.0"
+       },
+       "devDependencies": {
+         "@types/node": "22.7.5",
+         "@types/react": "19.1.12",
+         "@types/react-dom": "19.1.9",
++        "@types/three": "^0.180.0",
+         "typescript": "5.6.3"
+       }
+     },
++    "node_modules/@babel/runtime": {
++      "version": "7.29.10",
++      "resolved": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.10.tgz",
++      "integrity": "sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=6.9.0"
++      }
++    },
++    "node_modules/@dimforge/rapier3d-compat": {
++      "version": "0.12.0",
++      "resolved": "https://registry.npmjs.org/@dimforge/rapier3d-compat/-/rapier3d-compat-0.12.0.tgz",
++      "integrity": "sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
+     "node_modules/@emnapi/runtime": {
+       "version": "1.11.3",
+       "resolved": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.11.3.tgz",
+@@ -629,6 +649,62 @@
+         "node": ">= 10"
+       }
+     },
++    "node_modules/@react-three/fiber": {
++      "version": "9.3.0",
++      "resolved": "https://registry.npmjs.org/@react-three/fiber/-/fiber-9.3.0.tgz",
++      "integrity": "sha512-myPe3YL/C8+Eq939/4qIVEPBW/uxV0iiUbmjfwrs9sGKYDG8ib8Dz3Okq7BQt8P+0k4igedONbjXMQy84aDFmQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@babel/runtime": "^7.17.8",
++        "@types/react-reconciler": "^0.32.0",
++        "@types/webxr": "*",
++        "base64-js": "^1.5.1",
++        "buffer": "^6.0.3",
++        "its-fine": "^2.0.0",
++        "react-reconciler": "^0.31.0",
++        "react-use-measure": "^2.1.7",
++        "scheduler": "^0.25.0",
++        "suspend-react": "^0.1.3",
++        "use-sync-external-store": "^1.4.0",
++        "zustand": "^5.0.3"
++      },
++      "peerDependencies": {
++        "expo": ">=43.0",
++        "expo-asset": ">=8.4",
++        "expo-file-system": ">=11.0",
++        "expo-gl": ">=11.0",
++        "react": "^19.0.0",
++        "react-dom": "^19.0.0",
++        "react-native": ">=0.78",
++        "three": ">=0.156"
++      },
++      "peerDependenciesMeta": {
++        "expo": {
++          "optional": true
++        },
++        "expo-asset": {
++          "optional": true
++        },
++        "expo-file-system": {
++          "optional": true
++        },
++        "expo-gl": {
++          "optional": true
++        },
++        "react-dom": {
++          "optional": true
++        },
++        "react-native": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/@react-three/fiber/node_modules/scheduler": {
++      "version": "0.25.0",
++      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.25.0.tgz",
++      "integrity": "sha512-xFVuu11jh+xcO7JOAGJNOXld8/TcEHK/4CituBUeUb5hqxJLj9YuemAEuvm9gQ/+pgXYfbQuqAkiYu+u7YEsNA==",
++      "license": "MIT"
++    },
+     "node_modules/@swc/helpers": {
+       "version": "0.5.15",
+       "resolved": "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.15.tgz",
+@@ -638,6 +714,13 @@
+         "tslib": "^2.8.0"
+       }
+     },
++    "node_modules/@tweenjs/tween.js": {
++      "version": "23.1.3",
++      "resolved": "https://registry.npmjs.org/@tweenjs/tween.js/-/tween.js-23.1.3.tgz",
++      "integrity": "sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/@types/node": {
+       "version": "22.7.5",
+       "resolved": "https://registry.npmjs.org/@types/node/-/node-22.7.5.tgz",
+@@ -652,7 +735,6 @@
+       "version": "19.1.12",
+       "resolved": "https://registry.npmjs.org/@types/react/-/react-19.1.12.tgz",
+       "integrity": "sha512-cMoR+FoAf/Jyq6+Df2/Z41jISvGZZ2eTlnsaJRptmZ76Caldwy1odD4xTr/gNV9VLj0AWgg/nmkevIyUfIIq5w==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "csstype": "^3.0.2"
+@@ -668,6 +750,95 @@
+         "@types/react": "^19.0.0"
+       }
+     },
++    "node_modules/@types/react-reconciler": {
++      "version": "0.32.3",
++      "resolved": "https://registry.npmjs.org/@types/react-reconciler/-/react-reconciler-0.32.3.tgz",
++      "integrity": "sha512-cMi5ZrLG7UtbL7LTK6hq9w/EZIRk4Mf1Z5qHoI+qBh7/WkYkFXQ7gOto2yfUvPzF5ERMAhaXS5eTQ2SAnHjLzA==",
++      "license": "MIT",
++      "peerDependencies": {
++        "@types/react": "*"
++      }
++    },
++    "node_modules/@types/stats.js": {
++      "version": "0.17.4",
++      "resolved": "https://registry.npmjs.org/@types/stats.js/-/stats.js-0.17.4.tgz",
++      "integrity": "sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/three": {
++      "version": "0.180.0",
++      "resolved": "https://registry.npmjs.org/@types/three/-/three-0.180.0.tgz",
++      "integrity": "sha512-ykFtgCqNnY0IPvDro7h+9ZeLY+qjgUWv+qEvUt84grhenO60Hqd4hScHE7VTB9nOQ/3QM8lkbNE+4vKjEpUxKg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@dimforge/rapier3d-compat": "~0.12.0",
++        "@tweenjs/tween.js": "~23.1.3",
++        "@types/stats.js": "*",
++        "@types/webxr": "*",
++        "@webgpu/types": "*",
++        "fflate": "~0.8.2",
++        "meshoptimizer": "~0.22.0"
++      }
++    },
++    "node_modules/@types/webxr": {
++      "version": "0.5.24",
++      "resolved": "https://registry.npmjs.org/@types/webxr/-/webxr-0.5.24.tgz",
++      "integrity": "sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==",
++      "license": "MIT"
++    },
++    "node_modules/@webgpu/types": {
++      "version": "0.1.74",
++      "resolved": "https://registry.npmjs.org/@webgpu/types/-/types-0.1.74.tgz",
++      "integrity": "sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA==",
++      "dev": true,
++      "license": "BSD-3-Clause"
++    },
++    "node_modules/base64-js": {
++      "version": "1.5.1",
++      "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
++      "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/feross"
++        },
++        {
++          "type": "patreon",
++          "url": "https://www.patreon.com/feross"
++        },
++        {
++          "type": "consulting",
++          "url": "https://feross.org/support"
++        }
++      ],
++      "license": "MIT"
++    },
++    "node_modules/buffer": {
++      "version": "6.0.3",
++      "resolved": "https://registry.npmjs.org/buffer/-/buffer-6.0.3.tgz",
++      "integrity": "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/feross"
++        },
++        {
++          "type": "patreon",
++          "url": "https://www.patreon.com/feross"
++        },
++        {
++          "type": "consulting",
++          "url": "https://feross.org/support"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "base64-js": "^1.3.1",
++        "ieee754": "^1.2.1"
++      }
++    },
+     "node_modules/caniuse-lite": {
+       "version": "1.0.30001815",
+       "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001815.tgz",
+@@ -698,7 +869,6 @@
+       "version": "3.2.3",
+       "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
+       "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/detect-libc": {
+@@ -711,6 +881,129 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/fflate": {
++      "version": "0.8.3",
++      "resolved": "https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz",
++      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/framer-motion": {
++      "version": "12.43.0",
++      "resolved": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.43.0.tgz",
++      "integrity": "sha512-1eaL3RvR/kAlbG7UYcpMptEyzPoENO0c6w7ZnB3/hh2vSAz/6uGAFn6fdoqTBguNstf3MsFhJHsD/0DHiclG+g==",
++      "license": "MIT",
++      "dependencies": {
++        "motion-dom": "^12.43.0",
++        "motion-utils": "^12.39.0",
++        "tslib": "^2.4.0"
++      },
++      "peerDependencies": {
++        "@emotion/is-prop-valid": "*",
++        "react": "^18.0.0 || ^19.0.0",
++        "react-dom": "^18.0.0 || ^19.0.0"
++      },
++      "peerDependenciesMeta": {
++        "@emotion/is-prop-valid": {
++          "optional": true
++        },
++        "react": {
++          "optional": true
++        },
++        "react-dom": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/ieee754": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz",
++      "integrity": "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/feross"
++        },
++        {
++          "type": "patreon",
++          "url": "https://www.patreon.com/feross"
++        },
++        {
++          "type": "consulting",
++          "url": "https://feross.org/support"
++        }
++      ],
++      "license": "BSD-3-Clause"
++    },
++    "node_modules/its-fine": {
++      "version": "2.1.1",
++      "resolved": "https://registry.npmjs.org/its-fine/-/its-fine-2.1.1.tgz",
++      "integrity": "sha512-C5ZoVkeqSt0Aje0tzESO+iT/EQpNFNL39GkP7mCACtoZUFD6GcyerFCr6kp0ZtiII4W9HoYkY48Soy5xE/uHKw==",
++      "license": "MIT",
++      "dependencies": {
++        "@types/react-reconciler": "^0.28.9"
++      },
++      "peerDependencies": {
++        "react": "^19.0.0"
++      }
++    },
++    "node_modules/its-fine/node_modules/@types/react-reconciler": {
++      "version": "0.28.9",
++      "resolved": "https://registry.npmjs.org/@types/react-reconciler/-/react-reconciler-0.28.9.tgz",
++      "integrity": "sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==",
++      "license": "MIT",
++      "peerDependencies": {
++        "@types/react": "*"
++      }
++    },
++    "node_modules/meshoptimizer": {
++      "version": "0.22.0",
++      "resolved": "https://registry.npmjs.org/meshoptimizer/-/meshoptimizer-0.22.0.tgz",
++      "integrity": "sha512-IebiK79sqIy+E4EgOr+CAw+Ke8hAspXKzBd0JdgEmPHiAwmvEj2S4h1rfvo+o/BnfEYd/jAOg5IeeIjzlzSnDg==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/motion": {
++      "version": "12.23.12",
++      "resolved": "https://registry.npmjs.org/motion/-/motion-12.23.12.tgz",
++      "integrity": "sha512-8jCD8uW5GD1csOoqh1WhH1A6j5APHVE15nuBkFeRiMzYBdRwyAHmSP/oXSuW0WJPZRXTFdBoG4hY9TFWNhhwng==",
++      "license": "MIT",
++      "dependencies": {
++        "framer-motion": "^12.23.12",
++        "tslib": "^2.4.0"
++      },
++      "peerDependencies": {
++        "@emotion/is-prop-valid": "*",
++        "react": "^18.0.0 || ^19.0.0",
++        "react-dom": "^18.0.0 || ^19.0.0"
++      },
++      "peerDependenciesMeta": {
++        "@emotion/is-prop-valid": {
++          "optional": true
++        },
++        "react": {
++          "optional": true
++        },
++        "react-dom": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/motion-dom": {
++      "version": "12.43.0",
++      "resolved": "https://registry.npmjs.org/motion-dom/-/motion-dom-12.43.0.tgz",
++      "integrity": "sha512-azKON4d9S65PEoFUiQTMTgPheEmzf2QngdRc50AKfJp9Q9mmcBVw22c8eMq9k8kxOFHdL7+WZY7N/5F/lwiDag==",
++      "license": "MIT",
++      "dependencies": {
++        "motion-utils": "^12.39.0"
++      }
++    },
++    "node_modules/motion-utils": {
++      "version": "12.39.0",
++      "resolved": "https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz",
++      "integrity": "sha512-8nadJAJjTtqRkmRF36FoJTrywK9nnFmnPwnSMyxaOCU7GDjN9RTMJIxx9De8ErM+vpPhMccr/6fo5WciyQLnMQ==",
++      "license": "MIT"
++    },
+     "node_modules/nanoid": {
+       "version": "3.3.20",
+       "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.20.tgz",
+@@ -836,6 +1129,42 @@
+         "react": "^19.1.1"
+       }
+     },
++    "node_modules/react-reconciler": {
++      "version": "0.31.0",
++      "resolved": "https://registry.npmjs.org/react-reconciler/-/react-reconciler-0.31.0.tgz",
++      "integrity": "sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ==",
++      "license": "MIT",
++      "dependencies": {
++        "scheduler": "^0.25.0"
++      },
++      "engines": {
++        "node": ">=0.10.0"
++      },
++      "peerDependencies": {
++        "react": "^19.0.0"
++      }
++    },
++    "node_modules/react-reconciler/node_modules/scheduler": {
++      "version": "0.25.0",
++      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.25.0.tgz",
++      "integrity": "sha512-xFVuu11jh+xcO7JOAGJNOXld8/TcEHK/4CituBUeUb5hqxJLj9YuemAEuvm9gQ/+pgXYfbQuqAkiYu+u7YEsNA==",
++      "license": "MIT"
++    },
++    "node_modules/react-use-measure": {
++      "version": "2.1.7",
++      "resolved": "https://registry.npmjs.org/react-use-measure/-/react-use-measure-2.1.7.tgz",
++      "integrity": "sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg==",
++      "license": "MIT",
++      "peerDependencies": {
++        "react": ">=16.13",
++        "react-dom": ">=16.13"
++      },
++      "peerDependenciesMeta": {
++        "react-dom": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/scheduler": {
+       "version": "0.26.0",
+       "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.26.0.tgz",
+@@ -932,6 +1261,21 @@
+         }
+       }
+     },
++    "node_modules/suspend-react": {
++      "version": "0.1.3",
++      "resolved": "https://registry.npmjs.org/suspend-react/-/suspend-react-0.1.3.tgz",
++      "integrity": "sha512-aqldKgX9aZqpoDp3e8/BZ8Dm7x1pJl+qI3ZKxDN0i/IQTWUwBx/ManmlVJ3wowqbno6c2bmiIfs+Um6LbsjJyQ==",
++      "license": "MIT",
++      "peerDependencies": {
++        "react": ">=17.0"
++      }
++    },
++    "node_modules/three": {
++      "version": "0.180.0",
++      "resolved": "https://registry.npmjs.org/three/-/three-0.180.0.tgz",
++      "integrity": "sha512-o+qycAMZrh+TsE01GqWUxUIKR1AL0S8pq7zDkYOQw8GqfX8b8VoCKYUoHbhiX5j+7hr8XsuHDVU6+gkQJQKg9w==",
++      "license": "MIT"
++    },
+     "node_modules/tslib": {
+       "version": "2.8.1",
+       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+@@ -958,6 +1302,44 @@
+       "integrity": "sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==",
+       "dev": true,
+       "license": "MIT"
++    },
++    "node_modules/use-sync-external-store": {
++      "version": "1.7.0",
++      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.7.0.tgz",
++      "integrity": "sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==",
++      "license": "MIT",
++      "peerDependencies": {
++        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
++      }
++    },
++    "node_modules/zustand": {
++      "version": "5.0.15",
++      "resolved": "https://registry.npmjs.org/zustand/-/zustand-5.0.15.tgz",
++      "integrity": "sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=12.20.0"
++      },
++      "peerDependencies": {
++        "@types/react": ">=18.0.0",
++        "immer": ">=9.0.6",
++        "react": ">=18.0.0",
++        "use-sync-external-store": ">=1.2.0"
++      },
++      "peerDependenciesMeta": {
++        "@types/react": {
++          "optional": true
++        },
++        "immer": {
++          "optional": true
++        },
++        "react": {
++          "optional": true
++        },
++        "use-sync-external-store": {
++          "optional": true
++        }
++      }
+     }
+   }
+ }
+diff --git a/synthenei/apps/lawsome-landing/package.json b/synthenei/apps/lawsome-landing/package.json
+index d62840c..5e76499 100644
+--- a/synthenei/apps/lawsome-landing/package.json
++++ b/synthenei/apps/lawsome-landing/package.json
+@@ -9,14 +9,18 @@
+     "typecheck": "tsc --noEmit"
+   },
+   "dependencies": {
++    "@react-three/fiber": "^9.3.0",
++    "motion": "^12.23.12",
+     "next": "15.5.27",
+     "react": "19.1.1",
+-    "react-dom": "19.1.1"
++    "react-dom": "19.1.1",
++    "three": "^0.180.0"
+   },
+   "devDependencies": {
+     "@types/node": "22.7.5",
+     "@types/react": "19.1.12",
+     "@types/react-dom": "19.1.9",
++    "@types/three": "^0.180.0",
+     "typescript": "5.6.3"
+   }
+ }
+diff --git a/synthenei/apps/lawsome-landing/src/app/layout.tsx b/synthenei/apps/lawsome-landing/src/app/layout.tsx
+index 48d61ce..1695f08 100644
+--- a/synthenei/apps/lawsome-landing/src/app/layout.tsx
++++ b/synthenei/apps/lawsome-landing/src/app/layout.tsx
+@@ -1,6 +1,10 @@
+ import type { Metadata } from "next";
++import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
+ import "@/styles/globals.css";
+ 
++const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--ff-sans", display: "swap" });
++const serif = Source_Serif_4({ subsets: ["latin"], variable: "--ff-serif", display: "swap", weight: ["500", "600"] });
++
+ export const metadata: Metadata = {
+   title: "LAWSOME — Your Entire Law Firm. One Clear View.",
+   description: "Legal practice management for Indian law firms: firm-wide dashboard, case and hearing control, eCourts search and Ask Nidhi, the AI legal assistant.",
+@@ -9,5 +13,5 @@ export const metadata: Metadata = {
+ };
+ 
+ export default function RootLayout({ children }: { children: React.ReactNode }) {
+-  return (<html lang="en"><body>{children}</body></html>);
++  return (<html lang="en" className={`${sans.variable} ${serif.variable}`}><body>{children}</body></html>);
+ }
+diff --git a/synthenei/apps/lawsome-landing/src/app/page.tsx b/synthenei/apps/lawsome-landing/src/app/page.tsx
+index f51c63a..0628b23 100644
+--- a/synthenei/apps/lawsome-landing/src/app/page.tsx
++++ b/synthenei/apps/lawsome-landing/src/app/page.tsx
+@@ -4,10 +4,24 @@ import { AskNidhi } from "@/components/AskNidhi";
+ import { Tour } from "@/components/Tour";
+ import { ConsentBanner } from "@/components/ConsentBanner";
+ import { StickyCta } from "@/components/StickyCta";
++import { NavBar } from "@/components/NavBar";
++import { HeroStage } from "@/components/hero/HeroStage";
++import { LiftCard, Reveal, RevealItem } from "@/components/motion/Reveal";
++import { TiltFrame } from "@/components/motion/TiltFrame";
+ import { DashboardScreen, CalendarScreen, HearingsScreen, CasesScreen, TeamScreen, SitesScreen, ECourtsScreen } from "@/components/screens/Screens";
+ 
+-const Head = ({ eyebrow, title, body, msg }: { eyebrow: string; title: string; body: string; msg: string }) => (
+-  <div className="sec-head"><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{body}</p><span className="msg">{msg}</span></div>
++type HeadProps = { n?: string; eyebrow: string; title: string; body: string; msg: string };
++const Head = ({ n, eyebrow, title, body, msg }: HeadProps) => (
++  <Reveal className="sec-head">
++    <RevealItem className="sec-label">{n && <span className="sec-n">{n}</span>}<span className="sec-rule" aria-hidden /><span className="eyebrow">{eyebrow}</span></RevealItem>
++    <RevealItem><h2>{title}</h2></RevealItem>
++    <RevealItem><p>{body}</p></RevealItem>
++    <RevealItem><p className="msg">{msg}</p></RevealItem>
++  </Reveal>
++);
++
++const Points = ({ items }: { items: string[] }) => (
++  <Reveal as="ul" className="points">{items.map((t) => <RevealItem as="li" key={t}>{t}</RevealItem>)}</Reveal>
+ );
+ 
+ export default function Page() {
+@@ -18,74 +32,74 @@ export default function Page() {
+     { key: "team", label: "Team & sites", caption: "One firm-wide structure with visibility into every site and lawyer.", node: <TeamScreen /> },
+     { key: "ecourts", label: "eCourts", caption: "Search court records by CNR, advocate, case number or party name.", node: <ECourtsScreen /> },
+   ];
++  const heroCopy = (
++    <>
++      <span className="eyebrow">LAWSOME · Legal practice management</span>
++      <h1 id="hero-title">Your entire law firm. <em>One clear view.</em></h1>
++      <p className="lead">Manage cases, hearings, calendars, teams and court information in one connected workspace. Give leadership the visibility to stay in control and lawyers the tools to manage their matters more effectively.</p>
++      <div className="cta-row"><CtaLink where="hero">Book a Live Demo</CtaLink><CtaLink where="hero-explore" href="#tour" className="btn btn-ghost">Explore the Platform</CtaLink></div>
++      <ul className="trust" aria-label="Highlights"><li>Firm-wide visibility</li><li>Multi-site, multi-user</li><li>eCourts workflows</li><li>AI-assisted research</li></ul>
++    </>
++  );
+   return (
+     <>
+-      <header className="nav"><div className="wrap nav-in">
+-        <a className="logo" href="#top">LAWS<i>O</i>ME</a>
+-        <nav className="nav-links" aria-label="Sections"><a href="#visibility">Visibility</a><a href="#hearings">Hearings</a><a href="#cases">Cases</a><a href="#team">Team</a><a href="#ecourts">eCourts</a><a href="#nidhi">Ask Nidhi</a></nav>
+-        <CtaLink where="nav" className="btn btn-primary">Book a Live Demo</CtaLink>
+-      </div></header>
+-
++      <NavBar />
+       <main id="top">
+-        <section className="hero"><div className="wrap">
+-          <div className="hero-grid"><div>
+-            <span className="eyebrow">LAWSOME · Legal Practice Management</span>
+-            <h1>Your entire law firm. <em>One clear view.</em></h1>
+-            <p className="lead">Manage cases, hearings, calendars, teams and court information in one connected workspace. Give leadership the visibility to stay in control and lawyers the tools to manage their matters more effectively.</p>
+-            <div className="cta-row"><CtaLink where="hero">Book a Live Demo</CtaLink><CtaLink where="hero-explore" href="#tour" className="btn btn-ghost">Explore the Platform</CtaLink></div>
+-            <div className="trust"><span>Firm-wide visibility</span><span>Multi-site, multi-user</span><span>eCourts workflows</span><span>AI-assisted research</span></div>
+-          </div></div>
+-          <div className="hero-shot"><DashboardScreen /></div>
+-        </div></section>
++        <HeroStage copy={heroCopy} screen={<DashboardScreen />} />
+ 
+-        <div className="wrap"><div className="pillars">
+-          <div className="pillar"><b>Pillar 1</b><h3>See everything that matters</h3><p>A consolidated view of cases, hearings, sites and team activity.</p></div>
+-          <div className="pillar"><b>Pillar 2</b><h3>Stay ahead of every matter</h3><p>Organise schedules, track assignments and identify missing hearing dates.</p></div>
+-          <div className="pillar"><b>Pillar 3</b><h3>Work with greater context</h3><p>Search court records and use Ask Nidhi to explore relevant case information.</p></div>
+-        </div></div>
++        <div className="wrap">
++          <Reveal className="pillars">
++            <LiftCard className="pillar"><b>Pillar 1</b><h3>See everything that matters</h3><p>A consolidated view of cases, hearings, sites and team activity.</p></LiftCard>
++            <LiftCard className="pillar"><b>Pillar 2</b><h3>Stay ahead of every matter</h3><p>Organise schedules, track assignments and identify missing hearing dates.</p></LiftCard>
++            <LiftCard className="pillar"><b>Pillar 3</b><h3>Work with greater context</h3><p>Search court records and use Ask Nidhi to explore relevant case information.</p></LiftCard>
++          </Reveal>
++        </div>
+ 
+         <section className="block" id="tour"><div className="wrap">
+           <Head eyebrow="Guided tour" title="See LAWSOME in about a minute." body="A quick walkthrough of the workspace — pause or jump to any screen." msg="Sample data shown for illustration" />
+-          <Tour slides={slides} />
++          <Reveal><RevealItem><Tour slides={slides} /></RevealItem></Reveal>
+         </div></section>
+ 
+         <section className="block alt" id="visibility"><div className="wrap split">
+-          <div className="copy"><Head eyebrow="01 · Firm intelligence" title="One dashboard. Complete visibility." body="Total cases, upcoming hearings, resolved matters, team size, case statuses, incoming case trends and site-level visibility — together." msg="Know what is happening across your firm without chasing updates." />
+-            <ul className="points"><li>Case volumes and status distribution at a glance</li><li>Upcoming hearings across every site</li><li>Incoming-case growth trend (YTD, 6M, 1Y)</li></ul></div>
+-          <DashboardScreen />
++          <div className="copy"><Head n="01" eyebrow="Firm intelligence" title="One dashboard. Complete visibility." body="Total cases, upcoming hearings, resolved matters, team size, case statuses, incoming case trends and site-level visibility — together." msg="Know what is happening across your firm without chasing updates." />
++            <Points items={["Case volumes and status distribution at a glance", "Upcoming hearings across every site", "Incoming-case growth trend (YTD, 6M, 1Y)"]} /></div>
++          <TiltFrame><DashboardScreen /></TiltFrame>
+         </div></section>
+ 
+         <section className="block" id="hearings"><div className="wrap">
+-          <Head eyebrow="02 · Case and hearing control" title="Every hearing. Every task. In view." body="Hearings, tasks and notes in one monthly calendar, backed by a site-level hearing list." msg="Bring legal schedules and follow-ups into one organised view." />
+-          <div className="stack"><CalendarScreen /><HearingsScreen /></div>
++          <Head n="02" eyebrow="Case and hearing control" title="Every hearing. Every task. In view." body="Hearings, tasks and notes in one monthly calendar, backed by a site-level hearing list." msg="Bring legal schedules and follow-ups into one organised view." />
++          <div className="stack"><TiltFrame><CalendarScreen /></TiltFrame><TiltFrame><HearingsScreen /></TiltFrame></div>
+         </div></section>
+ 
+         <section className="block alt" id="cases"><div className="wrap split rev">
+-          <div className="copy"><Head eyebrow="03 · Case control" title="Every matter, accountable and traceable." body="Search and filter by site, status or assignee. See the next hearing date for each matter — and spot the ones with no date yet." msg="Make case ownership and next steps visible." />
+-            <ul className="points"><li>Search by title, case number or site</li><li>Assigned lawyer and next hearing on every row</li><li>“Hearing date missing” flags what needs attention</li></ul></div>
+-          <CasesScreen />
++          <div className="copy"><Head n="03" eyebrow="Case control" title="Every matter, accountable and traceable." body="Search and filter by site, status or assignee. See the next hearing date for each matter — and spot the ones with no date yet." msg="Make case ownership and next steps visible." />
++            <Points items={["Search by title, case number or site", "Assigned lawyer and next hearing on every row", "“Hearing date missing” flags what needs attention"]} /></div>
++          <TiltFrame><CasesScreen /></TiltFrame>
+         </div></section>
+ 
+         <section className="block" id="team"><div className="wrap">
+-          <Head eyebrow="04 · Firm intelligence" title="Built for multi-site legal teams." body="Manage offices, lawyer profiles, roles and user administration from one organisation." msg="One firm-wide structure, with visibility into individual sites and team members." />
+-          <div className="stack"><SitesScreen /><TeamScreen /></div>
++          <Head n="04" eyebrow="Firm intelligence" title="Built for multi-site legal teams." body="Manage offices, lawyer profiles, roles and user administration from one organisation." msg="One firm-wide structure, with visibility into individual sites and team members." />
++          <div className="stack"><TiltFrame><SitesScreen /></TiltFrame><TiltFrame><TeamScreen /></TiltFrame></div>
+         </div></section>
+ 
+         <section className="block alt" id="ecourts"><div className="wrap split">
+-          <div className="copy"><Head eyebrow="05 · AI-assisted research" title="Court information, easier to access." body="Search by CNR number, advocate, case number or party name across Supreme Court, High Courts and District Courts — from a dedicated workspace, with saved cases and search history." msg="Search relevant court records from a dedicated workspace." />
++          <div className="copy"><Head n="05" eyebrow="AI-assisted research" title="Court information, easier to access." body="Search by CNR number, advocate, case number or party name across Supreme Court, High Courts and District Courts — from a dedicated workspace, with saved cases and search history." msg="Search relevant court records from a dedicated workspace." />
+             <p className="note">External court-record search is separate from your firm’s internal case database.</p></div>
+-          <ECourtsScreen />
++          <TiltFrame><ECourtsScreen /></TiltFrame>
+         </div></section>
+ 
+         <section className="block" id="nidhi"><div className="wrap split rev">
+-          <div className="copy"><Head eyebrow="06 · Ask Nidhi" title="Meet Ask Nidhi, your AI legal assistant." body="Describe a new matter. Ask Nidhi helps you find relevant cases your firm has already handled and potentially relevant external judgments to review." msg="Find relevant case context faster and support more informed legal preparation." />
++          <div className="copy"><Head n="06" eyebrow="Ask Nidhi" title="Meet Ask Nidhi, your AI legal assistant." body="Describe a new matter. Ask Nidhi helps you find relevant cases your firm has already handled and potentially relevant external judgments to review." msg="Find relevant case context faster and support more informed legal preparation." />
+             <p className="note">Ask Nidhi supports legal research. It does not provide legal advice or predict case outcomes; advocates should verify all sources. The conversation shown is illustrative.</p></div>
+           <AskNidhi />
+         </div></section>
+ 
+         <section className="final" id="demo"><div className="wrap final-grid">
+-          <div><span className="eyebrow">Next step</span><h2>Bring your firm’s legal operations into one view.</h2>
+-            <p className="lead">See a guided walkthrough built around how your firm works — from leadership visibility to hearings, cases and AI-assisted research. Tell us about your firm and we’ll set up a live demo.</p></div>
++          <Reveal>
++            <RevealItem className="sec-label on-dark"><span className="sec-rule" aria-hidden /><span className="eyebrow">Next step</span></RevealItem>
++            <RevealItem><h2>Bring your firm’s legal operations into one view.</h2></RevealItem>
++            <RevealItem><p className="lead">See a guided walkthrough built around how your firm works — from leadership visibility to hearings, cases and AI-assisted research. Tell us about your firm and we’ll set up a live demo.</p></RevealItem>
++          </Reveal>
+           <LeadForm />
+         </div></section>
+       </main>
+diff --git a/synthenei/apps/lawsome-landing/src/components/AskNidhi.tsx b/synthenei/apps/lawsome-landing/src/components/AskNidhi.tsx
+index d77c602..4630a85 100644
+--- a/synthenei/apps/lawsome-landing/src/components/AskNidhi.tsx
++++ b/synthenei/apps/lawsome-landing/src/components/AskNidhi.tsx
+@@ -1,38 +1,45 @@
+ "use client";
++import { AnimatePresence, LayoutGroup, motion, useInView, useReducedMotion } from "motion/react";
+ import { useEffect, useRef, useState } from "react";
++import { DUR, EASE } from "./motion/ease";
+ 
+ const QUESTION = "We have received a new property dispute involving a disagreement over ownership and a registered sale deed. Find relevant cases already handled by our firm and identify potentially relevant external judgments for further review.";
++const enter = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, transition: { duration: DUR.fast } }, transition: { duration: DUR.base, ease: EASE } };
+ 
+ export function AskNidhi() {
+   const [step, setStep] = useState(0); // 0 idle, 1 question, 2 thinking, 3 answer
+   const ref = useRef<HTMLDivElement>(null);
++  const reduce = useReducedMotion();
++  const inView = useInView(ref, { once: true, amount: 0.35 });
+   useEffect(() => {
+-    const el = ref.current; if (!el) return;
+-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+-    const io = new IntersectionObserver(([e]) => {
+-      if (!e.isIntersecting) return;
+-      io.disconnect();
+-      if (reduce) { setStep(3); return; }
+-      setStep(1); setTimeout(() => setStep(2), 1400); setTimeout(() => setStep(3), 3000);
+-    }, { threshold: 0.35 });
+-    io.observe(el); return () => io.disconnect();
+-  }, []);
++    if (!inView) return;
++    if (reduce) { setStep(3); return; }
++    setStep(1);
++    const a = setTimeout(() => setStep(2), 1200), b = setTimeout(() => setStep(3), 2700);
++    return () => { clearTimeout(a); clearTimeout(b); };
++  }, [inView, reduce]);
++  const m = reduce ? { initial: false as const } : enter;
+   return (
+     <div className="nidhi" ref={ref}>
+-      <div className="nidhi-head"><span className="nidhi-dot" />Ask Nidhi <em>Illustrative conversation</em></div>
+-      <div className="nidhi-body" aria-live="polite">
+-        {step >= 1 && <div className="bubble me">{QUESTION}</div>}
+-        {step === 2 && <div className="bubble bot typing"><i /><i /><i /></div>}
+-        {step >= 3 && (
+-          <div className="bubble bot">
+-            <div className="rsec"><b>1 · Internal case matches</b><p>Matters from your firm’s own records involving ownership and sale-deed disputes, each linked to its case record.</p>
+-              <ul><li><span className="pill">Internal</span> Selvam vs Thangaraj (Sale Deed) <small>OS/387/2026 · Sub Court, Madurai</small></li><li><span className="pill">Internal</span> Menon Estates vs Kumar Builders <small>CS/142/2026 · Commercial Court, Chennai</small></li></ul></div>
+-            <div className="rsec"><b>2 · External judgments for review</b><p>Potentially relevant judgments with court, citation and source link — shown only when available and verified.</p>
+-              <ul><li><span className="pill ok">External</span> Judgment title · Court · Year <small>Citation + source link appear here once verified</small></li></ul></div>
+-            <div className="rsec"><b>3 · Research summary</b><p>Facts, legal issues and points for the advocate to investigate further — to support preparation, not replace professional judgment.</p></div>
+-          </div>
+-        )}
+-      </div>
++      <div className="nidhi-head"><span className="nidhi-dot" aria-hidden />Ask Nidhi <em>Illustrative conversation</em></div>
++      <LayoutGroup>
++        <div className="nidhi-body" aria-live="polite">
++          <AnimatePresence initial={false} mode="popLayout">
++            {step >= 1 && <motion.div key="q" layout={!reduce} className="bubble me" {...m}>{QUESTION}</motion.div>}
++            {step === 2 && <motion.div key="t" layout={!reduce} className="bubble bot typing" aria-label="Ask Nidhi is preparing a response" {...m}><i /><i /><i /></motion.div>}
++            {step >= 3 && (
++              <motion.div key="a" layout={!reduce} className="bubble bot" {...m}>
++                <div className="rsec"><b>1 · Internal case matches</b><p>Matters from your firm’s own records involving ownership and sale-deed disputes, each linked to its case record.</p>
++                  <ul><li><span className="pill">Internal</span> Selvam vs Thangaraj (Sale Deed) <small>OS/387/2026 · Sub Court, Madurai</small></li><li><span className="pill">Internal</span> Menon Estates vs Kumar Builders <small>CS/142/2026 · Commercial Court, Chennai</small></li></ul></div>
++                <div className="rsec"><b>2 · External judgments for review</b><p>Potentially relevant judgments with court, citation and source link — shown only when available and verified.</p>
++                  <ul><li><span className="pill ok">External</span> Judgment title · Court · Year <small>Citation + source link appear here once verified</small></li></ul></div>
++                <div className="rsec"><b>3 · Research summary</b><p>Facts, legal issues and points for the advocate to investigate further — to support preparation, not replace professional judgment.</p></div>
++                <p className="verify">Advocates should verify all sources before relying on them.</p>
++              </motion.div>
++            )}
++          </AnimatePresence>
++        </div>
++      </LayoutGroup>
+     </div>
+   );
+ }
+diff --git a/synthenei/apps/lawsome-landing/src/components/LeadForm.tsx b/synthenei/apps/lawsome-landing/src/components/LeadForm.tsx
+index 9bbda24..2061417 100644
+--- a/synthenei/apps/lawsome-landing/src/components/LeadForm.tsx
++++ b/synthenei/apps/lawsome-landing/src/components/LeadForm.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ import { useRef, useState } from "react";
+ import { captureUtm, track } from "@/lib/track";
++import { submitLead } from "@/lib/submitLead";
+ 
+ const ROLES = ["Managing partner / owner", "Senior advocate / practice head", "Associate / lawyer", "Legal operations / admin", "Other"];
+ type Errors = Partial<Record<"name" | "email" | "firm" | "role" | "phone" | "consent", string>>;
+@@ -14,7 +15,8 @@ export function LeadForm() {
+   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+     e.preventDefault();
+     const f = new FormData(e.currentTarget);
+-    const body = { name: f.get("name"), email: f.get("email"), firm: f.get("firm"), role: f.get("role"), phone: f.get("phone"), website: f.get("website"), consent: f.get("consent") === "on", utm: captureUtm() };
++    const str = (k: string) => String(f.get(k) ?? "");
++    const body = { name: str("name"), email: str("email"), firm: str("firm"), role: str("role"), phone: str("phone"), website: str("website"), consent: f.get("consent") === "on", utm: captureUtm() };
+     const local: Errors = {};
+     if (String(body.name ?? "").trim().length < 2) local.name = "Please enter your name.";
+     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(body.email ?? "").trim())) local.email = "Please enter a valid work email.";
+@@ -25,9 +27,8 @@ export function LeadForm() {
+     if (Object.keys(local).length) return;
+     setState("sending");
+     try {
+-      const r = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+-      const j = await r.json();
+-      if (r.status === 422) { setErrors(j.errors ?? {}); setState("idle"); return; }
++      const r = await submitLead(body);
++      if (!r.ok && r.status === 422 && r.errors) { setErrors(r.errors); setState("idle"); return; }
+       if (!r.ok) throw new Error();
+       track("form_submit", { role: body.role });
+       setState("done");
+@@ -37,7 +38,7 @@ export function LeadForm() {
+   if (state === "done")
+     return (
+       <div className="success" role="status">
+-        <div style={{ fontSize: 34 }}>✅</div>
++        <svg className="success-mark" width="40" height="40" viewBox="0 0 40 40" aria-hidden><circle cx="20" cy="20" r="19" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="m12.5 20.5 5 5 10-11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+         <h3>Thank you — your demo request is in.</h3>
+         <p style={{ color: "var(--c-ink-2)" }}>Our team will reach out within one working day to schedule your guided LAWSOME walkthrough.</p>
+       </div>
+diff --git a/synthenei/apps/lawsome-landing/src/components/NavBar.tsx b/synthenei/apps/lawsome-landing/src/components/NavBar.tsx
+new file mode 100644
+index 0000000..9e1b125
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/NavBar.tsx
+@@ -0,0 +1,50 @@
++"use client";
++import { motion, useReducedMotion, useScroll, useSpring } from "motion/react";
++import { useEffect, useState } from "react";
++import { CtaLink } from "./CtaLink";
++import { EASE } from "./motion/ease";
++
++const SECTIONS = [
++  ["visibility", "Visibility"], ["hearings", "Hearings"], ["cases", "Cases"], ["team", "Team"], ["ecourts", "eCourts"], ["nidhi", "Ask Nidhi"],
++] as const;
++
++/** Sticky nav with the current section highlighted and a hairline reading-progress bar. */
++export function NavBar() {
++  const reduce = useReducedMotion();
++  const [active, setActive] = useState<string | null>(null);
++  const { scrollYProgress } = useScroll();
++  const progress = useSpring(scrollYProgress, { stiffness: 200, damping: 40, restDelta: 0.001 });
++
++  useEffect(() => {
++    const els = SECTIONS.map(([id]) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
++    const io = new IntersectionObserver((entries) => {
++      for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
++    }, { rootMargin: "-45% 0px -50% 0px" });
++    els.forEach((el) => io.observe(el));
++    const top = () => { if (window.scrollY < 300) setActive(null); };
++    window.addEventListener("scroll", top, { passive: true });
++    return () => { io.disconnect(); window.removeEventListener("scroll", top); };
++  }, []);
++
++  const idx = SECTIONS.findIndex(([id]) => id === active);
++  return (
++    <header className="nav">
++      <div className="wrap nav-in">
++        <a className="logo" href="#top" aria-label="LAWSOME, back to top">LAWS<i>O</i>ME</a>
++        <nav className="nav-links" aria-label="Sections">
++          {SECTIONS.map(([id, label], i) => (
++            <a key={id} href={`#${id}`} aria-current={active === id ? "true" : undefined} className={active === id ? "on" : undefined}>
++              <span className="nav-n">{String(i + 1).padStart(2, "0")}</span>{label}
++              {active === id && (reduce ? <span className="nav-mark" /> : <motion.span layoutId="nav-mark" className="nav-mark" transition={{ duration: 0.4, ease: EASE }} />)}
++            </a>
++          ))}
++        </nav>
++        <div className="nav-right">
++          <span className="nav-count" aria-hidden>{idx >= 0 ? `${String(idx + 1).padStart(2, "0")} / 06` : ""}</span>
++          <CtaLink where="nav" className="btn btn-primary btn-sm">Book a Live Demo</CtaLink>
++        </div>
++      </div>
++      <motion.div className="nav-progress" style={{ scaleX: reduce ? scrollYProgress : progress }} aria-hidden />
++    </header>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/Tour.tsx b/synthenei/apps/lawsome-landing/src/components/Tour.tsx
+index e2a56a1..d56226b 100644
+--- a/synthenei/apps/lawsome-landing/src/components/Tour.tsx
++++ b/synthenei/apps/lawsome-landing/src/components/Tour.tsx
+@@ -1,31 +1,59 @@
+ "use client";
+-import { useEffect, useState, type ReactNode } from "react";
++import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
++import { useEffect, useRef, useState, type ReactNode } from "react";
+ import { track } from "@/lib/track";
++import { DUR, EASE } from "./motion/ease";
+ 
+ export type Slide = { key: string; label: string; caption: string; node: ReactNode };
+ 
+-// A self-playing "video-style" walkthrough of the product screens (about 60s end to end).
++const Icon = ({ playing }: { playing: boolean }) => playing
++  ? <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><rect x="2" y="1.5" width="2.6" height="9" rx=".6" fill="currentColor" /><rect x="7.4" y="1.5" width="2.6" height="9" rx=".6" fill="currentColor" /></svg>
++  : <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M3 1.6v8.8a.6.6 0 0 0 .9.5l7-4.4a.6.6 0 0 0 0-1L3.9 1.1a.6.6 0 0 0-.9.5Z" fill="currentColor" /></svg>;
++
++// A self-playing walkthrough of the product screens (about 50s end to end). Plays only while on screen.
+ export function Tour({ slides, seconds = 10 }: { slides: Slide[]; seconds?: number }) {
++  const reduce = useReducedMotion();
++  const ref = useRef<HTMLDivElement>(null);
++  const inView = useInView(ref, { amount: 0.3 });
+   const [i, setI] = useState(0);
+   const [playing, setPlaying] = useState(true);
++  const running = playing && inView && !reduce;
+   useEffect(() => {
+-    if (!playing) return;
++    if (!running) return;
+     const t = setTimeout(() => setI((n) => (n + 1) % slides.length), seconds * 1000);
+     return () => clearTimeout(t);
+-  }, [i, playing, seconds, slides.length]);
++  }, [i, running, seconds, slides.length]);
+   const s = slides[i];
+   return (
+-    <div>
+-      <div className="tourbar" role="tablist" aria-label="Product tour">
+-        {slides.map((x, n) => (
+-          <button key={x.key} role="tab" aria-pressed={n === i} onClick={() => { setI(n); setPlaying(false); track("tour_play", { slide: x.key }); }}>{n + 1}. {x.label}</button>
+-        ))}
+-        <button onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause tour" : "Play tour"}>{playing ? "❚❚ Pause" : "▶ Play"}</button>
++    <div ref={ref}>
++      <div className="tourbar">
++        <div role="tablist" aria-label="Product tour" className="tour-tabs">
++          {slides.map((x, n) => (
++            <button key={x.key} role="tab" aria-selected={n === i} aria-controls="tour-panel" onClick={() => { setI(n); setPlaying(false); track("tour_play", { slide: x.key }); }}>
++              <span className="tour-n">{String(n + 1).padStart(2, "0")}</span>{x.label}
++              {n === i && !reduce && <motion.span layoutId="tour-mark" className="tour-mark" transition={{ duration: DUR.base, ease: EASE }} />}
++            </button>
++          ))}
++        </div>
++        {!reduce && <button className="tour-play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause tour" : "Play tour"}><Icon playing={playing} />{playing ? "Pause" : "Play"}</button>}
++      </div>
++      <div className="tour-stage" id="tour-panel" role="tabpanel" aria-label={s.label}>
++        <AnimatePresence initial={false}>
++          <motion.div key={s.key} className="tour-slide"
++            initial={reduce ? false : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -24 }}
++            transition={{ duration: DUR.slow, ease: EASE }}>
++            {s.node}
++          </motion.div>
++        </AnimatePresence>
+       </div>
+-      <div key={s.key} style={{ animation: "rise .4s ease both" }}>{s.node}</div>
+-      <p style={{ marginTop: 14, fontWeight: 600, color: "var(--c-navy-700)" }}>{s.caption}</p>
+-      <div style={{ height: 3, background: "var(--c-line)", borderRadius: 3, marginTop: 10, overflow: "hidden" }} aria-hidden>
+-        <div key={`${i}-${playing}`} style={{ height: "100%", background: "var(--c-blue-600)", width: playing ? "100%" : "0%", transition: playing ? `width ${seconds}s linear` : "none", animation: "none" }} ref={(el) => { if (el && playing) { el.style.width = "0%"; requestAnimationFrame(() => requestAnimationFrame(() => { el.style.width = "100%"; })); } }} />
++      <div className="tour-foot">
++        <AnimatePresence mode="wait" initial={false}>
++          <motion.p key={s.key} className="tour-cap" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: DUR.fast, ease: EASE }}>{s.caption}</motion.p>
++        </AnimatePresence>
++        <div className="tour-track" aria-hidden>
++          <motion.div key={`${i}-${running}`} className="tour-fill"
++            initial={{ scaleX: 0 }} animate={{ scaleX: running ? 1 : 0 }} transition={{ duration: running ? seconds : 0, ease: "linear" }} />
++        </div>
+       </div>
+     </div>
+   );
+diff --git a/synthenei/apps/lawsome-landing/src/components/hero/HeroScene.tsx b/synthenei/apps/lawsome-landing/src/components/hero/HeroScene.tsx
+new file mode 100644
+index 0000000..3dc9ae5
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/hero/HeroScene.tsx
+@@ -0,0 +1,132 @@
++"use client";
++// The one WebGL moment on the page: a line map of Tamil Nadu with six district offices.
++// Thin links light one after another, like hearings moving across a firm's offices.
++// Loaded lazily (desktop only) by HeroStage; everything here is client-only.
++import { Canvas, useFrame, useThree } from "@react-three/fiber";
++import { useMemo, useRef, type RefObject } from "react";
++import * as THREE from "three";
++import type { MotionValue } from "motion/react";
++import { DISTRICTS, LINKS, ROUTE, TN_OUTLINE, project } from "./tnMap";
++
++const COL = { line: new THREE.Color("#3b61e8"), hi: new THREE.Color("#a9bcff"), white: new THREE.Color("#ffffff"), fill: new THREE.Color("#0f1b3f"), grid: new THREE.Color("#2a3c78") };
++const SEG = 1.6; // seconds per hearing link; the route plays once (~10s), then the map rests
++const ease = (t: number) => 1 - Math.pow(1 - t, 3);
++
++type Props = { replay: number; px: MotionValue<number>; py: MotionValue<number>; settle: MotionValue<number>; active: boolean; onReady: () => void; labels: RefObject<HTMLDivElement | null> };
++
++const pos = Object.fromEntries(DISTRICTS.map((d) => [d.key, project(d.lat, d.lon)])) as Record<string, [number, number]>;
++
++function lineObj(points: [number, number][], color: THREE.Color, opacity: number, loop = false) {
++  const g = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
++  const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
++  return loop ? new THREE.LineLoop(g, m) : new THREE.Line(g, m);
++}
++
++function MapGroup({ px, py, settle, onReady, labels, replay }: Omit<Props, "active">) {
++  const t0 = useRef<number | null>(null);
++  const lastReplay = useRef(replay);
++  const group = useRef<THREE.Group>(null);
++  const ready = useRef(false);
++  const { camera, size } = useThree();
++
++  const outline = useMemo(() => TN_OUTLINE.map(([la, lo]) => project(la, lo)), []);
++  const statics = useMemo(() => {
++    const objs: THREE.Object3D[] = [];
++    // graticule: half-degree hairlines, clipped to a rectangle around the state
++    for (let lo = 76; lo <= 80.6; lo += 0.5) objs.push(lineObj([project(7.8, lo), project(13.8, lo)], COL.grid, 0.35));
++    for (let la = 8; la <= 13.8; la += 0.5) objs.push(lineObj([project(la, 76), project(la, 80.6)], COL.grid, 0.35));
++    const shape = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
++    const fill = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: COL.fill, transparent: true, opacity: 0.85, depthWrite: false }));
++    fill.position.z = -0.01;
++    objs.push(fill, lineObj(outline, COL.line, 0.75, true));
++    return objs;
++  }, [outline]);
++
++  const links = useMemo(() => LINKS.map(([a, b]) => ({ a, b, obj: lineObj([pos[a], pos[b]], COL.line, 0.2) as THREE.Line })), []);
++  const nodeGeo = useMemo(() => new THREE.CircleGeometry(0.06, 24), []);
++  const ringGeo = useMemo(() => new THREE.RingGeometry(0.1, 0.115, 40), []);
++  const nodes = useMemo(() => DISTRICTS.map(() => ({
++    dot: new THREE.Mesh(nodeGeo, new THREE.MeshBasicMaterial({ color: COL.white, transparent: true, opacity: 0.85 })),
++    ring: new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: COL.hi, transparent: true, opacity: 0, depthWrite: false })),
++  })), [nodeGeo, ringGeo]);
++  const traveller = useMemo(() => new THREE.Mesh(new THREE.CircleGeometry(0.045, 20), new THREE.MeshBasicMaterial({ color: COL.hi })), []);
++  const v = useMemo(() => new THREE.Vector3(), []);
++
++  useFrame((state) => {
++    const g = group.current; if (!g) return;
++    const now = state.clock.getElapsedTime();
++    if (t0.current === null || lastReplay.current !== replay) { t0.current = now; lastReplay.current = replay; }
++    const t = now - t0.current;
++    const n = ROUTE.length, done = t >= n * SEG;
++    // pose: tilted back like a map on a desk, follows the pointer a little, flattens as the page scrolls
++    const s = settle.get();
++    g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, -0.5 + s * 0.22 - py.get() * 0.07, 0.08);
++    g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, px.get() * 0.12, 0.08);
++    g.rotation.z = -0.06;
++
++    const cycle = done ? n - 1 + 0.999 : t / SEG, idx = Math.floor(cycle), p = ease(cycle % 1);
++    const [a, b] = ROUTE[idx];
++    traveller.visible = !done;
++    traveller.position.set(pos[a][0] + (pos[b][0] - pos[a][0]) * p, pos[a][1] + (pos[b][1] - pos[a][1]) * p, 0.01);
++    for (const l of links) {
++      const r = ROUTE.findIndex(([x, y]) => x === l.a && y === l.b);
++      let o = 0.16;
++      if (r >= 0 && r <= idx) {
++        const age = idx - r + (cycle % 1); // segments since this link started
++        o += age < 1 ? 0.6 * p : Math.max(0.22, 0.6 - (age - 1) * 0.3);
++      }
++      if (done) o = Math.max(0.16, o - Math.min(1, (t - n * SEG) / 1.5) * (o - (r >= 0 ? 0.38 : 0.16)));
++      (l.obj.material as THREE.LineBasicMaterial).opacity = o;
++    }
++    const arrivedAt = (k: string) => { // seconds since the traveller last reached node k
++      const r = ROUTE.findIndex(([, y]) => y === k); if (r < 0 || done) return 99;
++      const since = idx - r - 1 + (cycle % 1); return since < 0 ? 99 : since * SEG;
++    };
++    const el = labels.current;
++    DISTRICTS.forEach((d, i) => {
++      const { dot, ring } = nodes[i];
++      const since = arrivedAt(d.key);
++      // arrival: a fixed ring fades in and out over ~0.6s; no expanding pulse
++      (ring.material as THREE.MeshBasicMaterial).opacity = since < 0.6 ? 0.8 * Math.sin((since / 0.6) * Math.PI) : 0;
++      (dot.material as THREE.MeshBasicMaterial).opacity = since < SEG ? 1 : 0.75;
++      if (el) {
++        const lab = el.children[i] as HTMLElement | undefined;
++        if (lab) {
++          v.set(0, 0, 0).applyMatrix4(dot.matrixWorld).project(camera);
++          lab.style.transform = `translate3d(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px, 0)`;
++          lab.dataset.on = since < SEG ? "1" : "0";
++        }
++      }
++    });
++    if (!ready.current) { ready.current = true; onReady(); }
++  });
++
++  return (
++    <group ref={group} position={[0.15, -0.1, 0]}>
++      {statics.map((o, i) => <primitive key={`s${i}`} object={o} />)}
++      {links.map((l, i) => <primitive key={`l${i}`} object={l.obj} />)}
++      <primitive object={traveller} />
++      {DISTRICTS.map((d, i) => (
++        <group key={d.key} position={[pos[d.key][0], pos[d.key][1], 0.02]}>
++          <primitive object={nodes[i].ring} />
++          <primitive object={nodes[i].dot} />
++        </group>
++      ))}
++    </group>
++  );
++}
++
++export default function HeroScene({ active, ...rest }: Props) {
++  return (
++    <Canvas
++      dpr={[1, 1.5]}
++      frameloop={active ? "always" : "never"}
++      camera={{ fov: 30, position: [0, 0, 13.5], near: 0.1, far: 50 }}
++      gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
++      style={{ position: "absolute", inset: 0 }}
++      aria-hidden
++    >
++      <MapGroup {...rest} />
++    </Canvas>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/hero/HeroStage.tsx b/synthenei/apps/lawsome-landing/src/components/hero/HeroStage.tsx
+new file mode 100644
+index 0000000..d3db4ea
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/hero/HeroStage.tsx
+@@ -0,0 +1,92 @@
++"use client";
++import dynamic from "next/dynamic";
++import { useEffect, useRef, useState, type ReactNode } from "react";
++import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
++import { MapFallback } from "./MapFallback";
++import { DISTRICTS } from "./tnMap";
++
++// three.js + R3F live in their own chunk, requested only when the device qualifies.
++const HeroScene = dynamic(() => import("./HeroScene"), { ssr: false });
++
++function canUse3D() {
++  try {
++    if (window.innerWidth < 640) return false;
++    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
++    const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
++    if (nav.connection?.saveData) return false;
++    if ((nav.deviceMemory ?? 8) < 4 || (nav.hardwareConcurrency ?? 8) < 4) return false;
++    const c = document.createElement("canvas");
++    return !!(c.getContext("webgl2") || c.getContext("webgl"));
++  } catch { return false; }
++}
++
++const MAP_LABEL = "Line map of Tamil Nadu with six district offices (Chennai, Salem, Coimbatore, Trichy, Madurai, Tirunelveli). Links between them light in sequence, like hearings moving across a firm's offices. Illustrative.";
++
++export function HeroStage({ copy, screen }: { copy: ReactNode; screen: ReactNode }) {
++  const reduce = useReducedMotion();
++  const mapRef = useRef<HTMLDivElement>(null);
++  const labels = useRef<HTMLDivElement>(null);
++  const [use3D, setUse3D] = useState(false);
++  const [ready, setReady] = useState(false);
++  const [visible, setVisible] = useState(true);
++
++  // pointer, normalised to -1..1 and smoothed (no overshoot)
++  const rawX = useMotionValue(0), rawY = useMotionValue(0);
++  const px = useSpring(rawX, { stiffness: 50, damping: 20, mass: 1 });
++  const py = useSpring(rawY, { stiffness: 50, damping: 20, mass: 1 });
++  // the map flattens a little as the page scrolls
++  const { scrollY } = useScroll();
++  const settle = useTransform(scrollY, [0, 520], [0, 1], { clamp: true });
++  // product screen: small tilt (6deg) that is flat by the time it reaches the fold; no pointer parallax
++  const rotateX = useTransform(scrollY, [0, 360], [6, 0], { clamp: true });
++  const scale = useTransform(scrollY, [0, 360], [0.98, 1], { clamp: true });
++  const [replay, setReplay] = useState(0);
++  const lastPlay = useRef(0);
++
++  useEffect(() => {
++    if (reduce) return;
++    const fine = window.matchMedia("(pointer: fine)").matches;
++    const move = (e: PointerEvent) => { rawX.set((e.clientX / window.innerWidth) * 2 - 1); rawY.set((e.clientY / window.innerHeight) * 2 - 1); };
++    if (fine) window.addEventListener("pointermove", move, { passive: true });
++    // load the 3D chunk after first paint, when the browser is idle
++    let idle = 0;
++    const start = () => {
++      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
++      const go = () => { if (canUse3D()) { lastPlay.current = Date.now(); setUse3D(true); } };
++      idle = ric ? ric(go, { timeout: 1200 }) : window.setTimeout(go, 300);
++    };
++    if (document.readyState === "complete") start(); else window.addEventListener("load", start, { once: true });
++    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("load", start); window.clearTimeout(idle); };
++  }, [reduce, rawX, rawY]);
++
++  useEffect(() => { // pause rendering when the map is off-screen
++    const el = mapRef.current; if (!el || !use3D) return;
++    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: "80px" });
++    io.observe(el); return () => io.disconnect();
++  }, [use3D]);
++
++  return (
++    <section className="hero" aria-labelledby="hero-title">
++      <div className="hero-grid-bg" aria-hidden />
++      <div className="wrap hero-top">
++        <div className="hero-copy">{copy}</div>
++        <div className="hero-map" ref={mapRef} role="img" aria-label={MAP_LABEL} data-ready={ready ? "1" : "0"} onPointerEnter={() => { const now = Date.now(); if (now - lastPlay.current > 11000) { lastPlay.current = now; setReplay((r) => r + 1); } }}>
++          <div className="map-fallback"><MapFallback /></div>
++          {use3D && (
++            <div className="map-3d">
++              <HeroScene px={px} py={py} settle={settle} active={visible} replay={replay} onReady={() => setReady(true)} labels={labels} />
++              <div className="map-labels" ref={labels} aria-hidden>
++                {DISTRICTS.map((d) => (<div className={`mlabel${d.key === "chennai" ? " left" : ""}`} key={d.key}><b>{d.name}</b><span>{d.court} · {d.time}</span></div>))}
++              </div>
++            </div>
++          )}
++          <span className="map-note">Offices &amp; hearings across Tamil Nadu · illustrative</span>
++        </div>
++      </div>
++      <div className="wrap hero-stage">
++        <motion.div className="hero-screen" style={reduce ? undefined : { rotateX, scale }}>{screen}</motion.div>
++        <span className="sample-tag">Sample data</span>
++      </div>
++    </section>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/hero/MapFallback.tsx b/synthenei/apps/lawsome-landing/src/components/hero/MapFallback.tsx
+new file mode 100644
+index 0000000..1cbde65
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/hero/MapFallback.tsx
+@@ -0,0 +1,27 @@
++// Static SVG version of the hero map: shown before WebGL loads, and instead of it on
++// reduced motion, no WebGL or low-power devices. Same geometry as the 3D scene.
++import { DISTRICTS, LINKS, TN_OUTLINE, project } from "./tnMap";
++
++const S = 64; // px per degree
++const xy = (lat: number, lon: number) => { const [x, y] = project(lat, lon); return [x * S, -y * S] as const; };
++const pos = Object.fromEntries(DISTRICTS.map((d) => [d.key, xy(d.lat, d.lon)]));
++
++export function MapFallback() {
++  const outline = TN_OUTLINE.map(([la, lo]) => xy(la, lo).join(",")).join(" ");
++  const grid: string[] = [];
++  for (let lo = 76; lo <= 80.6; lo += 0.5) { const a = xy(7.8, lo), b = xy(13.8, lo); grid.push(`M${a[0]},${a[1]}L${b[0]},${b[1]}`); }
++  for (let la = 8; la <= 13.8; la += 0.5) { const a = xy(la, 76), b = xy(la, 80.6); grid.push(`M${a[0]},${a[1]}L${b[0]},${b[1]}`); }
++  return (
++    <svg className="map-svg" viewBox="-170 -210 340 420" aria-hidden>
++      <path d={grid.join("")} stroke="#2a3c78" strokeOpacity=".35" strokeWidth=".6" fill="none" />
++      <polygon points={outline} fill="#0f1b3f" fillOpacity=".85" stroke="#3b61e8" strokeOpacity=".75" strokeWidth="1" />
++      {LINKS.map(([a, b]) => <line key={a + b} x1={pos[a][0]} y1={pos[a][1]} x2={pos[b][0]} y2={pos[b][1]} stroke="#3b61e8" strokeOpacity=".35" strokeWidth=".8" />)}
++      {DISTRICTS.map((d) => (
++        <g key={d.key} transform={`translate(${pos[d.key][0]},${pos[d.key][1]})`}>
++          <circle r="3.6" fill="#fff" fillOpacity=".85" />
++          <text x={d.key === "chennai" ? -8 : 8} y="3.5" textAnchor={d.key === "chennai" ? "end" : "start"} fontSize="10" fill="#b8c2e6" fontWeight="600">{d.name}</text>
++        </g>
++      ))}
++    </svg>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/hero/tnMap.ts b/synthenei/apps/lawsome-landing/src/components/hero/tnMap.ts
+new file mode 100644
+index 0000000..07a8358
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/hero/tnMap.ts
+@@ -0,0 +1,33 @@
++// Simplified outline of Tamil Nadu (lat, lon), hand-traced at low resolution for a decorative line map.
++// Not survey-accurate: used only as a quiet backdrop for the hero.
++export const TN_OUTLINE: [number, number][] = [
++  [13.45, 80.3], [13.08, 80.29], [12.62, 80.19], [12.2, 80.02], [11.93, 79.83], [11.75, 79.77], [11.35, 79.8],
++  [10.77, 79.84], [10.3, 79.86], [10.12, 79.4], [9.74, 79.02], [9.3, 78.95], [9.15, 78.6], [8.79, 78.13],
++  [8.5, 78.12], [8.2, 77.75], [8.08, 77.54], [8.3, 77.2], [8.6, 77.15], [8.97, 77.25], [9.5, 77.2],
++  [9.9, 77.25], [10.2, 77.0], [10.4, 76.85], [10.75, 76.85], [10.9, 76.7], [11.2, 76.45], [11.6, 76.25],
++  [11.75, 76.5], [11.65, 76.9], [11.9, 77.1], [12.0, 77.5], [12.2, 77.65], [12.6, 77.65], [12.85, 77.95],
++  [12.75, 78.25], [12.6, 78.55], [12.85, 78.8], [13.05, 78.9], [13.2, 79.2], [13.25, 79.5], [13.55, 79.85],
++  [13.5, 80.15],
++];
++
++export type District = { key: string; name: string; lat: number; lon: number; court: string; time: string; dx?: number };
++// Six district nodes. Times are illustrative (sample data), matching the page's synthetic firm.
++export const DISTRICTS: District[] = [
++  { key: "chennai", name: "Chennai", lat: 13.08, lon: 80.27, court: "Commercial Court", time: "10:30" },
++  { key: "salem", name: "Salem", lat: 11.66, lon: 78.15, court: "District Court", time: "11:15" },
++  { key: "coimbatore", name: "Coimbatore", lat: 11.02, lon: 76.96, court: "District Court", time: "12:00" },
++  { key: "trichy", name: "Trichy", lat: 10.8, lon: 78.69, court: "District Court", time: "14:00" },
++  { key: "madurai", name: "Madurai", lat: 9.93, lon: 78.12, court: "Madurai Bench, HC", time: "11:00" },
++  { key: "tirunelveli", name: "Tirunelveli", lat: 8.71, lon: 77.76, court: "District Court", time: "15:30" },
++];
++
++// Thin connections between offices; the scene lights them one after another.
++export const ROUTE: [string, string][] = [
++  ["chennai", "salem"], ["salem", "coimbatore"], ["coimbatore", "madurai"], ["madurai", "tirunelveli"],
++  ["tirunelveli", "trichy"], ["trichy", "chennai"],
++];
++export const LINKS: [string, string][] = [...ROUTE, ["salem", "trichy"], ["trichy", "madurai"]];
++
++const C_LAT = 10.8, C_LON = 78.25, K = Math.cos((C_LAT * Math.PI) / 180);
++/** Equirectangular projection to scene units (1 unit = 1 degree latitude). */
++export const project = (lat: number, lon: number): [number, number] => [(lon - C_LON) * K, lat - C_LAT];
+diff --git a/synthenei/apps/lawsome-landing/src/components/motion/CountUp.tsx b/synthenei/apps/lawsome-landing/src/components/motion/CountUp.tsx
+new file mode 100644
+index 0000000..4ab641b
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/motion/CountUp.tsx
+@@ -0,0 +1,28 @@
++"use client";
++import { animate, useInView, useReducedMotion } from "motion/react";
++import { useEffect, useRef, useState } from "react";
++import { EASE } from "./ease";
++
++/**
++ * Renders the final number on the server (no-JS, screenshots and video stay correct).
++ * If the number is below the fold at load, it resets to 0 and counts up once it comes into view.
++ */
++export function CountUp({ value }: { value: number }) {
++  const ref = useRef<HTMLSpanElement>(null);
++  const reduce = useReducedMotion();
++  const inView = useInView(ref, { once: true, margin: "0px 0px -10% 0px" });
++  const [n, setN] = useState(value);
++  const armed = useRef(false);
++  useEffect(() => {
++    const el = ref.current; if (!el || reduce) return;
++    const r = el.getBoundingClientRect();
++    if (r.top > window.innerHeight) { armed.current = true; setN(0); }
++  }, [reduce]);
++  useEffect(() => {
++    if (!inView || !armed.current) return;
++    armed.current = false;
++    const c = animate(0, value, { duration: 0.9, ease: EASE, onUpdate: (v) => setN(Math.round(v)) });
++    return () => c.stop();
++  }, [inView, value]);
++  return <span ref={ref} style={{ fontVariantNumeric: "tabular-nums" }}>{n}</span>;
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/motion/Reveal.tsx b/synthenei/apps/lawsome-landing/src/components/motion/Reveal.tsx
+new file mode 100644
+index 0000000..b861498
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/motion/Reveal.tsx
+@@ -0,0 +1,33 @@
++"use client";
++import { motion, useReducedMotion, type Variants } from "motion/react";
++import type { ReactNode } from "react";
++import { DUR, EASE } from "./ease";
++
++const item: Variants = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE } } };
++const group: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
++
++/** Fades/rises its children in once when scrolled into view. Children wrapped in <RevealItem> stagger. */
++export function Reveal({ children, className, as = "div" }: { children: ReactNode; className?: string; as?: "div" | "ul" }) {
++  const reduce = useReducedMotion();
++  const M = as === "ul" ? motion.ul : motion.div;
++  if (reduce) { const T = as; return <T className={className}>{children}</T>; }
++  return <M className={className} variants={group} initial="hidden" whileInView="show" viewport={{ once: true, margin: "0px 0px -12% 0px" }}>{children}</M>;
++}
++
++export function RevealItem({ children, className, as = "div" }: { children: ReactNode; className?: string; as?: "div" | "li" }) {
++  const reduce = useReducedMotion();
++  const M = as === "li" ? motion.li : motion.div;
++  if (reduce) { const T = as; return <T className={className}>{children}</T>; }
++  return <M className={className} variants={item}>{children}</M>;
++}
++
++/** Pillar card: reveals with the group, lifts 4px on hover. */
++export function LiftCard({ children, className }: { children: ReactNode; className?: string }) {
++  const reduce = useReducedMotion();
++  if (reduce) return <div className={className}>{children}</div>;
++  return (
++    <motion.div className={className} variants={item} whileHover={{ y: -4, transition: { duration: DUR.fast, ease: EASE } }}>
++      {children}
++    </motion.div>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/motion/TiltFrame.tsx b/synthenei/apps/lawsome-landing/src/components/motion/TiltFrame.tsx
+new file mode 100644
+index 0000000..2f1b3f7
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/motion/TiltFrame.tsx
+@@ -0,0 +1,18 @@
++"use client";
++import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
++import { useRef, type ReactNode } from "react";
++
++/** Product screen that slides in tilted back and settles flat as it reaches the middle of the viewport. */
++export function TiltFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
++  const ref = useRef<HTMLDivElement>(null);
++  const reduce = useReducedMotion();
++  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "start 0.35"] });
++  const rotateX = useTransform(scrollYProgress, [0, 1], [10, 0]);
++  const y = useTransform(scrollYProgress, [0, 1], [48, 0]);
++  const scale = useTransform(scrollYProgress, [0, 1], [0.96, 1]);
++  return (
++    <div ref={ref} className={`tilt ${className}`}>
++      <motion.div style={reduce ? undefined : { rotateX, y, scale, transformOrigin: "50% 0%" }}>{children}</motion.div>
++    </div>
++  );
++}
+diff --git a/synthenei/apps/lawsome-landing/src/components/motion/ease.ts b/synthenei/apps/lawsome-landing/src/components/motion/ease.ts
+new file mode 100644
+index 0000000..9d3031a
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/components/motion/ease.ts
+@@ -0,0 +1,3 @@
++// One motion language for the page: ease-out, no bounce, 200–600ms.
++export const EASE = [0.16, 1, 0.3, 1] as const;
++export const DUR = { fast: 0.24, base: 0.45, slow: 0.6 } as const;
+diff --git a/synthenei/apps/lawsome-landing/src/components/screens/Screens.tsx b/synthenei/apps/lawsome-landing/src/components/screens/Screens.tsx
+index 47af610..a16d0a7 100644
+--- a/synthenei/apps/lawsome-landing/src/components/screens/Screens.tsx
++++ b/synthenei/apps/lawsome-landing/src/components/screens/Screens.tsx
+@@ -1,4 +1,5 @@
+ import { AppFrame } from "./AppFrame";
++import { CountUp } from "../motion/CountUp";
+ import {
+   firm, stats, statusBars, growth, months, upcomingHearings, sites, cases,
+   calendarEvents, hearingsList, team, savedCases,
+@@ -26,10 +27,10 @@ export function DashboardScreen() {
+         <div className="qa">+ Quick actions</div>
+       </div>
+       <div className="cards4">
+-        <div className="c stat"><div className="ico">▤</div><strong>{stats.total}</strong><span>Total cases · {stats.thisMonth} this month</span></div>
+-        <div className="c stat"><div className="ico">⚖</div><strong>{stats.upcoming}</strong><span>Upcoming hearings</span></div>
+-        <div className="c stat"><div className="ico">✓</div><strong>{stats.resolved}</strong><span>Resolved cases</span></div>
+-        <div className="c stat"><div className="ico">☺</div><strong>{stats.team}</strong><span>Lawyers &amp; staff · {stats.sites} sites</span></div>
++        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M2 2.5h8M2 6h8M2 9.5h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></div><strong><CountUp value={stats.total} /></strong><span>Total cases · {stats.thisMonth} this month</span></div>
++        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M6 1.5v9M3 10.5h6M2 4h8M2 4 .9 7h2.2L2 4Zm8 0-1.1 3h2.2L10 4Z" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" /></svg></div><strong><CountUp value={stats.upcoming} /></strong><span>Upcoming hearings</span></div>
++        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="m2.5 6.2 2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg></div><strong><CountUp value={stats.resolved} /></strong><span>Resolved cases</span></div>
++        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><circle cx="4.3" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.2" fill="none" /><path d="M1.3 10c.4-1.7 1.6-2.6 3-2.6s2.6.9 3 2.6M8 2.4a1.7 1.7 0 0 1 0 3.2M9 7.6c.9.4 1.5 1.2 1.7 2.4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" /></svg></div><strong><CountUp value={stats.team} /></strong><span>Lawyers &amp; staff · {stats.sites} sites</span></div>
+       </div>
+       <div className="cols">
+         <div>
+diff --git a/synthenei/apps/lawsome-landing/src/lib/submitLead.ts b/synthenei/apps/lawsome-landing/src/lib/submitLead.ts
+new file mode 100644
+index 0000000..17f96c0
+--- /dev/null
++++ b/synthenei/apps/lawsome-landing/src/lib/submitLead.ts
+@@ -0,0 +1,50 @@
++"use client";
++// Lead submission. Normal builds POST to /api/leads (server route). Static exports (STATIC_EXPORT=1)
++// have no server, so the browser calls the Supabase RPC public.submit_lead directly with the
++// anon/publishable key — the RPC is SECURITY DEFINER, validates, throttles and returns only the lead id.
++// Same payload mapping as src/app/api/leads/route.ts.
++
++export type LeadInput = { name: string; email: string; firm: string; role: string; phone: string; website: string; consent: boolean; utm: Record<string, string> };
++export type LeadResult = { ok: true } | { ok: false; status: number; errors?: Record<string, string> };
++
++const STATIC = process.env.NEXT_PUBLIC_STATIC_EXPORT === "1";
++const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
++
++async function viaRpc(b: LeadInput): Promise<LeadResult> {
++  if (b.website.trim()) return { ok: true }; // honeypot
++  if (b.consent !== true) return { ok: false, status: 422, errors: { consent: "Consent is required so we can contact you." } };
++  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
++  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
++  if (!url || !key) { console.info("[leads:demo-mode] no Supabase env in this static build; request not stored"); return { ok: true }; }
++  const utm: Record<string, string> = {};
++  for (const k of UTM_KEYS) if (typeof b.utm[k] === "string" && b.utm[k]) utm[k] = b.utm[k].slice(0, 120);
++  const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
++  if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`; // legacy JWT anon keys
++  const r = await fetch(`${url}/rest/v1/rpc/submit_lead`, {
++    method: "POST", headers,
++    body: JSON.stringify({
++      p_workspace: process.env.NEXT_PUBLIC_LEAD_WORKSPACE || "lawsome-tn",
++      p_full_name: b.name.trim().slice(0, 120),
++      p_email: b.email.trim().toLowerCase().slice(0, 160),
++      p_phone: b.phone.trim().slice(0, 30) || null,
++      p_firm_name: b.firm.trim().slice(0, 160),
++      p_role_title: b.role.slice(0, 80),
++      p_consent_followup: b.consent === true,
++      p_notice_version: process.env.NEXT_PUBLIC_PRIVACY_NOTICE_VERSION || "v1",
++      p_utm: utm,
++      p_landing_path: window.location.pathname.slice(0, 300),
++    }),
++  });
++  if (r.ok) return { ok: true };
++  const err = (await r.json().catch(() => ({}))) as { code?: string };
++  return { ok: false, status: err.code === "54000" ? 429 : err.code === "22023" ? 422 : 502 };
++}
++
++async function viaRoute(b: LeadInput): Promise<LeadResult> {
++  const r = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
++  const j = await r.json().catch(() => ({}));
++  if (r.ok) return { ok: true };
++  return { ok: false, status: r.status, errors: r.status === 422 ? j.errors : undefined };
++}
++
++export const submitLead = (b: LeadInput) => (STATIC ? viaRpc(b) : viaRoute(b));
+diff --git a/synthenei/apps/lawsome-landing/src/lib/track.ts b/synthenei/apps/lawsome-landing/src/lib/track.ts
+index cae44de..fbeacd9 100644
+--- a/synthenei/apps/lawsome-landing/src/lib/track.ts
++++ b/synthenei/apps/lawsome-landing/src/lib/track.ts
+@@ -28,6 +28,6 @@ export function track(event: TrackEvent, props: Record<string, unknown> = {}) {
+   const payload = { event, ...props, utm: captureUtm(), path: location.pathname, ts: Date.now() };
+   safe(() => {
+     (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push(payload);
+-    navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
++    if (process.env.NEXT_PUBLIC_STATIC_EXPORT !== "1") navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+   }, undefined);
+ }
+diff --git a/synthenei/apps/lawsome-landing/src/styles/globals.css b/synthenei/apps/lawsome-landing/src/styles/globals.css
+index 10857f7..da010b4 100644
+--- a/synthenei/apps/lawsome-landing/src/styles/globals.css
++++ b/synthenei/apps/lawsome-landing/src/styles/globals.css
+@@ -2,8 +2,8 @@
+ @import "./screens.css";
+ 
+ *{box-sizing:border-box}
+-html{scroll-behavior:smooth;scroll-padding-top:80px}
+-body{margin:0;background:var(--c-bg);color:var(--c-ink);font:16px/1.65 var(--font-sans);-webkit-font-smoothing:antialiased}
++html{scroll-behavior:smooth;scroll-padding-top:88px}
++body{margin:0;background:var(--c-bg);color:var(--c-ink);font:16px/1.6 var(--font-sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:clip}
+ a{color:inherit;text-decoration:none}
+ h1,h2,h3{font-family:var(--font-serif);margin:0;letter-spacing:-.02em;line-height:1.1;font-weight:600}
+ p{margin:0}
+@@ -13,86 +13,140 @@ button,input,select,textarea{font:inherit;color:inherit}
+ @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+ 
+ /* buttons */
+-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:.85rem 1.35rem;border-radius:12px;font-weight:700;font-size:.95rem;border:1px solid transparent;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
++.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border-radius:10px;font-weight:700;font-size:.9375rem;letter-spacing:-.005em;border:1px solid transparent;cursor:pointer;transition:transform .24s var(--ease-out),background .24s var(--ease-out),border-color .24s var(--ease-out)}
+ .btn:hover{transform:translateY(-1px)}
+-.btn-primary{background:var(--c-blue-600);color:#fff;box-shadow:0 8px 20px rgba(37,71,208,.32)}
++.btn-sm{height:40px;padding:0 16px;font-size:.875rem}
++.btn-primary{background:var(--c-blue-600);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(10,18,48,.3)}
+ .btn-primary:hover{background:var(--c-blue-500)}
+-.btn-ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
++.btn-ghost{background:transparent;border-color:rgba(255,255,255,.22);color:#fff}
++.btn-ghost:hover{border-color:rgba(255,255,255,.5)}
+ .btn-light{background:#fff;border-color:var(--c-line);color:var(--c-ink)}
+ .btn[disabled]{opacity:.6;cursor:progress;transform:none}
+ 
+ /* nav */
+-.nav{position:sticky;top:0;z-index:40;background:rgba(10,18,48,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+-.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
+-.logo{font-weight:800;letter-spacing:.14em;color:#fff;font-size:1.05rem}
++.nav{position:sticky;top:0;z-index:40;background:var(--c-navy-900);border-bottom:1px solid var(--c-hairline-dark)}
++.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:24px}
++.logo{font-weight:800;letter-spacing:.16em;color:#fff;font-size:1rem}
+ .logo i{color:var(--c-blue-500);font-style:normal}
+-.nav-links{display:flex;gap:26px;color:#b8c2e6;font-size:.88rem}
+-.nav-links a:hover{color:#fff}
+-@media(max-width:860px){.nav-links{display:none}}
++.nav-links{display:flex;gap:4px;color:#aeb8de;font-size:.8125rem;font-weight:600}
++.nav-links a{position:relative;padding:8px 10px;border-radius:8px;display:inline-flex;gap:6px;align-items:baseline;transition:color .24s var(--ease-out)}
++.nav-links a:hover,.nav-links a.on{color:#fff}
++.nav-n{font:500 .6875rem var(--font-mono);color:#5f6c9c}
++.nav-links a.on .nav-n{color:var(--c-blue-300)}
++.nav-mark{position:absolute;left:10px;right:10px;bottom:-12px;height:2px;background:var(--c-blue-500);border-radius:2px}
++.nav-right{display:flex;align-items:center;gap:16px}
++.nav-count{font:500 .75rem var(--font-mono);color:#7d89b8;min-width:48px;text-align:right}
++.nav-progress{position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--c-blue-300);transform-origin:0 50%;opacity:.8}
++@media(max-width:1080px){.nav-n,.nav-count{display:none}}
++@media(max-width:900px){.nav-links{display:none}}
+ 
+-/* hero */
+-.hero{background:radial-gradient(900px 480px at 85% -10%,rgba(59,97,232,.45),transparent 60%),radial-gradient(700px 400px at 0% 0%,rgba(251,217,201,.16),transparent 60%),var(--c-navy-900);color:#fff;padding:var(--sp-8) 0 0;overflow:hidden}
+-.eyebrow{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#9db3ff}
+-.hero h1{font-size:var(--fs-hero);margin:var(--sp-4) 0;max-width:19ch}
+-.hero h1 em{font-style:normal;color:#9db3ff}
+-.hero .lead{font-size:var(--fs-lead);color:#c4cdee;max-width:56ch}
+-.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:var(--sp-5)}
+-.hero-grid{display:grid;grid-template-columns:1fr;gap:var(--sp-6)}
+-.hero-shot{margin-top:var(--sp-7);transform:perspective(1800px) rotateX(4deg);transform-origin:top center}
+-.trust{display:flex;gap:18px 28px;flex-wrap:wrap;margin-top:var(--sp-5);color:#9ba7d3;font-size:.82rem}
+-.trust span::before{content:"✓ ";color:#7fe0b4}
++/* hero: dark navy, quiet hairline grid, the product screen straddles into the light page */
++.hero{position:relative;color:#fff;padding:96px 0 0;overflow:hidden;background:linear-gradient(var(--c-navy-900) 0,var(--c-navy-900) calc(100% - 240px),var(--c-bg) calc(100% - 240px))}
++.hero-grid-bg{position:absolute;inset:0 0 240px;pointer-events:none;background-image:linear-gradient(var(--c-hairline-dark) 1px,transparent 1px),linear-gradient(90deg,var(--c-hairline-dark) 1px,transparent 1px);background-size:64px 64px;background-position:center -1px;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.55),transparent 75%);mask-image:linear-gradient(to bottom,rgba(0,0,0,.55),transparent 75%)}
++.hero-top{position:relative;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:32px;align-items:center}
++.hero-copy{position:relative;z-index:2;padding-bottom:16px}
++.eyebrow{display:inline-block;font-size:var(--fs-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--c-blue-300)}
++.hero h1{font-size:var(--fs-hero);margin:24px 0;line-height:1.02;letter-spacing:-.03em;max-width:13ch;text-wrap:balance}
++.hero h1 em{font-style:normal;color:var(--c-blue-300)}
++.hero .lead{font-size:var(--fs-lead);line-height:1.6;color:var(--c-on-dark-2);max-width:52ch}
++.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
++.trust{list-style:none;padding:0;display:flex;flex-wrap:wrap;margin:32px 0 0;color:var(--c-on-dark-3);font-size:.8125rem;font-weight:500}
++.trust li{padding:0 16px;border-left:1px solid rgba(255,255,255,.14)}
++.trust li:first-child{padding-left:0;border-left:0}
++.hero-map{position:relative;height:520px;margin-right:-24px}
++.map-fallback,.map-3d{position:absolute;inset:0;transition:opacity .6s var(--ease-out)}
++.map-3d{opacity:0}
++.hero-map[data-ready="1"] .map-3d{opacity:1}
++.hero-map[data-ready="1"] .map-fallback{opacity:0}
++.map-svg{width:100%;height:100%;transform:perspective(1400px) rotateX(24deg) rotateZ(-3deg);transform-origin:50% 60%}
++.map-labels{position:absolute;inset:0;pointer-events:none}
++.mlabel{position:absolute;left:0;top:0;display:grid;gap:1px;white-space:nowrap;font-size:.6875rem;line-height:1.25;will-change:transform}
++.mlabel>*{transform:translate(12px,-50%)}
++.mlabel.left{text-align:right}.mlabel.left>*{transform:translate(calc(-100% - 12px),-50%)}
++.mlabel b{font-weight:700;color:#c9d3f5;transition:color .4s var(--ease-out)}
++.mlabel span{font-family:var(--font-mono);font-size:.625rem;color:var(--c-blue-300);opacity:0;transition:opacity .4s var(--ease-out)}
++.mlabel[data-on="1"] b{color:#fff}.mlabel[data-on="1"] span{opacity:1}
++.map-note{position:absolute;right:24px;bottom:8px;font:500 .6875rem var(--font-mono);color:#6f7cad;letter-spacing:.02em}
++.hero-stage{position:relative;margin-top:24px;perspective:2000px;perspective-origin:50% 0}
++.hero-screen{transform-origin:50% 0;will-change:transform}
++.hero-screen .app{box-shadow:0 40px 100px rgba(4,8,24,.45),0 2px 6px rgba(4,8,24,.25),0 0 0 1px rgba(255,255,255,.06)}
++.sample-tag{position:absolute;right:12px;top:-28px;font:500 .6875rem var(--font-mono);color:#7d89b8}
++@media(max-width:1023px){.hero-top{grid-template-columns:1fr}.hero-map{height:420px;margin:0;max-width:520px;width:100%;justify-self:center}}
++@media(max-width:639px){.hero{padding-top:56px}.hero-map{display:none}.hero-stage{margin-top:48px}.trust li{padding:0 12px}.trust{row-gap:8px}}
+ 
+ /* sections */
+-section.block{padding:var(--sp-8) 0}
++section.block{padding:128px 0}
+ section.block.alt{background:#fff;border-block:1px solid var(--c-line)}
+-.sec-head{max-width:720px;margin-bottom:var(--sp-6)}
++@media(max-width:760px){section.block{padding:80px 0}}
++.sec-head{max-width:720px;margin-bottom:48px}
++.sec-label{display:flex;align-items:center;gap:12px;margin-bottom:16px}
++.sec-n{font:500 .8125rem var(--font-mono);color:var(--c-ink-3)}
++.sec-rule{width:32px;height:1px;background:var(--c-line);flex:none}
+ .sec-head .eyebrow{color:var(--c-blue-600)}
+-.sec-head h2{font-size:var(--fs-h2);margin:.6rem 0 .8rem}
+-.sec-head p{color:var(--c-ink-2);font-size:var(--fs-lead)}
+-.msg{display:inline-block;margin-top:1rem;padding:.5rem .9rem;background:var(--c-blue-50);border:1px solid var(--c-blue-100);border-radius:var(--r-pill);font-weight:600;font-size:.9rem;color:var(--c-navy-700)}
++.sec-head h2{font-size:var(--fs-h2);margin:0 0 16px;line-height:1.08;letter-spacing:-.025em;text-wrap:balance}
++.sec-head p{color:var(--c-ink-2);font-size:var(--fs-lead);line-height:1.6}
++.sec-head p.msg{margin-top:24px;padding-left:16px;border-left:2px solid var(--c-blue-600);font-weight:600;font-size:.9375rem;color:var(--c-navy-700)}
++.split .sec-head{margin-bottom:0}
+ 
+-.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:-56px;position:relative;z-index:2}
+-.pillar{background:#fff;border:1px solid var(--c-line);border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--shadow-card)}
+-.pillar b{display:block;color:var(--c-blue-600);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.4rem}
+-.pillar h3{font-size:1.25rem;margin-bottom:.4rem}
+-.pillar p{color:var(--c-ink-2);font-size:.92rem}
+-@media(max-width:860px){.pillars{grid-template-columns:1fr;margin-top:24px}}
++.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-top:56px;position:relative;z-index:2}
++.pillar{background:#fff;border:1px solid var(--c-line);border-radius:16px;padding:24px;transition:box-shadow .3s var(--ease-out),border-color .3s var(--ease-out)}
++.pillar:hover{box-shadow:var(--shadow-card);border-color:#d3d9ea}
++.pillar b{display:block;color:var(--c-blue-600);font:500 .75rem var(--font-mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px}
++.pillar h3{font-size:1.375rem;margin-bottom:8px}
++.pillar p{color:var(--c-ink-2);font-size:.9375rem}
++@media(max-width:860px){.pillars{grid-template-columns:1fr;padding-top:40px}}
+ 
+-.split{display:grid;grid-template-columns:.8fr 1.2fr;gap:var(--sp-6);align-items:center}
+-.split.rev{grid-template-columns:1.2fr .8fr}
++.split{display:grid;grid-template-columns:.82fr 1.18fr;gap:64px;align-items:center}
++.split.rev{grid-template-columns:1.18fr .82fr}
+ .split.rev .copy{order:2}
+-@media(max-width:960px){.split,.split.rev{grid-template-columns:1fr}.split.rev .copy{order:0}}
+-.points{list-style:none;padding:0;margin:var(--sp-4) 0 0;display:grid;gap:.6rem}
+-.points li{padding-left:1.6rem;position:relative;color:var(--c-ink-2);font-size:.95rem}
+-.points li::before{content:"";position:absolute;left:0;top:.5em;width:10px;height:10px;border-radius:3px;background:var(--c-blue-500)}
+-.stack{display:grid;gap:18px}
+-.note{font-size:.78rem;color:var(--c-ink-3);margin-top:.75rem}
++@media(max-width:960px){.split,.split.rev{grid-template-columns:1fr;gap:40px}.split.rev .copy{order:0}}
++.points{list-style:none;padding:0;margin:32px 0 0;display:grid;gap:12px;border-top:1px solid var(--c-line);padding-top:24px}
++.points li{padding-left:24px;position:relative;color:var(--c-ink-2);font-size:.9375rem}
++.points li::before{content:"";position:absolute;left:0;top:.62em;width:12px;height:1px;background:var(--c-blue-600)}
++.stack{display:grid;gap:24px}
++.tilt{perspective:1800px}
++.note{font-size:.8125rem;color:var(--c-ink-3);margin-top:24px;line-height:1.55}
+ 
+-/* video-like tour */
+-.tourbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+-.tourbar button{border:1px solid var(--c-line);background:#fff;border-radius:var(--r-pill);padding:.4rem .9rem;font-size:.82rem;font-weight:600;cursor:pointer}
+-.tourbar button[aria-pressed=true]{background:var(--c-navy-800);color:#fff;border-color:var(--c-navy-800)}
++/* tour */
++.tourbar{display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid var(--c-line)}
++.tour-tabs{display:flex;gap:4px;flex-wrap:wrap}
++.tour-tabs button{position:relative;border:0;background:none;padding:12px 12px;font-size:.875rem;font-weight:600;color:var(--c-ink-2);cursor:pointer;display:inline-flex;gap:8px;align-items:baseline;transition:color .24s var(--ease-out)}
++.tour-tabs button:hover,.tour-tabs button[aria-selected=true]{color:var(--c-ink)}
++.tour-n{font:500 .75rem var(--font-mono);color:var(--c-ink-3)}
++.tour-mark{position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--c-blue-600)}
++.tour-tabs button[aria-selected=true] .tour-n{color:var(--c-blue-600)}
++.tour-play{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--c-line);background:#fff;border-radius:8px;height:32px;padding:0 12px;font-size:.8125rem;font-weight:600;cursor:pointer;margin-bottom:8px}
++.tour-stage{display:grid}
++.tour-slide{grid-area:1/1;min-width:0}
++.tour-foot{display:grid;grid-template-columns:1fr 200px;gap:24px;align-items:center;margin-top:24px}
++.tour-cap{font-weight:600;color:var(--c-navy-700)}
++.tour-track{height:2px;background:var(--c-line);border-radius:2px;overflow:hidden}
++.tour-fill{height:100%;background:var(--c-blue-600);transform-origin:0 50%}
++@media(max-width:640px){.tour-foot{grid-template-columns:1fr}.tour-tabs button{padding:10px 8px;font-size:.8125rem}}
+ 
+-/* footer + form */
+-.final{background:radial-gradient(800px 400px at 90% 0%,rgba(59,97,232,.5),transparent 60%),var(--c-navy-900);color:#fff;padding:var(--sp-8) 0}
+-.final-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-7);align-items:start}
+-@media(max-width:900px){.final-grid{grid-template-columns:1fr}}
+-.final h2{font-size:var(--fs-h2);margin:.7rem 0 1rem}
+-.final .lead{color:#c4cdee}
+-.form{background:#fff;color:var(--c-ink);border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--shadow-float);display:grid;gap:14px}
+-.form label{display:grid;gap:6px;font-size:.82rem;font-weight:700;color:var(--c-ink-2)}
+-.form input,.form select{border:1px solid var(--c-line);border-radius:10px;padding:.7rem .85rem;background:#fff;font-size:.95rem}
++/* final CTA + form */
++.final{position:relative;background:var(--c-navy-900);color:#fff;padding:128px 0;overflow:hidden}
++.final-grid{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
++@media(max-width:900px){.final-grid{grid-template-columns:1fr;gap:40px}.final{padding:80px 0}}
++.sec-label.on-dark .sec-rule{background:rgba(255,255,255,.2)}
++.final h2{font-size:var(--fs-h2);margin:0 0 24px;line-height:1.08;letter-spacing:-.025em;text-wrap:balance}
++.final .lead{color:var(--c-on-dark-2);font-size:var(--fs-lead)}
++.form{background:#fff;color:var(--c-ink);border-radius:16px;padding:32px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:grid;gap:16px}
++.form label{display:grid;gap:8px;font-size:.8125rem;font-weight:700;color:var(--c-ink-2)}
++.form input,.form select{height:44px;border:1px solid var(--c-line);border-radius:8px;padding:0 12px;background:#fff;font-size:.9375rem;transition:border-color .2s var(--ease-out),box-shadow .2s var(--ease-out)}
+ .form input:focus,.form select:focus{border-color:var(--c-blue-500);outline:none;box-shadow:0 0 0 3px var(--c-blue-100)}
+ .form .err{color:#b42318;font-size:.78rem;font-weight:500}
+-.form .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+-@media(max-width:560px){.form .two{grid-template-columns:1fr}}
+-.consent{display:flex!important;grid-template-columns:none!important;gap:10px!important;font-weight:500!important;font-size:.78rem!important;line-height:1.5}
+-.consent input{margin-top:3px}
+-.success{background:#fff;color:var(--c-ink);border-radius:var(--r-lg);padding:var(--sp-6);text-align:center;box-shadow:var(--shadow-float)}
+-.success h3{font-size:1.5rem;margin:.5rem 0}
+-.foot{padding-bottom:72px!important;background:var(--c-navy-900);color:#8f9bc7;font-size:.8rem;padding:24px 0;border-top:1px solid rgba(255,255,255,.08)}
++.form .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
++.form .btn{margin-top:8px}
++@media(max-width:560px){.form .two{grid-template-columns:1fr}.form{padding:24px}}
++.consent{display:flex!important;grid-template-columns:none!important;gap:12px!important;font-weight:500!important;font-size:.78rem!important;line-height:1.5}
++.consent input{height:auto!important;margin-top:3px}
++.success{background:#fff;color:var(--c-ink);border-radius:16px;padding:48px 32px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35)}
++.success-mark{color:var(--c-closed)}
++.success h3{font-size:1.5rem;margin:16px 0 8px}
++.foot{padding:24px 0 72px;background:var(--c-navy-900);color:var(--c-on-dark-3);font-size:.8125rem;border-top:1px solid var(--c-hairline-dark)}
+ .foot .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+-.consent-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;max-width:560px;background:var(--c-navy-800);color:#dbe3ff;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px 16px;font-size:.82rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow-float)}
+-.consent-banner .btn{padding:.5rem .9rem;font-size:.8rem}
++.consent-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;max-width:560px;background:var(--c-navy-800);color:#dbe3ff;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:16px;font-size:.8125rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow-float)}
++.consent-banner .btn{height:36px;padding:0 14px;font-size:.8125rem}
+ .sticky-cta{position:fixed;right:16px;bottom:16px;z-index:45}
+ @media(max-width:560px){.sticky-cta{left:16px}.sticky-cta .btn{width:100%}}
+diff --git a/synthenei/apps/lawsome-landing/src/styles/screens.css b/synthenei/apps/lawsome-landing/src/styles/screens.css
+index 1e00f79..2812226 100644
+--- a/synthenei/apps/lawsome-landing/src/styles/screens.css
++++ b/synthenei/apps/lawsome-landing/src/styles/screens.css
+@@ -1,7 +1,5 @@
+ /* Faithful replicas of the LAWSOME product UI, used as marketing screens. */
+-.app{display:grid;grid-template-columns:168px 1fr;min-height:420px;border-radius:16px;overflow:hidden;background:
+-  radial-gradient(500px 300px at 90% 90%,var(--glow-peach),transparent 70%),
+-  radial-gradient(500px 300px at 50% 100%,var(--glow-teal),transparent 70%),#fbfaf8;
++.app{display:grid;grid-template-columns:168px 1fr;min-height:420px;border-radius:16px;overflow:hidden;background:#fbfaf8;
+   border:1px solid rgba(15,23,42,.12);box-shadow:var(--shadow-float);font-size:11px;color:var(--c-ink);text-align:left}
+ .app .chrome{grid-column:1/-1;background:#dfe3ec;height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid #cdd3e2}
+ .app .chrome i{width:8px;height:8px;border-radius:50%;background:#b8bfd0;display:block}
+@@ -69,12 +67,13 @@
+ }
+ 
+ /* Ask Nidhi chat */
+-.nidhi{background:#fff;border:1px solid var(--c-line);border-radius:var(--r-lg);box-shadow:var(--shadow-float);overflow:hidden;min-height:620px}
++.nidhi{background:#fff;border:1px solid var(--c-line);border-radius:16px;box-shadow:var(--shadow-card);overflow:hidden;min-height:620px}
+ .nidhi-head{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--c-navy-800);color:#fff;font-weight:700}
+ .nidhi-head em{margin-left:auto;font-style:normal;font-size:.7rem;font-weight:600;color:#b8c2e6;border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:2px 9px}
+-.nidhi-dot{width:9px;height:9px;border-radius:50%;background:#7fe0b4;box-shadow:0 0 0 4px rgba(127,224,180,.2)}
++.nidhi-dot{width:8px;height:8px;border-radius:50%;background:#7fe0b4}
++.verify{font-size:.75rem;color:var(--c-ink-3);border-top:1px solid var(--c-line);padding-top:10px}
+ .nidhi-body{padding:16px;display:grid;gap:12px;align-content:start}
+-.bubble{padding:12px 14px;border-radius:14px;font-size:.88rem;max-width:92%;animation:rise .35s ease both}
++.bubble{padding:12px 14px;border-radius:14px;font-size:.88rem;max-width:92%}
+ .bubble.me{background:var(--c-blue-600);color:#fff;justify-self:end;border-bottom-right-radius:4px}
+ .bubble.bot{background:#f3f5fb;border:1px solid var(--c-line);border-bottom-left-radius:4px;display:grid;gap:12px}
+ .bubble.typing{display:flex;gap:4px;width:64px}.typing i{width:7px;height:7px;border-radius:50%;background:#98a2c3;animation:blink 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+diff --git a/synthenei/apps/lawsome-landing/src/styles/tokens.css b/synthenei/apps/lawsome-landing/src/styles/tokens.css
+index b418979..e523a76 100644
+--- a/synthenei/apps/lawsome-landing/src/styles/tokens.css
++++ b/synthenei/apps/lawsome-landing/src/styles/tokens.css
+@@ -29,16 +29,27 @@
+   --glow-sky: #d8e3fb;
+ 
+   /* type */
+-  --font-sans: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+-  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
+-  --fs-hero: clamp(2.4rem, 5.4vw, 4.2rem);
+-  --fs-h2: clamp(1.7rem, 3.2vw, 2.5rem);
+-  --fs-lead: clamp(1.02rem, 1.4vw, 1.18rem);
++  --font-sans: var(--ff-sans), "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
++  --font-serif: var(--ff-serif), "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
++  --fs-hero: clamp(2.5rem, 5vw, 4.25rem);
++  --fs-h2: clamp(2rem, 3.2vw, 2.875rem);
++  --fs-lead: clamp(1.0625rem, 1.3vw, 1.1875rem);
++  --fs-small: .875rem;
++  --fs-micro: .75rem;
++  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+ 
+   /* space / shape */
+   --sp-1: .25rem; --sp-2: .5rem; --sp-3: .75rem; --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem; --sp-7: 3rem; --sp-8: 5rem; --sp-9: 7rem;
+   --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+   --shadow-card: 0 1px 2px rgba(15, 23, 42, .06), 0 8px 24px rgba(15, 23, 42, .06);
+   --shadow-float: 0 30px 80px rgba(10, 18, 48, .28), 0 4px 14px rgba(10, 18, 48, .12);
+-  --wrap: 1180px;
++  --wrap: 1184px;
++  /* motion: ease-out, no bounce */
++  --ease-out: cubic-bezier(.16, 1, .3, 1);
++  /* dark surfaces */
++  --c-on-dark: #ffffff;
++  --c-on-dark-2: #c4cdee;
++  --c-on-dark-3: #8f9bc7;
++  --c-hairline-dark: rgba(255, 255, 255, .08);
++  --c-blue-300: #a9bcff;
+ }
