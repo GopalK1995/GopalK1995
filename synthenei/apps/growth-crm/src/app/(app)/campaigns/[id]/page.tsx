@@ -162,7 +162,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
       </PageHeader>
 
       <Stagger className="grid gap-4 lg:grid-cols-12">
-        <StaggerItem className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
+        <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-4 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
           <Kpi label="Spend" metric="M8" value={s.spend} format="inr" spark={spendW} foot={<>{c.channel === "email" ? "Mailchimp tool cost" : `${inr(ratio(s.spend, myDays.length))} per day average`}</>} />
           <Kpi label="Leads in CRM" metric="M9" value={s.leads} spark={leadsW} foot={<>CPL {s.spend ? inr(s.cpl) : "₹0 (no paid spend)"} · platform says {s.platformLeads}</>} />
           <Kpi label="Demos booked" metric="M10" value={s.demos} foot={<>{Number.isFinite(s.costPerDemo) && s.spend ? `${inr(s.costPerDemo)} per demo` : "no paid spend"} · {pct(s.leadToDemo, 0)} of leads</>} />
@@ -226,7 +226,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
         </StaggerItem>
         <StaggerItem className="flex flex-col gap-4 lg:col-span-5">
           <Card>
-            <CardHeader title="Creative" sub={c.creative.format} />
+            <CardHeader title="Creative" sub={c.creative.format} action={<StatusChip status="showcase" label="Concept copy, not sent" />} />
             <CardBody>
               <div className="rounded-sm border border-line bg-paper p-3">
                 <div className="text-[14px] font-semibold leading-5 text-ink">{c.creative.headline}</div>
