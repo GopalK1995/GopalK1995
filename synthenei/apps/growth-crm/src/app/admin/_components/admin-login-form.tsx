@@ -41,6 +41,7 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
   );
 
   return (
+    <>
     <form action={adminLogin} className="mt-6 space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
       <input type="hidden" name="email" value={email} />
@@ -56,7 +57,8 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
       </div>
       {demo && <p className="flex flex-wrap items-center gap-2 text-[12px] text-ink-3"><span className="rounded-[3px] border border-dashed border-warn/60 bg-warn-soft px-1.5 py-0.5 font-medium text-warn-ink">Demo — any 6-digit code</span>Not real MFA. Signs in as Vikram Anand (Synthan).</p>}
       <Verify />
-      <button type="button" onClick={() => setStep("password")} className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />Use a different account</button>
     </form>
+    <button type="button" onClick={() => setStep("password")} className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />Use a different account</button>
+    </>
   );
 }
