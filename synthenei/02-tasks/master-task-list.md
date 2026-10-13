@@ -31,7 +31,7 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 |---|---|---|---|---|---|
 | C1 | Build-vs-buy research | Compared custom vs Twenty vs Zoho/HubSpot; recommends thin custom Next.js + Supabase, kept replaceable | agent/Krishna | done | — |
 | C2 | Screens, metrics, data model | 12 MVP screens, metric formulas, 11-table schema, architecture, real-vs-mock integration map | agent/Krishna | done | — |
-| C3 | App scaffold with synthetic data | All 12 screens rendering on sample data | agent/Krishna | doing | — |
+| C3 | App scaffold with synthetic data | All 12 screens rendering on sample data | agent/Krishna | done | — |
 | C4 | Real lead + event ingestion | Landing page writes leads/events to CRM tables | Krishna | todo | Supabase project |
 | C5 | GA4 connector | Daily GA4 Data API job (sessions, sources, pages, devices, geo) | Krishna | todo | GA4 property access |
 | C6 | Campaign spend import | CSV import for LinkedIn / Meta / email metrics | Krishna | todo | Export samples from Venket |
@@ -57,7 +57,7 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 | E1 | Synthenei workspace | Folders for team, strategy, tasks, projects, questions, decisions, skills, data, external | Krishna | done | — |
 | E2 | Internal docs | Team roles, LAWSOME positioning + claims policy, landing runbook, demo script, email draft | Krishna | done | — |
 | E3 | External docs | Pitch doc, product one-pager, rules for what can be shared | Krishna | done | — |
-| E4 | Decision log + open questions refresh | Record today's LAWSOME decisions; refresh questions | Krishna | doing | — |
+| E4 | Decision log + open questions refresh | Growth-CRM decisions + 12 questions added (recommendation pending Krishna) | Krishna | done | — |
 | E5 | Privacy notice + consent wording | Legal review of draft (DPDP Act 2023) | Shaun (legal contact) | todo | Legal reviewer |
 | E6 | Advertising-rules check | Bar Council rules on marketing to advocates / referral programme | Shaun | todo | Legal reviewer |
 | E7 | Playbooks | Client onboarding, weekly status update, scraping rules | Shaun / Kiruba | todo | — |
