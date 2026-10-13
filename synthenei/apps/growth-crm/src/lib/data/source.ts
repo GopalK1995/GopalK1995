@@ -5,7 +5,13 @@ import type {
   Integration, Lead, PrivacyRequest, SyncRun, Task, TeamMember,
 } from "./types";
 import { datasetFor } from "./mock/generate-index";
-import type { Dataset } from "./types";
+import type { AiSettings, Dataset, Holiday } from "./types";
+
+const AI_OFF: AiSettings = { scoring: true, summaries: false, nextBestAction: false, replyDrafts: false, campaignDigest: false, askCrm: false };
+const TN_HOLIDAYS: Holiday[] = [
+  { date: "2026-10-20", name: "Ayudha Pooja" }, { date: "2026-10-21", name: "Vijayadasami" }, { date: "2026-11-08", name: "Deepavali" },
+  { date: "2026-12-25", name: "Christmas" }, { date: "2027-01-14", name: "Pongal" }, { date: "2027-01-15", name: "Thiruvalluvar Day" }, { date: "2027-01-16", name: "Uzhavar Thirunal" },
+];
 import type { Workspace } from "../tenancy";
 import { createSupabaseServerClient, supabaseConfigured } from "../supabase/server";
 
@@ -34,6 +40,10 @@ export interface DataSource {
   privacyRequests(): Promise<PrivacyRequest[]>;
   audit(): Promise<AuditEntry[]>;
   syncRuns(): Promise<SyncRun[]>;
+  /** Per-workspace AI feature switches (spec 9: all off by default; demo shows them as showcase). */
+  aiSettings(): Promise<AiSettings>;
+  /** Tenant holiday list entered by the Owner (not fetched). */
+  holidays(): Promise<Holiday[]>;
 }
 
 export const mockSource = (d: Dataset, workspaceId: string): DataSource => ({
@@ -59,6 +69,9 @@ export const mockSource = (d: Dataset, workspaceId: string): DataSource => ({
   privacyRequests: async () => d.privacyRequests,
   audit: async () => d.audit,
   syncRuns: async () => d.syncRuns,
+  // Demo tenant: rule-based scoring on; generative features shown as showcase (still "off" for real use).
+  aiSettings: async () => AI_OFF,
+  holidays: async () => TN_HOLIDAYS,
 });
 
 /**
@@ -72,7 +85,7 @@ function supabaseSource(ws: Workspace): DataSource {
   const read = async <T,>(table: string, map: (r: Record<string, unknown>) => T) => {
     const sb = await createSupabaseServerClient();
     if (!sb) throw new Error(`Supabase client unavailable (source: ${table})`);
-    const { data, error } = await sb.from(table).select("*").eq("workspace_id", ws.id).limit(5000);
+    const { data, error } = await sb.from(table).select("*").eq("workspace_id", ws.uuid).limit(5000);
     if (error) throw new Error(`Could not read ${table}: ${error.message}`);
     return (data ?? []).map(map);
   };
@@ -84,11 +97,12 @@ function supabaseSource(ws: Workspace): DataSource {
   const campaignDays = async (id?: string) => { const xs = await read<CampaignDay>("campaign_daily_metrics", camel); return id ? xs.filter((x) => x.campaignId === id) : xs; };
   return {
     kind: "supabase", workspaceId: ws.id,
-    notWired: ["team", "activities", "ga4", "conversations", "integrations", "consent", "privacyRequests", "audit", "syncRuns"],
+    notWired: ["team", "activities", "ga4", "conversations", "integrations", "consent", "privacyRequests", "audit", "syncRuns", "aiSettings", "holidays"],
     now: () => new Date().toISOString(),
     team: none, leads, lead: byId(leads), accounts, account: byId(accounts), deals, tasks, campaigns, campaign: byId(campaigns), campaignDays,
     activities: none, ga4: async () => ({ days: [], pages: [] }), conversations: none, integrations: none, integration: async () => null,
     consent: none, privacyRequests: none, audit: none, syncRuns: none,
+    aiSettings: async () => AI_OFF, holidays: async () => [],
   };
 }
 

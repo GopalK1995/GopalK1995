@@ -18,19 +18,21 @@ export const WA_TEMPLATES = [
 ];
 
 type Target = { leadName?: string; firm?: string };
-export function LogCallDialog({ t, trigger }: { t?: Target; trigger: ReactNode }) {
+/** Optional server action / handler; without it the dialog only shows a demo toast. */
+type Submit = (data: FormData) => void | Promise<void>;
+export function LogCallDialog({ onSubmit, t, trigger }: { t?: Target; trigger: ReactNode; onSubmit?: Submit }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent title="Log a call" description={t?.leadName ? `${t.leadName}${t.firm ? ` · ${t.firm}` : ""}` : "Pick the lead after logging if you called from your phone."}>
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); toast(`Call logged${t?.leadName ? ` for ${t.leadName}` : ""}`, "Demo: added to the timeline for this session only."); }}>
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); void onSubmit?.(new FormData(e.currentTarget)); toast(`Call logged${t?.leadName ? ` for ${t.leadName}` : ""}`, "Demo: added to the timeline for this session only."); }}>
           <div className="grid grid-cols-2 gap-3">
-            <Lbl t="Outcome"><select className={field} defaultValue="Connected">{["Connected", "No answer", "Busy", "Wrong number", "Call back later"].map((o) => <option key={o}>{o}</option>)}</select></Lbl>
-            <Lbl t="Duration (min)"><input className={field} type="number" min={0} defaultValue={6} /></Lbl>
+            <Lbl t="Outcome"><select name="outcome" className={field} defaultValue="Connected">{["Connected", "No answer", "Busy", "Wrong number", "Call back later"].map((o) => <option key={o}>{o}</option>)}</select></Lbl>
+            <Lbl t="Duration (min)"><input name="duration_min" className={field} type="number" min={0} defaultValue={6} /></Lbl>
           </div>
-          <Lbl t="Notes"><textarea className={field + " h-20 py-2"} defaultValue="Discussed cause-list alerts for Madras HC matters; partner wants Tamil walkthrough." /></Lbl>
-          <Lbl t="Next step date"><input className={field} type="date" defaultValue="2026-10-15" /></Lbl>
+          <Lbl t="Notes"><textarea name="notes" className={field + " h-20 py-2"} defaultValue="Discussed cause-list alerts for Madras HC matters; partner wants Tamil walkthrough." /></Lbl>
+          <Lbl t="Next step date"><input name="next_step_at" className={field} type="date" defaultValue="2026-10-15" /></Lbl>
           <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Save call</Button></div>
         </form>
       </DialogContent>
@@ -38,7 +40,7 @@ export function LogCallDialog({ t, trigger }: { t?: Target; trigger: ReactNode }
   );
 }
 
-export function WhatsAppDialog({ t, trigger, consent = true }: { t?: Target; trigger: ReactNode; consent?: boolean }) {
+export function WhatsAppDialog({ onSubmit, t, trigger, consent = true }: { t?: Target; trigger: ReactNode; consent?: boolean; onSubmit?: Submit }) {
   const [open, setOpen] = useState(false);
   const [tpl, setTpl] = useState(WA_TEMPLATES[0].id);
   const cur = WA_TEMPLATES.find((x) => x.id === tpl)!;
@@ -47,8 +49,8 @@ export function WhatsAppDialog({ t, trigger, consent = true }: { t?: Target; tri
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent title="Send WhatsApp template" description="Showcase: messages are simulated (status 'simulated'), nothing reaches WhatsApp.">
         {!consent ? <p className="rounded-sm bg-warn-soft px-3 py-2 text-[13px] text-warn-ink">This lead has not opted in to WhatsApp. Templates are blocked until consent is recorded.</p> : (
-          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); toast(`Template ${tpl} queued${t?.leadName ? ` to ${t.leadName}` : ""}`, "Showcase: simulated, not sent."); }}>
-            <Lbl t="Approved template"><select className={field} value={tpl} onChange={(e) => setTpl(e.target.value)}>{WA_TEMPLATES.map((x) => <option key={x.id} value={x.id}>{x.id} ({x.lang})</option>)}</select></Lbl>
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); void onSubmit?.(new FormData(e.currentTarget)); toast(`Template ${tpl} queued${t?.leadName ? ` to ${t.leadName}` : ""}`, "Showcase: simulated, not sent."); }}>
+            <Lbl t="Approved template"><select name="template" className={field} value={tpl} onChange={(e) => setTpl(e.target.value)}>{WA_TEMPLATES.map((x) => <option key={x.id} value={x.id}>{x.id} ({x.lang})</option>)}</select></Lbl>
             <div className="rounded-md border border-line bg-paper p-3 text-[13px] leading-5 text-ink-2">{cur.body.replace("{{1}}", t?.leadName?.split(" ")[0] ?? "Saravanan").replace("{{2}}", t?.firm ?? "Thu 15 Oct, 5:30 pm")}</div>
             <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Send (simulated)</Button></div>
           </form>
@@ -58,18 +60,18 @@ export function WhatsAppDialog({ t, trigger, consent = true }: { t?: Target; tri
   );
 }
 
-export function ScheduleDemoDialog({ t, trigger }: { t?: Target; trigger: ReactNode }) {
+export function ScheduleDemoDialog({ onSubmit, t, trigger }: { t?: Target; trigger: ReactNode; onSubmit?: Submit }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent title="Schedule a demo" description={t?.firm ? `${t.firm} · times in IST` : "Times in IST"}>
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); toast(`Demo scheduled${t?.firm ? ` with ${t.firm}` : ""}`, "Demo: task created and deal moved to Demo scheduled for this session only."); }}>
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); void onSubmit?.(new FormData(e.currentTarget)); toast(`Demo scheduled${t?.firm ? ` with ${t.firm}` : ""}`, "Demo: task created and deal moved to Demo scheduled for this session only."); }}>
           <div className="grid grid-cols-2 gap-3">
-            <Lbl t="Date"><input className={field} type="date" defaultValue="2026-10-15" /></Lbl>
-            <Lbl t="Time"><input className={field} type="time" defaultValue="17:30" /></Lbl>
-            <Lbl t="Duration"><select className={field}><option>30 min</option><option>45 min</option></select></Lbl>
-            <Lbl t="Mode"><select className={field}><option>Google Meet</option><option>In person at firm</option><option>Phone</option></select></Lbl>
+            <Lbl t="Date"><input name="date" className={field} type="date" defaultValue="2026-10-15" /></Lbl>
+            <Lbl t="Time"><input name="time" className={field} type="time" defaultValue="17:30" /></Lbl>
+            <Lbl t="Duration"><select name="duration" className={field}><option>30 min</option><option>45 min</option></select></Lbl>
+            <Lbl t="Mode"><select name="mode" className={field}><option>Google Meet</option><option>In person at firm</option><option>Phone</option></select></Lbl>
           </div>
           <p className="text-[12px] text-ink-3">Most partners prefer after 5:30 pm on weekdays or Saturday mornings (court hours 10:30–17:00).</p>
           <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Schedule</Button></div>

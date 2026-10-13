@@ -16,7 +16,7 @@ export function PageHeader({ title, sub, actions, eyebrow, children }: { title: 
 }
 
 export function ScoreChip({ score, className }: { score: number; className?: string }) {
-  const band = score >= 70 ? "hot" : score >= 45 ? "warm" : "cool";
+  const band = score >= 70 ? "hot" : score >= 40 ? "warm" : "cool"; // bands per spec M51: 0–39 / 40–69 / 70–100
   return (
     <span className={cn("inline-flex h-5 min-w-9 items-center justify-center gap-1 rounded-[4px] px-1.5 text-[11px] font-semibold num ring-1 ring-inset",
       band === "hot" ? "bg-accent text-accent-ink ring-accent" : band === "warm" ? "bg-accent-soft text-accent-strong ring-accent/25" : "bg-paper-2 text-ink-3 ring-line", className)}

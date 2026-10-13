@@ -72,14 +72,16 @@ const T = (first: string, firm: string, city: string): Tpl[] => [
 
 export function buildConversations(leads: Lead[], accounts: Account[], rng: Rng): Conversation[] {
   const picks = [
-    leads.find((l) => l.city === "Madurai" && l.channel === "whatsapp") ?? leads[3],
-    leads.find((l) => l.stage === "qualified" && l.city === "Coimbatore") ?? leads[8],
-    leads.find((l) => l.channel === "linkedin" && l.city === "Chennai") ?? leads[12],
-    leads.find((l) => l.stage === "demo_done") ?? leads[15],
-    leads.find((l) => l.stage === "proposal") ?? leads[20],
-    leads.find((l) => l.stage === "demo_booked") ?? leads[25],
+    leads.find((l) => l.city === "Madurai" && l.channel === "whatsapp") ?? leads[3 % leads.length],
+    leads.find((l) => l.stage === "qualified" && l.city === "Coimbatore") ?? leads[8 % leads.length],
+    leads.find((l) => l.channel === "linkedin" && l.city === "Chennai") ?? leads[12 % leads.length],
+    leads.find((l) => l.stage === "demo_done") ?? leads[15 % leads.length],
+    leads.find((l) => l.stage === "proposal") ?? leads[20 % leads.length],
+    leads.find((l) => l.stage === "demo_booked") ?? leads[25 % leads.length],
   ];
-  return picks.map((l, i) => {
+  // Small workspaces may pick the same lead twice: keep the first thread per lead.
+  const seen = new Set<string>();
+  return picks.map((l, i) => [l, i] as const).filter(([l]) => l && !seen.has(l.id) && seen.add(l.id)).map(([l, i]) => {
     const acc = accounts.find((a) => a.id === l.accountId)!;
     const t = T(l.name.split(" ")[0], acc.name, acc.city)[i];
     const messages: Message[] = t.msgs.map(([from, ago, body], j) => ({

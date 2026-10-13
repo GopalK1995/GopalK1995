@@ -70,11 +70,11 @@ function SupportBanner() {
 
 function DemoChip({ collapsed }: { collapsed?: boolean }) {
   const s = useSession();
-  if (collapsed) return <Tip content="Sample data: synthetic Tamil Nadu tenant. Nothing is sent." side="right"><span className="mx-auto block size-2 rounded-full bg-chart-2" /></Tip>;
+  if (collapsed) return <Tip content={`Sample data: synthetic ${s.tenant.name} · ${s.ws.name}. Nothing is sent.`} side="right"><span className="mx-auto block size-2 rounded-full bg-chart-2" /></Tip>;
   return (
     <div className="rounded-sm border border-navy-line px-3 py-2 text-[11px] leading-4 text-navy-ink-3">
       <div className="flex items-center gap-1.5 text-navy-ink-2"><span className="size-1.5 rounded-full bg-chart-2" aria-hidden />Sample data</div>
-      <div className="mt-0.5">Synthetic Tamil Nadu tenant{s.demo ? " · demo login" : ""}. Nothing is sent.</div>
+      <div className="mt-0.5">Synthetic {s.tenant.name} · {s.ws.name} data{s.demo ? " · demo login" : ""}. Nothing is sent.</div>
     </div>
   );
 }

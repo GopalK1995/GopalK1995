@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, CircleAlert, Clock, DatabaseBackup, PlugZap, UserX } from "lucide-react";
+import { ArrowRight, Clock, DatabaseBackup, FileClock, UserX } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
 import {
-  SLA_MINUTES, DEAL_STAGES, DEAL_STAGE_LABEL, campaignStats, channelMix, funnel, isDemo, leaderboard, leadsPerDay, pipelineTotals, slaStats, topFirms,
+  SLA_MINUTES, DEAL_STAGES, DEAL_STAGE_LABEL, campaignStats, channelMix, funnel, isDemo, leaderboard, DEMOS_DONE_TARGET, leadsPerDay, pipelineTotals, slaStats, topFirms,
 } from "@/lib/data/metrics";
 import { fmtWeekday, fmtDate, inr, inrCompact, num, pct, ratio, minsToHuman } from "@/lib/format";
 import { Card, CardBody, CardHeader, NavyPanel } from "@/components/ui/card";
@@ -23,8 +23,8 @@ export const metadata = { title: "Command Center" };
 const DAY = 86400e3;
 
 export default async function CommandCenter() {
-  const { ds, now, masked } = await pageCtx();
-  const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, syncRuns, acts] = await Promise.all([
+  const { ds, now, masked, active } = await pageCtx();
+  const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, _syncRuns, acts] = await Promise.all([
     ds.leads(), ds.deals(), ds.campaigns(), ds.campaignDays(), ds.ga4(), ds.team(), ds.accounts(), ds.syncRuns(), ds.activities(),
   ]);
   const nowMs = new Date(now).getTime();
@@ -55,28 +55,32 @@ export default async function CommandCenter() {
   const cpdRows = stats.filter((s) => s.demos > 0 && s.spend > 0).map((s) => ({ label: s.name.split(" — ")[0], value: Math.round(s.costPerDemo), note: `${s.demos} demos from ${inrCompact(s.spend)} spend` })).sort((a, b) => a.value - b.value);
   const steps = funnel(leads, ga4, 90);
   const firms = topFirms(accounts, deals, leads, 6);
-  const board = leaderboard(team, deals, leads, now);
+  const board = leaderboard(team, deals, leads, acts, now);
   const open = deals.filter((x) => x.stage !== "won" && x.stage !== "lost");
   const byStage = DEAL_STAGES.filter((s) => s !== "won" && s !== "lost").map((s, i) => ({ s, v: open.filter((x) => x.stage === s).reduce((a, x) => a + x.value, 0), c: [`var(--seq-1)`, `var(--seq-2)`, `var(--seq-3)`, `var(--accent-on-navy)`, `var(--chart-5)`][i] }));
 
   const closing = [...open].filter((x) => x.stage === "proposal" || x.stage === "negotiation").sort((a, b) => a.expectedClose.localeCompare(b.expectedClose)).slice(0, 3);
   const unanswered = leads.filter((l) => l.firstResponseMins === null && nowMs - new Date(l.createdAt).getTime() > SLA_MINUTES * 60e3);
-  const failed = syncRuns.filter((r) => r.status === "failed" && nowMs - new Date(r.startedAt).getTime() < 72 * 3600e3);
-  const quietMadurai = accounts.filter((a) => a.city === "Madurai" && nowMs - new Date(a.lastActivityAt).getTime() > 5 * DAY && a.status === "prospect").length;
-  const repName = (id: string) => team.find((t) => t.id === id)?.name ?? "—";
+  const staleProposals = deals.filter((x) => (x.stage === "proposal" || x.stage === "negotiation") && nowMs - new Date(x.stageEnteredAt).getTime() > 7 * DAY);
+  const quietBy = new Map<string, number>();
+  accounts.filter((a) => a.status === "prospect" && nowMs - new Date(a.lastActivityAt).getTime() > 5 * DAY).forEach((a) => quietBy.set(a.city, (quietBy.get(a.city) ?? 0) + 1));
+  const [quietCity, quietN] = [...quietBy.entries()].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+  const districtCount = new Set(accounts.map((a) => a.district)).size;
+  /** Delta only when the base is big enough to mean something. */
+  const delta = (cur: number, prev: number, minBase = 5) => (prev >= minBase ? ratio(cur - prev, prev) : undefined);
 
   return (
     <>
-      <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · Last 90 days`} title="Command Center"
-        sub="Revenue, pipeline and the campaigns feeding them, for law firms across six Tamil Nadu districts." />
+      <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · IST`} title="Command Center"
+        sub={`Revenue, pipeline and the campaigns feeding them, for law firms across ${districtCount} districts: ${active.ws.region.replace(/ · /g, ", ")}.`} />
 
       {/* alerts strip: specific, actionable, never generic */}
       <Stagger className="mb-6 flex flex-wrap gap-2">
         {[
           { icon: UserX, tone: "danger", text: `${unanswered.length} lead${unanswered.length === 1 ? "" : "s"} past the 2-hour first-response SLA without a reply`, href: "/leads?view=sla" },
-          { icon: Clock, tone: "warn", text: `${quietMadurai} Madurai ${quietMadurai === 1 ? "firm has" : "firms have"} had no contact in 5+ days`, href: "/accounts?city=Madurai" },
-          { icon: PlugZap, tone: "warn", text: failed.length ? `LinkedIn sync failed ${failed.length}× (token expired)` : "All syncs healthy", href: "/integrations/linkedin" },
-          { icon: DatabaseBackup, tone: "ok", text: "Last backup 6 h ago · within 26 h threshold", href: "/data-health" },
+          { icon: Clock, tone: "warn", text: quietN ? `${quietN} ${quietCity === "Tiruchirappalli" ? "Trichy" : quietCity} ${quietN === 1 ? "firm has" : "firms have"} had no contact in 5+ days` : "Every prospect firm was contacted in the last 5 days", href: quietN ? `/accounts?city=${quietCity}` : "/accounts" },
+          { icon: FileClock, tone: "warn", text: `${staleProposals.length} proposal${staleProposals.length === 1 ? "" : "s"} with no reply for 7+ days`, href: "/pipeline" },
+          { icon: DatabaseBackup, tone: "ok", text: "Backup check (sample): last 6 h ago, threshold 26 h", href: "/data-health" },
         ].map((a) => (
           <StaggerItem key={a.text}>
             <Link href={a.href} className="group inline-flex h-8 items-center gap-2 rounded-sm border border-line bg-surface px-3 text-[12px] text-ink-2 shadow-1 hover:border-line-strong hover:text-ink">
@@ -98,7 +102,6 @@ export default async function CommandCenter() {
                 <div className="mt-1 text-[34px] font-semibold leading-10 tracking-[-0.025em] num">{inr(tot.openValue)}</div>
                 <div className="mt-1 text-[12px] text-navy-ink-3 num">{tot.openCount} deals · weighted {inrCompact(tot.weighted)} · win rate {pct(tot.winRate, 0)}</div>
               </div>
-              <span className="font-mono text-[10px] text-navy-ink-3">M35</span>
             </div>
             <div>
               <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-[3px]" role="img" aria-label="Open pipeline value by stage">
@@ -131,19 +134,19 @@ export default async function CommandCenter() {
         </StaggerItem>
 
         <StaggerItem className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
-          <Kpi label="Won this month" metric="M42" value={tot.wonMonthValue} format="inr" delta={ratio(tot.wonMonthValue - tot.wonPrevValue, tot.wonPrevValue)} deltaLabel="vs September"
-            foot={<>Avg deal {inrCompact(tot.avgDeal)} · annual seats, placeholder prices</>} />
-          <Kpi label="New leads (30 days)" metric="M5" value={l30.length} delta={ratio(l30.length - lPrev.length, lPrev.length)} spark={leadsWeekly}
+          <Kpi label="Won this month" metric="M42" value={tot.wonMonthValue} format="inr" delta={tot.wonPrevValue > 0 ? ratio(tot.wonMonthValue - tot.wonPrevValue, tot.wonPrevValue) : undefined} deltaLabel="vs September"
+            foot={Number.isFinite(tot.avgDeal) ? <>Avg deal {inrCompact(tot.avgDeal)} · annual seats, placeholder prices</> : <>No deals won yet in this workspace</>} />
+          <Kpi label="New leads (30 days)" metric="M5" value={l30.length} delta={delta(l30.length, lPrev.length)} spark={leadsWeekly}
             foot={<>{num(lPrev.length)} in the previous 30 days</>} />
-          <Kpi label="Lead → demo" metric="M12" value={ratio(demos30, l30.length)} format="pct" delta={ratio(demos30, l30.length) - ratio(demosPrev, lPrev.length)} deltaLabel="pts vs prev."
+          <Kpi label="Lead → demo" metric="M12" value={ratio(demos30, l30.length)} format="pct" delta={lPrev.length >= 10 ? ratio(demos30, l30.length) - ratio(demosPrev, lPrev.length) : undefined} deltaLabel="pts vs prev."
             foot={<>{demos30} demos from {l30.length} leads</>} />
-          <Kpi label="Cost per demo" metric="M11" value={cpd} format="inr" delta={ratio(cpd - cpdPrev, cpdPrev)} goodWhen="down"
+          <Kpi label="Cost per demo" metric="M11" value={cpd} format="inr" delta={booked(30, 60) >= 5 ? ratio(cpd - cpdPrev, cpdPrev) : undefined} goodWhen="down"
             foot={<>{booked(0, 30)} paid demos booked · spend {inrCompact(spend30)} · SLA met {pct(sla.within, 0)} (median {minsToHuman(sla.median)}, prev. {pct(slaPrev.within, 0)})</>} />
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-8">
           <Card className="h-full">
-            <CardHeader title="Leads per day" sub="All channels, created date (IST). Line = 7-day average." action={<span className="font-mono text-[10px] text-ink-3">M5</span>} />
+            <CardHeader title="Leads per day" sub="All channels, created date (IST). Line = 7-day average." />
             <CardBody>
               <LineTrend label="Leads per day, last 90 days, with 7-day average" height={248} yFormat="num"
                 data={trend} series={[{ key: "leads", label: "Leads that day", color: "var(--seq-1)", bar: true }, { key: "avg", label: "7-day average", color: "var(--chart-1)", area: true }]} />
@@ -152,14 +155,14 @@ export default async function CommandCenter() {
         </StaggerItem>
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
-            <CardHeader title="Channel mix" sub="Leads by first-touch channel, top 4 + other" action={<span className="font-mono text-[10px] text-ink-3">M18</span>} />
+            <CardHeader title="Channel mix" sub="Leads by first-touch channel, top 4 + other" />
             <CardBody><Donut label="Share of leads by channel" data={mix} centerValue={num(leads.length)} centerLabel="leads" /></CardBody>
           </Card>
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-6">
           <Card className="h-full">
-            <CardHeader title="Funnel: visit to won" sub="Cohort of the last 90 days" action={<span className="font-mono text-[10px] text-ink-3">M1–M6</span>} />
+            <CardHeader title="Funnel: visit to won" sub="Cohort of the last 90 days" />
             <CardBody><Funnel steps={steps} /></CardBody>
           </Card>
         </StaggerItem>
@@ -183,7 +186,7 @@ export default async function CommandCenter() {
         </StaggerItem>
         <StaggerItem className="lg:col-span-5">
           <Card className="h-full">
-            <CardHeader title="Team this month" sub="Won vs target, open pipeline, first-response SLA" />
+            <CardHeader title="Team in October" sub="Won vs monthly target · demos booked this month · SLA on leads from the last 30 days" />
             <ul className="divide-y divide-line border-t border-line">
               {board.map((r, i) => (
                 <li key={r.id} className="grid grid-cols-[20px_1fr_auto] items-center gap-3 px-4 py-3 sm:px-5">
@@ -191,13 +194,13 @@ export default async function CommandCenter() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2"><Avatar name={r.name} size={22} /><span className="truncate text-[13px] font-medium">{masked ? `Rep ${i + 1}` : r.name}</span></div>
                     <Meter className="mt-2" value={r.won} max={r.target} tone={r.won / r.target >= pace ? "accent" : "warn"} />
-                    <div className="mt-1 text-[11px] text-ink-3 num">{r.demos} demos · SLA {pct(r.sla, 0)} · open {inrCompact(r.open)}</div>
+                    <div className="mt-1 text-[11px] text-ink-3 num">{r.demosBooked} demos booked · {r.demosDone}/{DEMOS_DONE_TARGET} done · SLA {pct(r.sla, 0)} · open {inrCompact(r.open)}</div>
                   </div>
                   <div className="text-right"><div className="text-[13px] font-semibold num">{inrCompact(r.won)}</div><div className="text-[11px] text-ink-3 num">of {inrCompact(r.target)}</div></div>
                 </li>
               ))}
             </ul>
-            <p className="border-t border-line px-5 py-3 text-[11px] text-ink-3">Owners: {repName("u-arun")} (Chennai), {repName("u-divya")} (Coimbatore, Salem), {repName("u-karthik")} (Madurai, Trichy, Tirunelveli).</p>
+            <p className="border-t border-line px-5 py-3 text-[11px] text-ink-3">Territories: {team.filter((t) => t.role === "sales_rep").map((t) => `${masked ? "Rep" : t.name} (${t.title.split(" · ")[1] ?? "all districts"})`).join(", ")}.</p>
           </Card>
         </StaggerItem>
       </Stagger>

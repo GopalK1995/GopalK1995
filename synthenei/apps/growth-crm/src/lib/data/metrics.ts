@@ -1,6 +1,6 @@
 // Metric formulas. IDs (M1..M29) match synthenei/03-projects/growth-crm/03-product-spec.md section 6 (M1–M63).
 // Pure functions over arrays from the DataSource, so they work the same for mock and Supabase data.
-import type { Account, Campaign, CampaignDay, Channel, Deal, DealStage, Ga4Day, Lead, LeadStage, TeamMember } from "./types";
+import type { Account, Activity, Campaign, CampaignDay, Channel, Deal, DealStage, Ga4Day, Lead, LeadStage, TeamMember } from "./types";
 import { median, ratio } from "../format";
 
 export const SLA_MINUTES = 120; // 2 business hours, 10:00–19:00 IST Mon–Sat (M14, spec section 4)
@@ -105,12 +105,14 @@ export function weekly<T extends { date: string }>(rows: T[], val: (r: T) => num
   return out;
 }
 
+/** Channel families so a donut never has "Other" as its biggest slice: Paid social, Search, WhatsApp, Email, Other. */
+export const CHANNEL_FAMILY: Record<Channel, string> = { linkedin: "Paid social", meta: "Paid social", google_ads: "Search", organic: "Search", whatsapp: "WhatsApp", email: "Email", referral: "Referrals & events", event: "Referrals & events" };
 export function channelMix(leads: Lead[], max = 4) {
-  const m = new Map<Channel, number>();
-  leads.forEach((l) => m.set(l.channel, (m.get(l.channel) ?? 0) + 1));
-  const rows = [...m.entries()].map(([ch, n]) => ({ key: ch, label: CHANNEL_LABEL[ch], n })).sort((a, b) => b.n - a.n);
+  const m = new Map<string, number>();
+  leads.forEach((l) => m.set(CHANNEL_FAMILY[l.channel], (m.get(CHANNEL_FAMILY[l.channel]) ?? 0) + 1));
+  const rows = [...m.entries()].map(([fam, n]) => ({ key: fam, label: fam, n })).sort((a, b) => b.n - a.n);
   const top = rows.slice(0, max), rest = rows.slice(max);
-  return rest.length ? [...top, { key: "other", label: "Other", n: rest.reduce((a, r) => a + r.n, 0) }] : top;
+  return rest.length ? [...top, { key: "other", label: rest.length === 1 ? rest[0].label : "Other", n: rest.reduce((a, r) => a + r.n, 0) }] : top;
 }
 
 export const countBy = <T,>(xs: T[], key: (x: T) => string) => {
@@ -127,18 +129,25 @@ export function slaStats(leads: Lead[], nowIso: string) {
   return { median: median(mins), breached, within: ratio(leads.length - breached, leads.length), n: leads.length };
 }
 
-export function leaderboard(team: TeamMember[], deals: Deal[], leads: Lead[], nowIso: string) {
-  const month = nowIso.slice(0, 7);
-  return team.filter((t) => t.role === "sales_rep").map((t) => {
-    const mine = deals.filter((d) => d.ownerId === t.id);
-    const won = mine.filter((d) => d.stage === "won" && d.wonAt?.slice(0, 7) === month).reduce((a, d) => a + d.value, 0);
-    const ml = leads.filter((l) => l.ownerId === t.id);
-    return {
-      id: t.id, name: t.name, title: t.title, target: t.monthlyTarget, won,
-      open: mine.filter((d) => d.stage !== "won" && d.stage !== "lost").reduce((a, d) => a + d.value, 0),
-      demos: ml.filter(isDemo).length, leads: ml.length, sla: slaStats(ml, nowIso).within,
-    };
-  }).sort((a, b) => b.won / b.target - a.won / a.target);
+/** One definition of a rep's month, shared by Command Center and My day so the numbers always agree.
+ *  won = deals won this calendar month; demosBooked/demosDone = activities dated this month; sla = leads created in the last 30 days. */
+export function repMonth(repId: string, deals: Deal[], leads: Lead[], acts: Activity[], nowIso: string) {
+  const month = nowIso.slice(0, 7), now = new Date(nowIso).getTime();
+  const mine = deals.filter((d) => d.ownerId === repId);
+  const myLeadIds = new Set(leads.filter((l) => l.ownerId === repId).map((l) => l.id));
+  const inMonth = (k: Activity["kind"]) => acts.filter((a) => a.kind === k && myLeadIds.has(a.leadId) && a.at.slice(0, 7) === month).length;
+  const l30 = leads.filter((l) => l.ownerId === repId && now - new Date(l.createdAt).getTime() < 30 * 86400e3);
+  const sla = slaStats(l30, nowIso);
+  return {
+    won: mine.filter((d) => d.stage === "won" && d.wonAt?.slice(0, 7) === month).reduce((a, d) => a + d.value, 0),
+    open: mine.filter((d) => d.stage !== "won" && d.stage !== "lost").reduce((a, d) => a + d.value, 0),
+    demosBooked: inMonth("demo_booked"), demosDone: inMonth("demo_done"), sla: sla.within, slaMedian: sla.median, slaN: sla.n,
+  };
+}
+export const DEMOS_DONE_TARGET = 8;
+export function leaderboard(team: TeamMember[], deals: Deal[], leads: Lead[], acts: Activity[], nowIso: string) {
+  return team.filter((t) => t.role === "sales_rep").map((t) => ({ id: t.id, name: t.name, title: t.title, target: t.monthlyTarget, ...repMonth(t.id, deals, leads, acts, nowIso) }))
+    .sort((a, b) => b.won / b.target - a.won / a.target);
 }
 
 export function topFirms(accounts: Account[], deals: Deal[], leads: Lead[], n = 6) {

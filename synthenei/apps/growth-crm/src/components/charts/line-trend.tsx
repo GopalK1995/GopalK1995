@@ -18,7 +18,7 @@ export function LineTrend({ data, series, height = 240, label, yFormat: yKey = "
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: endLabel ? 36 : 8, bottom: 0, left: -8 }}>
             <CartesianGrid vertical={false} />
-            <XAxis dataKey={xKey} {...axisProps} interval={tickEvery - 1} tickFormatter={(v: string) => (/^\d{4}-\d{2}-\d{2}/.test(v) ? fmtDate(v + "T06:00:00Z") : v)} minTickGap={8} />
+            <XAxis dataKey={xKey} {...axisProps} interval="preserveStartEnd" minTickGap={40} tickFormatter={(v: string) => (/^\d{4}-\d{2}-\d{2}/.test(v) ? fmtDate(v + "T06:00:00Z") : v)} />
             <YAxis {...axisProps} width={44} tickFormatter={yFormat} allowDecimals={false} />
             <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={({ active, payload, label: l }) => active && payload?.length ? (
               <TooltipBox title={typeof l === "string" && /^\d{4}-/.test(l) ? fmtDate(l + "T06:00:00Z") : l} rows={series.map((s) => ({ name: s.label, color: s.color, dash: true, value: yFormat(Number(payload.find((p) => p.dataKey === s.key)?.value ?? 0)) }))} />

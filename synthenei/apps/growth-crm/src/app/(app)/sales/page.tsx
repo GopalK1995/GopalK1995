@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, Clock, Inbox, MessageCircle, Phone, Mail, Video, FileText, Hourglass } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
-import { DEAL_STAGES, DEAL_STAGE_LABEL, LEAD_STAGES, SLA_MINUTES, channelMix, isDemo, slaStats } from "@/lib/data/metrics";
+import { DEAL_STAGES, DEAL_STAGE_LABEL, DEMOS_DONE_TARGET, LEAD_STAGES, SLA_MINUTES, channelMix, repMonth, slaStats } from "@/lib/data/metrics";
 import { dayKey, fmtDate, fmtTime, fmtWeekday, inrCompact, minsToHuman, num, pct, ratio, relTime } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,12 +38,13 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const firmOf = (id?: string) => accounts.find((a) => a.id === id);
 
   // W1 + W2
+  function touch_overdue() { return touch.filter((t) => dayKey(t.dueAt) < today); }
   const touch = tasks.filter((t) => ["call", "whatsapp", "email", "follow_up"].includes(t.kind) && dayKey(t.dueAt) <= today).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-  const overdue = tasks.filter((t) => t.dueAt < now && dayKey(t.dueAt) < today);
+  const overdue = touch_overdue();
   const oldest = overdue.length ? Math.ceil((nowMs - new Date(overdue[0].dueAt).getTime()) / DAY) : 0;
   // W3
   const l30 = leads.filter((l) => nowMs - new Date(l.createdAt).getTime() < 30 * DAY);
-  const sla = slaStats(l30, now);
+  const sla = slaStats(l30, now); // same definition as repMonth().sla
   const teamSla = slaStats(allLeads.filter((l) => nowMs - new Date(l.createdAt).getTime() < 30 * DAY), now);
   const slaSpark = Array.from({ length: 8 }, (_, w) => { const ls = leads.filter((l) => { const a = (nowMs - new Date(l.createdAt).getTime()) / DAY; return a >= (7 - w) * 7 && a < (8 - w) * 7; }); return ls.length ? slaStats(ls, now).within * 100 : 60; });
   // W4
@@ -58,8 +59,8 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const byStage = DEAL_STAGES.filter((s) => s !== "won" && s !== "lost").map((s) => ({ label: DEAL_STAGE_LABEL[s], value: open.filter((d) => d.stage === s).reduce((a, d) => a + d.value, 0), note: `${open.filter((d) => d.stage === s).length} deals` }));
   // W7
   const month = now.slice(0, 7);
-  const wonM = deals.filter((d) => d.stage === "won" && d.wonAt?.slice(0, 7) === month).reduce((a, d) => a + d.value, 0);
-  const demosDoneM = acts.filter((a) => a.kind === "demo_done" && a.byId === repId && a.at.slice(0, 7) === month).length;
+  const rm = repMonth(repId, allDeals, allLeads, acts, now);
+  const wonM = rm.won, demosDoneM = rm.demosDone;
   const dt = new Date(now); const dim = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate();
   const pace = dt.getUTCDate() / dim;
   // W8
@@ -90,7 +91,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
           <Card className="h-full">
             <CardHeader title="Today's touch list" sub="Calls, WhatsApps and emails due today, overdue first" action={<span className="text-[12px] text-ink-3 num">{touch.length} due · <span className={overdue.length ? "font-medium text-danger" : ""}>{overdue.length} overdue</span></span>} />
             <ul className="divide-y divide-line border-t border-line">
-              {touch.slice(0, 9).map((t) => {
+              {touch.map((t) => {
                 const l = leadOf(t.leadId); const f = firmOf(l?.accountId); const I = KIND_ICON[t.kind]; const late = dayKey(t.dueAt) < today;
                 return (
                   <li key={t.id} className="grid grid-cols-[32px_1fr_auto] items-center gap-3 px-4 py-2.5 hover:bg-paper/60 sm:px-5">
@@ -139,7 +140,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         {/* W4 */}
         <StaggerItem className="lg:col-span-5">
           <Card className="h-full">
-            <CardHeader title="Hot leads" sub="Score 70+, with the two strongest factors" action={<span className="font-mono text-[10px] text-ink-3">M32</span>} />
+            <CardHeader title="Hot leads" sub="Score 70+, with the two strongest factors" />
             <ul className="divide-y divide-line border-t border-line">
               {hot.map((l) => {
                 const top = [...l.scoreFactors].sort((a, b) => b.points - a.points).slice(0, 2);
@@ -161,7 +162,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         {/* W5 */}
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
-            <CardHeader title="Demos this week" sub="Monday to Saturday, IST" action={<span className="font-mono text-[10px] text-ink-3">M33</span>} />
+            <CardHeader title="Demos this week" sub="Monday to Saturday, IST" />
             <CardBody>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {week.map((d) => {
@@ -185,23 +186,23 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         {/* W6, W7, W8 */}
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
-            <CardHeader title="My pipeline by stage" sub={`${open.length} open deals · ${inrCompact(open.reduce((a, d) => a + d.value, 0))}`} action={<span className="font-mono text-[10px] text-ink-3">M34</span>} />
+            <CardHeader title="My pipeline by stage" sub={`${open.length} open deals · ${inrCompact(open.reduce((a, d) => a + d.value, 0))}`} />
             <CardBody><HBar label="My open pipeline value by stage" data={byStage} format="inrCompact" highlight="all" labelWidth={108} valueLabel="Value" /></CardBody>
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
-            <CardHeader title="Target vs achieved" sub="October, pace tick = share of month gone" action={<span className="font-mono text-[10px] text-ink-3">M38</span>} />
+            <CardHeader title="Target vs achieved" sub="October, pace tick = share of month gone" />
             <CardBody className="space-y-5">
               <TargetBar label="Won value" value={wonM} target={rep.monthlyTarget} pace={pace} format="inrCompact" />
-              <TargetBar label="Demos done" value={demosDoneM} target={8} pace={pace} format="num" />
+              <TargetBar label="Demos done" value={demosDoneM} target={DEMOS_DONE_TARGET} pace={pace} format="num" />
               <p className="text-[11px] text-ink-3">Targets set by your manager in Settings → Pipeline. Team median attainment shown on the Command Center.</p>
             </CardBody>
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
-            <CardHeader title="My conversion" sub="Last 90 days, cohort by lead created" action={<span className="font-mono text-[10px] text-ink-3">M12 · M36</span>} />
+            <CardHeader title="My conversion" sub="Last 90 days, cohort by lead created" />
             <CardBody>
               <ol className="space-y-2">
                 {conv.map(([label, n], i) => (
@@ -219,7 +220,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         {/* W9, W11, W12 */}
         <StaggerItem className="lg:col-span-5">
           <Card className="h-full">
-            <CardHeader title="Weekly activity" sub="Logged touches, last 8 weeks" action={<span className="font-mono text-[10px] text-ink-3">M40</span>} />
+            <CardHeader title="Weekly activity" sub="Logged touches, last 8 weeks" />
             <CardBody>
               <Columns label="Weekly activity by type, last 8 weeks" data={weeks} xKey="week" height={200}
                 series={[{ key: "call", label: "Calls", color: "var(--chart-1)" }, { key: "whatsapp", label: "WhatsApp", color: "var(--chart-3)" }, { key: "email", label: "Email", color: "var(--chart-2)" }, { key: "meeting", label: "Demos", color: "var(--chart-4)" }]} />
@@ -228,13 +229,13 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         </StaggerItem>
         <StaggerItem className="lg:col-span-3">
           <Card className="h-full">
-            <CardHeader title="My leads by source" sub="First touch" action={<span className="font-mono text-[10px] text-ink-3">M18</span>} />
+            <CardHeader title="My leads by source" sub="First touch" />
             <CardBody><Donut label="My leads by source channel" data={mix} centerValue={num(mix.reduce((a, m) => a + m.n, 0))} centerLabel="leads" size={132} /></CardBody>
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
-            <CardHeader title="Stuck deals" sub="More than 10 days in the current stage" action={<span className="font-mono text-[10px] text-ink-3">M41</span>} />
+            <CardHeader title="Stuck deals" sub="More than 10 days in the current stage" />
             <ul className="divide-y divide-line border-t border-line">
               {stuck.slice(0, 5).map((d) => {
                 const age = Math.floor((nowMs - new Date(d.stageEnteredAt).getTime()) / DAY);

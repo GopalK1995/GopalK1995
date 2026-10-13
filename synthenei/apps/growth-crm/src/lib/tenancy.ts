@@ -8,18 +8,18 @@ export interface Tenant {
   id: string; name: string; product: string; hue: number; monogram: string;
   plan: "Growth" | "Scale" | "Pilot"; seats: number; primaryOwnerId: string; status: "active" | "suspended" | "trial"; createdAt: string; supportEmail: string;
 }
-export interface Workspace { id: string; tenantId: string; name: string; region: string; createdAt: string; dataset: "tn" | "kerala" | "kaveri" }
+export interface Workspace { id: string; /** DB uuid (BACKEND demo seed) */ uuid: string; tenantId: string; name: string; region: string; createdAt: string; dataset: "tn" | "kerala" | "kaveri" }
 export interface PlatformUser { id: string; name: string; email: string; platformAdmin?: boolean; lastSignIn: string; status: "active" | "invited" | "deactivated" }
 export interface Membership { userId: string; workspaceId: string; role: Role }
 
 export const TENANTS: Tenant[] = [
   { id: "lawsome", name: "LAWSOME", product: "Growth CRM", hue: 245, monogram: "L", plan: "Growth", seats: 12, primaryOwnerId: "u-meenakshi", status: "active", createdAt: "2026-06-02", supportEmail: "support@lawsome.example" },
-  { id: "kaveri-demo", name: "Kaveri LegalTech (demo)", product: "Sales Desk", hue: 165, monogram: "K", plan: "Pilot", seats: 4, primaryOwnerId: "u-lavanya", status: "trial", createdAt: "2026-09-21", supportEmail: "help@kaverilegal.example" },
+  { id: "kaveri-demo", name: "Kaveri LegalTech (demo)", product: "Sales Desk", hue: 178, monogram: "K", plan: "Pilot", seats: 4, primaryOwnerId: "u-lavanya", status: "trial", createdAt: "2026-09-21", supportEmail: "help@kaverilegal.example" },
 ];
 export const WORKSPACES: Workspace[] = [
-  { id: "lawsome-tn", tenantId: "lawsome", name: "Tamil Nadu", region: "Chennai · Coimbatore · Madurai · Trichy · Salem · Tirunelveli", createdAt: "2026-06-02", dataset: "tn" },
-  { id: "lawsome-kl", tenantId: "lawsome", name: "Kerala pilot", region: "Ernakulam · Thiruvananthapuram · Kozhikode · Thrissur", createdAt: "2026-09-08", dataset: "kerala" },
-  { id: "kaveri-cbe", tenantId: "kaveri-demo", name: "Coimbatore", region: "Coimbatore · Tiruppur", createdAt: "2026-09-21", dataset: "kaveri" },
+  { id: "lawsome-tn", uuid: "20000000-0000-4000-8000-000000000001", tenantId: "lawsome", name: "Tamil Nadu", region: "Chennai · Coimbatore · Madurai · Trichy · Salem · Tirunelveli", createdAt: "2026-06-02", dataset: "tn" },
+  { id: "lawsome-kl", uuid: "20000000-0000-4000-8000-000000000002", tenantId: "lawsome", name: "Kerala pilot", region: "Ernakulam · Thiruvananthapuram · Kozhikode · Thrissur", createdAt: "2026-09-08", dataset: "kerala" },
+  { id: "kaveri-cbe", uuid: "20000000-0000-4000-8000-000000000003", tenantId: "kaveri-demo", name: "Coimbatore", region: "Coimbatore · Tiruppur", createdAt: "2026-09-21", dataset: "kaveri" },
 ];
 export const USERS: PlatformUser[] = [
   { id: "u-vikram", name: "Vikram Anand", email: "vikram@synthan.example", platformAdmin: true, lastSignIn: "2026-10-13T03:40:00.000Z", status: "active" },
@@ -45,6 +45,7 @@ export const MEMBERSHIPS: Membership[] = [
   { userId: "u-karthik", workspaceId: "lawsome-tn", role: "sales_rep" },
   { userId: "u-nithya", workspaceId: "lawsome-tn", role: "marketing" },
   { userId: "u-nithya", workspaceId: "lawsome-kl", role: "marketing" },
+  { userId: "u-nithya", workspaceId: "kaveri-cbe", role: "viewer" },
   { userId: "u-sanjay", workspaceId: "lawsome-tn", role: "data" },
   { userId: "u-rahul", workspaceId: "lawsome-tn", role: "viewer" },
   { userId: "u-anoop", workspaceId: "lawsome-kl", role: "sales_rep" },
@@ -57,14 +58,15 @@ export const PERSONAS: { key: string; userId: string; label: string; detail: str
   { key: "owner-lawsome", userId: "u-meenakshi", label: "Owner · LAWSOME", detail: "Revenue, pipeline, team, branding. Owner in Tamil Nadu and Kerala pilot." },
   { key: "mgr-lawsome", userId: "u-priya", label: "Sales Manager · TN", detail: "Team pipeline, assignment, targets and SLAs." },
   { key: "rep-lawsome", userId: "u-arun", label: "Sales Rep · TN", detail: "Own leads, demos and follow-ups. Also Viewer in the Kerala pilot." },
-  { key: "mkt-lawsome", userId: "u-nithya", label: "Marketing · LAWSOME", detail: "Campaigns, audience, web analytics. Both LAWSOME workspaces." },
+  { key: "mkt-lawsome", userId: "u-nithya", label: "Marketing · LAWSOME", detail: "Campaigns, audience, analytics in both LAWSOME workspaces; Viewer at Kaveri LegalTech (two tenants)." },
   { key: "owner-kaveri", userId: "u-lavanya", label: "Owner · Kaveri LegalTech", detail: "A second white-label tenant with its own brand and data." },
   { key: "super", userId: "u-vikram", label: "Super admin · Synthan", detail: "Platform operator: tenants, workspaces, users, audit. No business data without a support session." },
   { key: "data-lawsome", userId: "u-sanjay", label: "Data · TN", detail: "Imports, integrations, backups.", secondary: true },
   { key: "viewer-lawsome", userId: "u-rahul", label: "Viewer · TN", detail: "Read-only, masked personal data.", secondary: true },
 ];
 
-export const tenantOf = (wsId: string) => TENANTS.find((t) => t.id === WORKSPACES.find((w) => w.id === wsId)?.tenantId);
-export const workspaceById = (id: string) => WORKSPACES.find((w) => w.id === id);
+/** Accepts the slug id or the DB uuid (real sessions get uuids from my_workspaces()). */
+export const workspaceById = (id: string) => WORKSPACES.find((w) => w.id === id || w.uuid === id);
+export const tenantOf = (wsId: string) => TENANTS.find((t) => t.id === workspaceById(wsId)?.tenantId);
 export const membershipsFor = (userId: string) => MEMBERSHIPS.filter((m) => m.userId === userId);
 export const userById = (id: string) => USERS.find((u) => u.id === id);

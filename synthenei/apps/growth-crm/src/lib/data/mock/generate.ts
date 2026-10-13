@@ -21,7 +21,8 @@ const accounts: Account[] = FIRMS.map(([name, city, locality, areas], i) => {
   const lawyers = rng.weighted([[1, 2], [rng.int(2, 5), 9], [rng.int(6, 15), 14], [rng.int(16, 38), 9], [rng.int(42, 71), 2]] as const);
   const meta = CITY_META[city];
   const courts = rng.sample(meta.courts, Math.min(meta.courts.length, rng.int(2, 3)));
-  if (!courts.some((c) => c.includes("High Court")) && rng.chance(0.6)) courts.unshift(meta.courts.find((c) => c.includes("High Court"))!);
+  const hc = meta.courts.find((c) => c.includes("High Court"));
+  if (hc && !courts.includes(hc) && rng.chance(0.6)) courts.unshift(hc);
   const size = SIZE_FOR(lawyers);
   const tier = size === "6–20" || size === "21–50" ? "A" : size === "2–5" || size === "50+" ? "B" : "C";
   return {
@@ -60,8 +61,6 @@ function pickStage(ageDays: number): LeadStage {
   return "lost";
 }
 
-const TITLE_PTS: Record<string, number> = { "Managing Partner": 25, "Senior Advocate": 20, Partner: 18, "Founding Advocate": 15, "Practice Manager": 12, "Office Manager": 8, Associate: 6 };
-const SIZE_PTS: Record<FirmSize, number> = { Solo: 4, "2–5": 12, "6–20": 20, "21–50": 18, "50+": 10 };
 
 const leads: Lead[] = [];
 const usedNames = new Set<string>();
@@ -108,19 +107,28 @@ for (let i = 0; i < cfg.leadCount; i++) {
   }
   const high = acc.courts.some((c) => c.includes("High Court"));
   const recencyDays = (NOW_MS - new Date(lastTouchAt).getTime()) / DAY;
-  const intent = stage !== "new" && rng.chance(0.55);
-  const waReply = channel === "whatsapp" || rng.chance(0.3);
-  const factors: ScoreFactor[] = [
-    { label: "Seniority", points: TITLE_PTS[title], detail: `${title} — decision maker ${TITLE_PTS[title] >= 15 ? "or close to one" : "unlikely to sign alone"}` },
-    { label: "Firm fit", points: SIZE_PTS[acc.size], detail: `${acc.lawyers} lawyer${acc.lawyers > 1 ? "s" : ""} (${acc.size}); ICP tier ${acc.icpTier}` },
-    { label: "Recency", points: recencyDays < 2 ? 15 : recencyDays < 7 ? 8 : 0, detail: `Last touch ${recencyDays < 1 ? "today" : `${Math.round(recencyDays)} days ago`}` },
-    { label: "Intent", points: intent ? 15 : 0, detail: intent ? "Viewed /pricing twice and the eCourts sync page" : "No pricing or demo page views yet" },
-    { label: "Responsiveness", points: waReply ? 10 : 0, detail: waReply ? "Replied on WhatsApp within a day" : "No inbound replies yet" },
-    { label: "Court focus", points: high ? 8 : 3, detail: high ? "Regular Madras High Court practice (our strongest module)" : "District court practice only" },
-  ];
-  if (personal) factors.push({ label: "Personal email", points: -5, detail: "Used a personal address on the form" });
-  if (recencyDays > 14 && active) factors.push({ label: "Gone quiet", points: -10, detail: "No two-way contact for 14+ days" });
-  const score = Math.max(4, Math.min(97, factors.reduce((a, f) => a + f.points, 0) + rng.int(-3, 3)));
+  // Rule-based score, weights from spec section 6 (editable in /ai). Only factors that fired are listed.
+  const adv = STAGE_ORDER.indexOf(stage === "lost" ? "contacted" : stage);
+  const pricing = adv >= 1 ? rng.chance(0.6) : rng.chance(0.25);
+  const tour = rng.chance(adv >= 2 ? 0.55 : 0.2);
+  const demoPage = adv >= 3 ? rng.chance(0.55) : rng.chance(0.08);
+  const replied = adv >= 1 && (channel === "whatsapp" || rng.chance(0.55));
+  const quiet = active && recencyDays > 21;
+  const roleF: [string, number] | null = title === "Managing Partner" || title === "Founding Advocate" ? ["Managing partner / owner", 30] : title === "Senior Advocate" || title === "Partner" ? ["Senior advocate / practice head", 20] : title === "Associate" ? ["Associate", 5] : null;
+  const sizeF: [string, number] | null = acc.size === "6–20" ? ["Firm size 6–20", 10] : acc.size === "21–50" ? ["Firm size 21–50", 15] : acc.size === "50+" ? ["Firm size 50+", 15] : null;
+  const factors: ScoreFactor[] = ([
+    roleF && { label: roleF[0], points: roleF[1], detail: `${title} at ${acc.name}` },
+    sizeF && { label: sizeF[0], points: sizeF[1], detail: `${acc.lawyers} lawyers` },
+    acc.lawyers > 15 && { label: "2+ sites", points: 10, detail: `${acc.locality} office plus a second site` },
+    !personal && { label: "Work email", points: 5, detail: email.split("@")[1] },
+    cfg.idPrefix !== "KL" && { label: "District in Tamil Nadu", points: 5, detail: acc.district },
+    pricing && { label: "Pricing page visit", points: 10, detail: `Viewed /pricing ${rng.int(1, 3)}× since ${new Date(createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}` },
+    tour && { label: "Product tour played", points: 10, detail: "Watched the 2-minute hearing-calendar tour" },
+    demoPage && { label: "Demo page 3+ visits", points: 15, detail: `/demo visited ${rng.int(3, 5)} times` },
+    replied && { label: channel === "email" ? "Replied on email" : "Replied on WhatsApp", points: 15, detail: "Two-way conversation started" },
+    quiet && { label: "No reply in 21 days", points: -15, detail: `Last touch ${Math.round(recencyDays)} days ago` },
+  ].filter(Boolean) as ScoreFactor[]);
+  const score = Math.max(0, Math.min(100, factors.reduce((a, f) => a + f.points, 0)));
   const [utmSource, utmMedium] = UTM[channel];
   const firstTouch = channel;
   const lastTouch: Channel = rng.chance(0.65) ? channel : rng.pick(["whatsapp", "email", "organic", "linkedin"] as Channel[]);
@@ -128,7 +136,8 @@ for (let i = 0; i < cfg.leadCount; i++) {
   const seats = Math.max(1, Math.round(acc.lawyers * rng.float(0.6, 1)));
   leads.push({
     id: `${cfg.idPrefix}-${1001 + i}`, name, title, accountId: acc.id, email, phone: `+91 9${rng.int(1, 9)}xxx xx${rng.int(100, 999)}`, city: acc.city,
-    stage, ownerId, channel, campaignId: cmp?.id ?? null,
+    stage, status: stage === "new" ? "new" : stage === "contacted" ? (recencyDays > 14 ? "nurturing" : "contacted") : stage === "qualified" ? "qualified" : stage === "lost" ? "disqualified" : "converted",
+    ownerId, channel, campaignId: cmp?.id ?? null,
     utm: { source: utmSource, medium: utmMedium, campaign: cmp ? cmp.utmCampaign : rng.chance(0.25) ? null : null },
     firstTouch, lastTouch, createdAt, lastTouchAt, firstResponseMins: respMins, nextActionAt, nextAction,
     score, scoreFactors: factors,

@@ -22,8 +22,8 @@ export function Kpi({
   return (
     <div className={cn("flex min-w-0 flex-col justify-between gap-3 rounded-md border p-4", navy ? "border-navy-line bg-navy-900 text-navy-ink" : "border-line bg-surface shadow-1", className)}>
       <div className="flex items-start justify-between gap-2">
-        <span className={cn("text-[12px] font-medium leading-4", navy ? "text-navy-ink-2" : "text-ink-2")}>{label}</span>
-        {metric && <span className={cn("font-mono text-[10px] leading-4", navy ? "text-navy-ink-3" : "text-ink-3")} title="Metric ID in the spec">{metric}</span>}
+        <span className={cn("text-[12px] font-medium leading-4", navy ? "text-navy-ink-2" : "text-ink-2")} title={metric ? `Metric ${metric} (product spec, section 6)` : undefined}>{label}</span>
+        
       </div>
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">

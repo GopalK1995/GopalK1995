@@ -4,6 +4,7 @@
 export type Role = "owner" | "sales_manager" | "sales_rep" | "marketing" | "data" | "viewer";
 
 export type Channel = "linkedin" | "whatsapp" | "email" | "meta" | "google_ads" | "organic" | "referral" | "event";
+export type LeadStatus = "new" | "contacted" | "qualified" | "nurturing" | "disqualified" | "converted";
 export type LeadStage = "new" | "contacted" | "qualified" | "demo_booked" | "demo_done" | "proposal" | "won" | "lost";
 export type DealStage = "discovery" | "demo_scheduled" | "demo_done" | "proposal" | "negotiation" | "won" | "lost";
 export type City = string; // Tamil Nadu, Kerala, … per workspace
@@ -29,6 +30,8 @@ export interface Lead {
   id: string; name: string; title: string; accountId: string;
   email: string; phone: string; city: City;
   stage: LeadStage; ownerId: string;
+  /** Stored lead_status (spec 14). `stage` is the derived funnel position (status + linked deal). */
+  status: LeadStatus;
   channel: Channel; campaignId: string | null;
   utm: { source: string; medium: string; campaign: string | null };
   firstTouch: Channel; lastTouch: Channel;
@@ -98,6 +101,9 @@ export interface ConsentEntry { id: string; leadId: string; purpose: "demo_follo
 export interface PrivacyRequest { id: string; leadId: string; kind: "withdrawal" | "erasure" | "access"; receivedAt: string; dueAt: string; status: "open" | "in_progress" | "done" }
 export interface AuditEntry { id: string; at: string; actorId: string; action: string; target: string; ip: string }
 export interface SyncRun { id: string; integrationId: string; startedAt: string; durationSecs: number; status: "success" | "partial" | "failed"; rowsIn: number; rowsRejected: number; note: string }
+
+export interface AiSettings { scoring: boolean; summaries: boolean; nextBestAction: boolean; replyDrafts: boolean; campaignDigest: boolean; askCrm: boolean }
+export interface Holiday { date: string; name: string }
 
 export interface Dataset {
   now: string;

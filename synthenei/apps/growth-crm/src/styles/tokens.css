@@ -56,7 +56,7 @@
   --chart-1: oklch(0.52 0.15 var(--brand-h));                   /* accent cobalt */
   --chart-2: oklch(0.7 0.15 calc(var(--brand-h) - 175));        /* ochre */
   --chart-3: oklch(0.64 0.11 calc(var(--brand-h) - 60));        /* teal */
-  --chart-4: oklch(0.56 0.17 calc(var(--brand-h) + 70));        /* plum */
+  --chart-4: oklch(0.5 0.12 calc(var(--brand-h) - 200));        /* terracotta (not violet: reads as a distinct earthy hue) */
   --chart-5: oklch(0.74 0.1 calc(var(--brand-h) - 15));         /* sky */
   --chart-other: oklch(0.78 0.01 90);
   --chart-grid: oklch(0.92 0.006 90);
