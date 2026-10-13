@@ -1,0 +1,90 @@
+/*
+ * Growth CRM design tokens. Change values here, never in components.
+ * Tailwind reads these through the @theme block in app/globals.css.
+ *
+ * HUE DECISION
+ * LAWSOME's landing site uses navy #0f1b3f and blue #2547d0 (OKLCH hue ~267, an indigo-leaning blue that
+ * every SaaS template also defaults to). For the CRM we keep the navy/blue/white family but rotate the hue
+ * 22 degrees toward cyan, to OKLCH 245: a "harbour cobalt". Reasons:
+ *   1. It separates the CRM from stock indigo dashboards and from the marketing site, while staying
+ *      recognisably LAWSOME (same navy depth, same white).
+ *   2. A teal-leaning blue keeps its saturation on a near-black navy sidebar, where indigo turns muddy.
+ *   3. It reads as ink on paper, which suits the warm "ledger paper" neutral we pair it with.
+ * Every brand colour is derived from --brand-h, so the White-label settings slider can re-tint the whole
+ * product (structure, accent, chart family) by changing one number.
+ *
+ * 60 / 30 / 10
+ *   60%  paper neutrals: --paper (page), --surface (cards), --line (1px borders). Warm, hue 90.
+ *   30%  deep navy structure: sidebar, page-header band, key panels (--navy-*).
+ *   10%  accent cobalt: primary buttons, active nav, focus rings, the one series a chart is about.
+ */
+:root {
+  --brand-h: 245;
+
+  /* 60: paper neutrals (warm off-white, deliberately not the brand hue) */
+  --paper: oklch(0.975 0.006 90);
+  --paper-2: oklch(0.955 0.008 90);
+  --surface: oklch(0.995 0.002 90);
+  --line: oklch(0.905 0.009 90);
+  --line-strong: oklch(0.84 0.011 90);
+  --ink: oklch(0.2 0.02 var(--brand-h));
+  --ink-2: oklch(0.42 0.018 var(--brand-h));
+  --ink-3: oklch(0.56 0.014 var(--brand-h));
+
+  /* 30: navy structure */
+  --navy-950: oklch(0.19 0.042 var(--brand-h));
+  --navy-900: oklch(0.22 0.045 var(--brand-h));
+  --navy-800: oklch(0.27 0.05 var(--brand-h));
+  --navy-700: oklch(0.33 0.055 var(--brand-h));
+  --navy-line: oklch(0.32 0.04 var(--brand-h));
+  --navy-ink: oklch(0.96 0.01 var(--brand-h));
+  --navy-ink-2: oklch(0.76 0.03 var(--brand-h));
+  --navy-ink-3: oklch(0.6 0.035 var(--brand-h));
+
+  /* 10: accent */
+  --accent: oklch(0.52 0.15 var(--brand-h));
+  --accent-strong: oklch(0.46 0.15 var(--brand-h));
+  --accent-soft: oklch(0.95 0.03 var(--brand-h));
+  --accent-ink: oklch(0.99 0.005 var(--brand-h));
+  --accent-on-navy: oklch(0.74 0.13 var(--brand-h));
+  --ring: oklch(0.6 0.15 var(--brand-h));
+
+  /* Chart family, derived from the accent by fixed hue offsets. Validated with the dataviz
+     validator at --brand-h 245 on white: lightness band, chroma floor, CVD (worst adjacent dE 12.7),
+     normal-vision (dE 22.9) all pass; slots 2 and 5 are below 3:1 contrast so they are always
+     direct-labelled or tooltip + table backed. Order matters: do not reorder. */
+  --chart-1: oklch(0.52 0.15 var(--brand-h));                   /* accent cobalt */
+  --chart-2: oklch(0.7 0.15 calc(var(--brand-h) - 175));        /* ochre */
+  --chart-3: oklch(0.64 0.11 calc(var(--brand-h) - 60));        /* teal */
+  --chart-4: oklch(0.56 0.17 calc(var(--brand-h) + 70));        /* plum */
+  --chart-5: oklch(0.74 0.1 calc(var(--brand-h) - 15));         /* sky */
+  --chart-other: oklch(0.78 0.01 90);
+  --chart-grid: oklch(0.92 0.006 90);
+  --chart-axis: oklch(0.6 0.012 var(--brand-h));
+  /* sequential ramp (one hue, light to dark) for heat grids and ordinal funnels */
+  --seq-1: oklch(0.93 0.035 var(--brand-h));
+  --seq-2: oklch(0.82 0.07 var(--brand-h));
+  --seq-3: oklch(0.7 0.11 var(--brand-h));
+  --seq-4: oklch(0.58 0.14 var(--brand-h));
+  --seq-5: oklch(0.45 0.13 var(--brand-h));
+
+  /* semantic (fixed, never themed; always paired with an icon or label) */
+  --success: oklch(0.55 0.13 155);
+  --success-soft: oklch(0.95 0.04 155);
+  --warn: oklch(0.62 0.14 70);
+  --warn-ink: oklch(0.48 0.12 65);
+  --warn-soft: oklch(0.96 0.05 85);
+  --danger: oklch(0.55 0.19 27);
+  --danger-soft: oklch(0.96 0.03 25);
+
+  /* type */
+  --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono-ui: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* shape: 8px grid, two radii only */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-1: 0 1px 0 oklch(0.2 0.02 245 / 0.04), 0 1px 2px oklch(0.2 0.02 245 / 0.06);
+  --shadow-2: 0 1px 2px oklch(0.2 0.02 245 / 0.06), 0 8px 24px -8px oklch(0.2 0.03 245 / 0.14);
+  --shadow-pop: 0 12px 40px -12px oklch(0.15 0.04 245 / 0.35), 0 2px 6px oklch(0.15 0.04 245 / 0.1);
+}
