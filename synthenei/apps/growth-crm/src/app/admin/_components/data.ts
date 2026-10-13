@@ -124,7 +124,7 @@ const AUDIT_SEED: AuditRow[] = [
   { id: "A-1042", at: "2026-10-13T03:40:00.000Z", actor: "Vikram Anand", actorKind: "platform_admin", tenantId: null, wsId: null, action: "platform_admin.signed_in", target: "MFA aal2 · 49.204.x.x" },
   { id: "A-1041", at: "2026-10-13T02:00:00.000Z", actor: "backup job", actorKind: "system", tenantId: null, wsId: null, action: "backup.logical_dump", target: "pg_dump ok · 41.8 MB" },
   { id: "A-1040", at: "2026-10-12T16:45:00.000Z", actor: "Lavanya Prakash", actorKind: "member", tenantId: "kaveri-demo", wsId: "kaveri-cbe", action: "member.invited", target: `${maskEmail("suresh@kaverilegal.example")} as Sales Rep` },
-  { id: "A-1039", at: "2026-10-12T11:10:00.000Z", actor: "integration:meta_ads", actorKind: "system", tenantId: "lawsome", wsId: "lawsome-tn", action: "integration.sync_failed", target: "meta_ads · token expired" },
+  { id: "A-1039", at: "2026-10-12T11:10:00.000Z", actor: "Sanjay Iyer", actorKind: "member", tenantId: "lawsome", wsId: "lawsome-tn", action: "csv_import.rows_rejected", target: "csv import #81 · 3 of 214 rows rejected (missing phone)" },
   { id: "A-1038", at: "2026-10-11T09:30:00.000Z", actor: "Meenakshi Sundaram", actorKind: "member", tenantId: "lawsome", wsId: "lawsome-kl", action: "member.role_changed", target: `${maskEmail("arun@lawsome.example")} · Sales Rep -> Viewer` },
   { id: "A-1037", at: "2026-10-09T09:12:00.000Z", actor: "Vikram Anand", actorKind: "platform_admin", tenantId: "lawsome", wsId: "lawsome-tn", action: "support.ended", target: "SE-2 · ended by admin", supportSessionId: "SE-2" },
   { id: "A-1036", at: "2026-10-09T09:02:00.000Z", actor: "Vikram Anand", actorKind: "platform_admin", tenantId: "lawsome", wsId: "lawsome-tn", action: "import_run.viewed", target: "csv import #77 · 2 rows rejected", supportSessionId: "SE-2" },
@@ -150,7 +150,7 @@ export function auditRows(): AuditRow[] {
 }
 export const ACTION_LABEL: Record<string, string> = {
   "platform_admin.signed_in": "Platform admin signed in", "platform_admin.granted": "Platform admin granted", "backup.logical_dump": "Nightly backup",
-  "member.invited": "Member invited", "member.role_changed": "Role changed", "integration.sync_failed": "Sync failed", "support.started": "Support session started",
+  "member.invited": "Member invited", "member.role_changed": "Role changed", "csv_import.rows_rejected": "CSV rows rejected", "support.started": "Support session started",
   "support.ended": "Support session ended", "import_run.viewed": "Import run viewed", "integration.viewed": "Integration viewed",
   "pipeline_stages.viewed": "Pipeline stages viewed", "tenant.created": "Tenant created", "workspace.created": "Workspace created",
 };

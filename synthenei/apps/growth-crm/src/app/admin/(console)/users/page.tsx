@@ -56,6 +56,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             fields={[
               { name: "name", label: "Full name", placeholder: "Krishna Gopal" },
               { name: "email", label: "Email", type: "email", placeholder: "platform+krishna@synthan.example", hint: "TOTP MFA enrolment is required before the first console sign-in." },
+              { name: "confirm", label: "Type GRANT to confirm", mono: true, placeholder: "GRANT" },
+              { name: "code", label: "Your current 6-digit code (MFA re-check)", mono: true, placeholder: "000000", hint: "Demo: any 6 digits. The grant is written to the platform audit log." },
             ]} />
         } />
 

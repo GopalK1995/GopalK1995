@@ -98,7 +98,7 @@ export async function userAction(f: FormData): Promise<ActionResult> {
 /** Platform admins are separate identities: a DB trigger rejects platform_admins for anyone with a membership. */
 export async function grantPlatformAdmin(f: FormData): Promise<ActionResult> {
   const me = await requirePlatformAdmin();
-  const email = s(f, "email").toLowerCase(), name = s(f, "name");
+  const email = s(f, "email").toLowerCase(), name = s(f, "name"), confirm = s(f, "confirm");
   if (name.length < 2) return { ok: false, field: "name", message: "Enter the operator's full name." };
   if (!EMAIL.test(email)) return { ok: false, field: "email", message: "Enter a valid email address." };
   const member = USERS.find((u) => u.email.toLowerCase() === email && !u.platformAdmin);
@@ -107,9 +107,11 @@ export async function grantPlatformAdmin(f: FormData): Promise<ActionResult> {
     return { ok: false, field: "email", message: `${email} belongs to ${member.name}, who has ${n} workspace membership${n > 1 ? "s" : ""}. Platform admins must be separate identities; use a dedicated address such as platform+${member.name.split(" ")[0].toLowerCase()}@synthan.example.` };
   }
   if (!/@synthan\./.test(email)) return { ok: false, field: "email", message: "Platform admins use a Synthan address (platform+name@synthan.example)." };
+  if (confirm !== "GRANT") return { ok: false, field: "confirm", message: "Type GRANT to confirm. This gives console access to every tenant's metadata." };
+  if (!/^\d{6}$/.test(s(f, "code"))) return { ok: false, field: "code", message: "Re-enter your current 6-digit authenticator code." };
   // Live: deliberately SQL-only (BACKEND 0007): insert into public.platform_admins (user_id) values (...).
   if (!me.demo) return { ok: false, message: "Granting platform admin is SQL-only on live deployments: insert into public.platform_admins (user_id) values ('<auth user id>'). Run it from the Supabase SQL editor." };
-  return { ok: true, message: `${me.demo ? "Would invite" : "Invited"} ${name} (${email}) as platform admin. TOTP enrolment is required at first sign-in.`, sub: me.demo ? DEMO_SUB : undefined };
+  return { ok: true, message: `${me.demo ? "Would invite" : "Invited"} ${name} (${email}) as platform admin. TOTP enrolment is required at first sign-in. Logged as platform_admin.granted.`, sub: me.demo ? DEMO_SUB : undefined };
 }
 
 export async function revokePlatformAdmin(f: FormData): Promise<ActionResult> {
