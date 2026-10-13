@@ -29,6 +29,9 @@
 
 Steps 6–8 are the newest requirement. Before the meeting, check with the BUILD/ADMIN agents which parts are built and which are spec only, and say "designed to" for anything not built.
 
+### Campaign names (use these exact names; they match the CRM demo data)
+Hearing-day visibility — Chennai partners (LinkedIn) · eCourts made easy — Madurai advocates (WhatsApp) · Ask Nidhi launch — Mailchimp (Email) · Coimbatore firms — Meta lead ads (Meta) · Google Search — legal practice software (Google Ads) · Cause-list alerts — Trichy & Salem (WhatsApp, paused) · DPDP for law firms — partner webinar (LinkedIn, ended) · Site retargeting — Meta (Meta). All of these are sample campaigns in the demo. None has run.
+
 ## Discovery questions for the LAWSOME owner
 1. **Sales team:** How many people sell today? Who follows up a demo request, and how fast?
 2. **Lead sources:** Where do your current customers come from (referrals, bar associations, events, digital)? Which source closes best?
