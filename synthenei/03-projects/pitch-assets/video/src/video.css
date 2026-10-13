@@ -1,0 +1,16 @@
+/* Video-only overrides on top of the copied landing tokens/screens CSS. */
+:root{
+  --font-sans:"Plus Jakarta Sans",Inter,system-ui,sans-serif;
+  --font-serif:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5,p{margin:0}
+/* Plain product backdrop: no glow blobs in the film. */
+.app{background:#fbfaf8 !important;line-height:1.5}
+/* CSS keyframe animations are not frame-synced in Remotion; everything is driven by frame instead. */
+.bubble,.typing i{animation:none !important}
+.nidhi{min-height:0 !important;line-height:1.55}
+.banner{background:var(--c-navy-800) !important}
+.nidhi-dot{box-shadow:none !important}
+.app{box-shadow:0 24px 60px rgba(10,18,48,.16),0 2px 6px rgba(10,18,48,.08) !important}
