@@ -18,7 +18,7 @@ export function Columns({ data, series, xKey, label, height = 220, format: fKey 
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 16, right: 4, bottom: 0, left: -16 }} barCategoryGap="28%">
             <CartesianGrid vertical={false} />
-            <XAxis dataKey={xKey} {...axisProps} interval={0} tick={{ fontSize: 11, fill: "var(--ink-3)" }} />
+            <XAxis dataKey={xKey} {...axisProps} interval={data.length <= 7 ? 0 : "preserveStartEnd"} minTickGap={10} tick={{ fontSize: 11, fill: "var(--ink-3)" }} />
             <YAxis {...axisProps} width={40} tickFormatter={format} allowDecimals={false} />
             <Tooltip cursor={{ fill: "var(--paper-2)" }} content={({ active, payload, label: l }) => active && payload?.length ? (
               <TooltipBox title={l} rows={[...series].reverse().map((s) => ({ name: s.label, color: s.color, value: format(Number(payload.find((p) => p.dataKey === s.key)?.value ?? 0)) }))} />
