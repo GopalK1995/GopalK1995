@@ -1,0 +1,44 @@
+/* Design tokens — LAWSOME marketing site. Change values here, not in components. */
+:root {
+  /* brand */
+  --c-navy-900: #0a1230;
+  --c-navy-800: #0f1b3f;
+  --c-navy-700: #16265a;
+  --c-blue-600: #2547d0;
+  --c-blue-500: #3b61e8;
+  --c-blue-100: #e6ecff;
+  --c-blue-50: #f2f5ff;
+  /* neutrals */
+  --c-ink: #0f172a;
+  --c-ink-2: #475069;
+  --c-ink-3: #8089a3;
+  --c-line: #e3e7f1;
+  --c-surface: #ffffff;
+  --c-bg: #f7f8fc;
+  /* status */
+  --c-open: #2547d0;
+  --c-progress: #b7791f;
+  --c-hold: #8089a3;
+  --c-closed: #11875d;
+  --c-warn-bg: #fff4e0;
+  --c-warn: #a15c07;
+  --c-ok-bg: #e4f6ee;
+  /* accent glow (product backdrop) */
+  --glow-peach: #fbd9c9;
+  --glow-teal: #cfe9e4;
+  --glow-sky: #d8e3fb;
+
+  /* type */
+  --font-sans: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --fs-hero: clamp(2.4rem, 5.4vw, 4.2rem);
+  --fs-h2: clamp(1.7rem, 3.2vw, 2.5rem);
+  --fs-lead: clamp(1.02rem, 1.4vw, 1.18rem);
+
+  /* space / shape */
+  --sp-1: .25rem; --sp-2: .5rem; --sp-3: .75rem; --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem; --sp-7: 3rem; --sp-8: 5rem; --sp-9: 7rem;
+  --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, .06), 0 8px 24px rgba(15, 23, 42, .06);
+  --shadow-float: 0 30px 80px rgba(10, 18, 48, .28), 0 4px 14px rgba(10, 18, 48, .12);
+  --wrap: 1180px;
+}
