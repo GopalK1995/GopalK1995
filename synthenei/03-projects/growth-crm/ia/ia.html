@@ -18,9 +18,13 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 .tag{font-size:10px;font-weight:700;color:var(--warn);background:#fff3df;border-radius:5px;padding:1px 6px;margin-left:6px}
 .flow{margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.flow .box{padding:7px 10px;font-weight:600;font-size:12px}.arrow{color:var(--mut);font-size:18px}
 .legend{margin-top:14px;color:var(--mut);font-size:12px}
+.role.sa{background:#fff;color:var(--navy);border:2px solid var(--navy)}.role.sa small{color:var(--mut)}
+.admin{margin-top:14px}.admin .inner{display:grid;grid-template-columns:repeat(6,1fr)}.admin .pg{border-top:0;border-left:1px solid var(--line)}.admin .pg:first-child{border-left:0}
+.admin h2{background:#26314f}.admin .note{padding:8px 14px;border-top:1px solid var(--line);color:var(--mut);font-size:12px;background:#fafbfe}
+.entry2{margin-top:10px}
 </style></head><body>
 <h1>Growth CRM — Information architecture</h1>
-<div class="sub">White-label sales + marketing CRM for LAWSOME · 5 groups · 19 routes · role-aware navigation · demo data, integrations shown as showcase</div>
+<div class="sub">White-label sales + marketing CRM for LAWSOME · Tenant → Workspaces → Memberships (role per workspace) · 5 workspace groups (19 routes) + 6 · Platform admin (7 routes) · demo data, integrations shown as showcase</div>
 <div class="roles">
 <div class="role">Owner / Admin<small>lands on Command Center</small></div>
 <div class="role">Sales Manager (RevOps)<small>Command Center</small></div>
@@ -28,10 +32,11 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 <div class="role">Marketing<small>lands on Campaigns</small></div>
 <div class="role">Data<small>Leads · Audience · Data health</small></div>
 <div class="role">Viewer<small>read-only dashboards</small></div>
+<div class="role sa">Super admin (Synthan platform)<small>/admin console · business data only via audited support session</small></div>
 </div>
 <div class="top">
-<div class="box entry"><b>/login</b><span>Email + password · demo role picker · logout in avatar menu</span></div>
-<div class="box"><b>Global shell</b> — sidebar (collapsible, bottom nav on mobile) · global search (leads, firms, campaigns) · date range · notifications · avatar menu (profile, switch role in demo, logout) · subtle “Demo data” indicator</div>
+<div><div class="box entry"><b>/login</b><span>Email + password or magic link · demo role picker · logout in avatar menu</span></div><div class="box entry entry2"><b>/admin/login</b><span>Platform admins only · separate session · MFA required</span></div></div>
+<div class="box"><b>Global shell</b> — <b>workspace switcher</b> at the top of the sidebar (e.g. “LAWSOME · Tamil Nadu”, “LAWSOME · Kerala pilot”, “Kaveri LegalTech (demo)”; sets the <code style="font-size:11px">ws</code> cookie, re-themes to the tenant’s branding, role shown per workspace) · sidebar (collapsible; mobile: drawer + bottom nav, tables become cards at 390px) · global search (leads, firms, campaigns) · date range · notifications · avatar menu (profile, switch role in demo, logout) · subtle “Demo data” indicator · red “Support session” banner when a platform admin is inside a workspace</div>
 </div>
 <div class="grid">
 <div class="grp"><h2>1 · Overview</h2>
@@ -62,6 +67,14 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 <div class="pg"><b>Settings</b><code>/settings</code><p>Tabs: Users & roles · White-label branding (name, logo, hue slider) · Pipeline stages · Consent & privacy (DPDP) · Audit log</p><div class="act"><span>invite user</span><span>change role</span><span>rebrand</span><span>handle deletion request</span></div><div class="who">OWNER / ADMIN</div></div>
 </div>
 </div>
+<div class="grp admin"><h2>6 · Platform admin (super admin only)</h2><div class="inner">
+<div class="pg"><b>Overview</b><code>/admin</code><p>Tenants, workspaces, active users (7 d), open support sessions, sync failures, backup age</p><div class="act"><span>open tenant</span></div></div>
+<div class="pg"><b>Tenants</b><code>/admin/tenants</code><p>All white-label clients with plan, workspaces, seats, status</p><div class="act"><span>create tenant</span><span>suspend</span></div></div>
+<div class="pg"><b>Tenant detail</b><code>/admin/tenants/[id]</code><p>Branding, workspaces, owners, usage, integrations status</p><div class="act"><span>add workspace</span><span>invite owner</span><span>edit branding</span></div></div>
+<div class="pg"><b>Users</b><code>/admin/users</code><p>All users with memberships per workspace, last sign-in, MFA</p><div class="act"><span>deactivate</span><span>reset access</span></div></div>
+<div class="pg"><b>Audit log</b><code>/admin/audit</code><p>Platform-wide changes and every support-session action</p><div class="act"><span>filter</span><span>export</span></div></div>
+<div class="pg"><b>Support access</b><code>/admin/support</code><p>Start a time-boxed (60 min) read-only session into one workspace with a typed reason; end / history</p><div class="act"><span>start session + reason</span><span>end session</span></div></div>
+</div><div class="note">No business data (leads, contacts, messages) is visible in /admin. It is only visible inside a workspace during an active, audited support session, and the workspace owner sees that session in their audit log.</div></div>
 <div class="flow"><b style="margin-right:6px">Core journey:</b>
 <div class="box">Campaign (email · LinkedIn · Meta · WhatsApp)</div><span class="arrow">→</span>
 <div class="box">LAWSOME landing page</div><span class="arrow">→</span>
@@ -70,5 +83,5 @@ h1{font:700 26px/1.1 Inter,system-ui;margin:0 0 4px;letter-spacing:-.02em}.sub{c
 <div class="box">Demo booked</div><span class="arrow">→</span>
 <div class="box">Pipeline → Won</div><span class="arrow">→</span>
 <div class="box">Command Center + campaign ROI</div></div>
-<div class="legend">Green label = default roles for that page. SHOWCASE = designed and clickable, not live-connected. All data synthetic (Tamil Nadu firms, fictional people).</div>
+<div class="legend">Green label = default roles for that page (roles are per workspace). SHOWCASE = designed and clickable, not live-connected. All data synthetic (Tamil Nadu firms, fictional people).</div>
 </body></html>

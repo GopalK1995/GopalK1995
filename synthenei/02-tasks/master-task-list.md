@@ -95,4 +95,6 @@ Spec: `03-projects/growth-crm/03-product-spec.md`. Schema: `apps/growth-crm/supa
 | H10 | Pipeline rules | Agree stage definitions, SLA (default 120 business minutes), district territories, lost reasons | Shaun | todo | H7 |
 | H11 | Data sourcing for TN firms | Lawful sources, dedupe rules, credible market-size figure | Kiruba | todo | — |
 | H12 | Backup job | Nightly offsite dump + heartbeat row + alert rules + first restore drill | Krishna | todo | F2, G6 |
-
+| H13 | Workspaces + memberships | Tenant -> workspace -> membership model, workspace switcher (`ws` cookie), per-tenant re-theming, invite per workspace (spec 5, 8, 10) | Krishna (build + backend agents) | doing | H9 |
+| H14 | Platform admin console | `/admin/login` with MFA, overview, tenants, tenant detail, users, platform audit, audited support sessions with typed reason | Krishna | todo | H13 |
+| H15 | Mobile layout | Drawer + bottom nav, tables -> cards at 390px, single-column kanban (spec 11.1) | Krishna (build agent) | doing | H3 |
