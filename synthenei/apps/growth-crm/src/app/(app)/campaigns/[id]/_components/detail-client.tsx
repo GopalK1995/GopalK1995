@@ -57,7 +57,7 @@ export function CampaignFunnel({ steps }: { steps: { key: string; label: string;
               <span className="truncate text-[12px] text-ink-2" title={s.note}>{s.label}</span>
               <div className="relative h-6 rounded-[4px] bg-paper-2">
                 <motion.div className={cn("absolute inset-y-0 left-0 rounded-[4px]", i < 3 ? "bg-seq-2" : "bg-accent")}
-                  initial={reduce ? false : { width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: 0.26, delay: reduce ? 0 : i * 0.03, ease: [0.22, 1, 0.36, 1] }} />
+                  initial={{ width: 0 }} animate={{ width: `${w}%` }} transition={reduce ? { duration: 0 } : { duration: 0.26, delay: i * 0.03, ease: [0.22, 1, 0.36, 1] }} />
                 <span className="absolute inset-y-0 flex items-center text-[12px] font-semibold num" style={w > 30 ? { left: 8, color: i >= 3 ? "var(--accent-ink)" : "var(--ink)" } : { left: `calc(${w}% + 6px)`, color: "var(--ink)" }}>{num(s.n)}</span>
               </div>
               <span className={cn("w-[72px] text-right text-[12px] num", worst === i ? "font-semibold text-danger" : "text-ink-3")}>
