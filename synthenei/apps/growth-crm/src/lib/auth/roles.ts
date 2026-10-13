@@ -58,6 +58,7 @@ export const CAN = {
   connectIntegrations: (r: Role) => r === "owner",
   seePersonalData: (r: Role) => r !== "viewer",
   createWorkspace: (r: Role) => r === "owner",
+  editSegments: (r: Role) => r === "owner" || r === "marketing" || r === "data",
   erase: (r: Role) => r === "owner",
   aiToggle: (r: Role) => r === "owner",
   privacyRequests: (r: Role) => r === "owner",

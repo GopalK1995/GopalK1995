@@ -13,7 +13,7 @@ export function RadarCompare({ data, series, label, height = 300 }: {
       <Legend className="mb-2" items={series.map((s) => ({ label: s.label, color: s.color, shape: s.dashed ? "dash" : "line" }))} />
       <ChartFrame label={label} height={height}>
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="72%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+          <RadarChart data={data} outerRadius="64%" margin={{ top: 12, right: 40, bottom: 12, left: 40 }}>
             <PolarGrid stroke="var(--chart-grid)" />
             <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11, fill: "var(--ink-2)" }} />
             <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: "var(--ink-3)" }} tickCount={3} axisLine={false} />

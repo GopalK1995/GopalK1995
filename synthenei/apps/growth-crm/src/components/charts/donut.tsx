@@ -6,14 +6,15 @@ import { pct } from "@/lib/format";
 
 /** Share of a whole. Max 5 slices (callers fold the tail into "Other"). Legend doubles as the data table. */
 export function Donut({ data, label, centerLabel, centerValue, format: fKey = "num", size = 168 }: {
-  data: { key: string; label: string; n: number }[]; label: string; centerLabel: string; centerValue: string; format?: Fmt; size?: number;
+  data: { key: string; label: string; n: number; color?: string }[]; label: string; centerLabel: string; centerValue: string; format?: Fmt; size?: number;
 }) {
   useChartAnim();
   const reduce = useReducedMotion();
   const format = FMT[fKey];
   const rows = data.slice(0, 5);
   const total = rows.reduce((a, r) => a + r.n, 0);
-  const color = (r: { key: string }, i: number) => (r.key === "other" ? OTHER : SERIES[i % SERIES.length]);
+  /** Per-row colour wins (colour follows the entity); otherwise fixed slot order, Other = neutral. */
+  const color = (r: { key: string; color?: string }, i: number) => r.color ?? (r.key === "other" ? OTHER : SERIES[i % SERIES.length]);
   return (
     <div className="@container"><div className="flex flex-col items-center gap-4 @[400px]:flex-row @[400px]:items-center">
       <motion.div className="relative shrink-0" style={{ width: size, height: size }} initial={{ opacity: 0, rotate: -12, scale: 0.96 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}>
