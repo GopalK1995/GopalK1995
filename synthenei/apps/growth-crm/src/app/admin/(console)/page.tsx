@@ -11,7 +11,6 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Kpi } from "@/components/ui/kpi";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { HBar } from "@/components/charts/hbar";
 import { ACTION_LABEL, ADMIN_NOW, adminNow, allTenants, auditRows, supportSessions, wsLabelById } from "../_components/data";
 import { SessionState, TenantMark } from "../_components/bits";
 
@@ -55,8 +54,22 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         <Card>
           <CardHeader title="Which workspaces are bringing in leads?" sub="New leads created in the last 30 days, per workspace. Aggregate count only." />
           <CardBody>
-            <HBar label="New leads in the last 30 days by workspace" valueLabel="New leads" highlight="all" labelWidth={176}
-              data={ws.map((w) => ({ label: wsLabelById(w.ws.id), value: w.leads30d, note: w.unavailable ? "Stats unavailable" : undefined }))} />
+{(() => {
+              const max = Math.max(1, ...ws.map((w) => w.leads30d));
+              return (
+                <ul aria-label="New leads in the last 30 days by workspace" className="space-y-3">
+                  {ws.map((w) => (
+                    <li key={w.ws.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[176px_minmax(0,1fr)_48px]">
+                      <span className="truncate text-[12px] text-ink-2">{wsLabelById(w.ws.id)}</span>
+                      <span className="order-3 col-span-2 h-[18px] rounded-r-[4px] bg-paper-2 sm:order-none sm:col-span-1" aria-hidden>
+                        <span className="block h-full rounded-r-[4px] bg-chart-1" style={{ width: `${(w.leads30d / max) * 100}%` }} />
+                      </span>
+                      <span className="text-right text-[12px] font-semibold text-ink-2 num">{w.unavailable ? "—" : num(w.leads30d)}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
             <p className="mt-2 text-[12px] text-ink-3">Per tenant: {tenants.map((t) => `${t.tenant.name}: ${num(t.leads30d)}`).join(" · ")}</p>
           </CardBody>
         </Card>
