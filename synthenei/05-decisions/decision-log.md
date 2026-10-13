@@ -1,3 +1,11 @@
 # Decision log
 - 2026-10-13: Project named Synthenei. Workspace in `synthenei/`.
 - 2026-10-13: Focus Sprint 0 on Legal CRM vertical slice only (proposed, pending Krishna's confirmation).
+- 2026-10-13: Growth CRM is built around ONE product at a time; first product is LAWSOME. (Per Krishna's brief.)
+- 2026-10-13: RECOMMENDED (pending Krishna's confirmation): thin custom CRM on Next.js + Supabase rather than Twenty/Zoho/HubSpot, because the value is joining GA4 + campaign spend + leads + follow-up + backup health. Switch rule: if we start rebuilding contacts/deals, move to Twenty. See `03-projects/growth-crm/01-build-vs-buy.md`.
+- 2026-10-13: MVP = 12 screens (funnel, leads, lead detail, pipeline, campaigns, audience, channels, GA4 traffic, tasks, integrations, data & backup, settings/privacy). Spec: `03-projects/growth-crm/02-screens-and-metrics.md`.
+- 2026-10-13: LinkedIn is mock + CSV import first (API access needs partner approval, not guaranteed); real API behind a feature flag. Mocks are labelled in the UI.
+- 2026-10-13: GA4 via a daily Data API `runReport` pull, not BigQuery, until we need event-level analysis.
+- 2026-10-13: Backup monitoring does not rely on a Supabase "backup status" API (none confirmed); plan is own offsite dump + heartbeat + restore drills, behind a `BackupMonitorAdapter`.
+- 2026-10-13: AI features (lead summaries, campaign insight text) are assistive drafts, off by default, source data shown beside them. Lead scoring is rule-based until there are enough outcomes.
+- 2026-10-13: Consent log and erasure workflow are built from day one (DPDP Act 2023); dates/duties to be verified with counsel.
