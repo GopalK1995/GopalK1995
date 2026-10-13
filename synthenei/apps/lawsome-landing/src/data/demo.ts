@@ -9,7 +9,7 @@ export const firm = {
 export const stats = { total: 24, thisMonth: 7, upcoming: 6, resolved: 3, team: 9, sites: 2 };
 
 export const statusBars = [
-  { label: "Open", n: 17, color: "var(--c-open)" },
+  { label: "Open", n: 16, color: "var(--c-open)" },
   { label: "In Progress", n: 4, color: "var(--c-progress)" },
   { label: "On Hold", n: 1, color: "var(--c-hold)" },
   { label: "Closed", n: 3, color: "var(--c-closed)" },
@@ -66,8 +66,8 @@ export const team = [
 ];
 
 export const savedCases = [
-  { cnr: "TNCH01002345672026", title: "Menon Estates vs Kumar Builders", court: "Commercial Court, Chennai", status: "PENDING" },
-  { cnr: "TNMD01004567812025", title: "Selvam vs Thangaraj", court: "Sub Court, Madurai", status: "PENDING" },
+  { cnr: "TNCH010023452026", title: "Menon Estates vs Kumar Builders", court: "Commercial Court, Chennai", status: "PENDING" },
+  { cnr: "TNMD010045672025", title: "Selvam vs Thangaraj", court: "Sub Court, Madurai", status: "PENDING" },
   { cnr: "TNCH0A0031822019", title: "State vs Rajasekar", court: "Metropolitan Magistrate, Saidapet", status: "DISPOSED" },
   { cnr: "TNCH0C0193492023", title: "Fathima Begum vs Abdul Rahim", court: "Family Court, Chennai", status: "PENDING" },
 ];

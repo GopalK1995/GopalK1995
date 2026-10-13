@@ -34,7 +34,7 @@ export function DashboardScreen() {
       <div className="cols">
         <div>
           <div className="c"><h5>Cases by status <em>{stats.total - stats.resolved} active matters</em></h5>
-            {statusBars.map((s) => (<div className="bar" key={s.label}><div><span>{s.label}</span><span>{s.n}</span></div><i><b style={{ width: `${(s.n / 17) * 100}%`, background: s.color }} /></i></div>))}
+            {statusBars.map((s) => (<div className="bar" key={s.label}><div><span>{s.label}</span><span>{s.n}</span></div><i><b style={{ width: `${(s.n / Math.max(...statusBars.map((b) => b.n))) * 100}%`, background: s.color }} /></i></div>))}
           </div>
           <div className="c"><h5>Firm growth – incoming cases <em>YTD</em></h5><Growth /></div>
         </div>
