@@ -12,7 +12,7 @@ export async function middleware(req: NextRequest) {
   const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
   const forbid = (page: string, role = "") => {
     const url = new URL("/forbidden", req.url); url.searchParams.set("page", page); if (role) url.searchParams.set("role", role);
-    return NextResponse.rewrite(url);
+    return NextResponse.rewrite(url, { status: 403 });
   };
 
   if (PUBLIC.includes(pathname)) {

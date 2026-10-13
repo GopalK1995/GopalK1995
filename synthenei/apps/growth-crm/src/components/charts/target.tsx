@@ -17,7 +17,7 @@ export function TargetBar({ value, target, pace, label, format, className, tone 
         <span className="num"><span className={cn("font-semibold", navy ? "text-navy-ink" : "text-ink")}>{f(value)}</span><span className={navy ? "text-navy-ink-3" : "text-ink-3"}> / {f(target)}</span></span>
       </div>
       <div className={cn("relative h-2.5 rounded-full", navy ? "bg-navy-800" : "bg-paper-2")} role="meter" aria-valuenow={value} aria-valuemax={target} aria-label={label}>
-        <motion.div className={cn("absolute inset-y-0 left-0 rounded-full", navy ? "bg-accent-on-navy" : "bg-accent")} initial={reduce ? false : { width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} />
+        <motion.div className={cn("absolute inset-y-0 left-0 rounded-full", navy ? "bg-accent-on-navy" : "bg-accent")} initial={{ width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }} />
         <div className={cn("absolute -top-1 h-[18px] w-0.5 rounded-full", navy ? "bg-navy-ink" : "bg-ink")} style={{ left: `calc(${p}% - 1px)` }} title="Expected by today" />
       </div>
       <div className={cn("mt-1.5 text-[11px]", navy ? "text-navy-ink-3" : "text-ink-3")}>

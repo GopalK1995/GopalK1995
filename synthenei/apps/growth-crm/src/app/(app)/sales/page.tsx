@@ -82,11 +82,11 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
     <>
       <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · ${rep.title}`} title={role === "sales_rep" ? `Good morning, ${rep.name.split(" ")[0]}` : `${rep.name}'s day`}
         sub={`${touch.length} touches due today, ${overdue.length} overdue, ${demos.filter((t) => dayKey(t.dueAt) >= today).length} demos left this week.`}
-        actions={<>{role !== "sales_rep" && <RepSwitcher reps={reps.map((r) => ({ id: r.id, name: r.name }))} value={repId} />}<QuickActions /></>} />
+        actions={role !== "sales_rep" ? <RepSwitcher reps={reps.map((r) => ({ id: r.id, name: r.name }))} value={repId} /> : undefined} />
 
       <Stagger className="grid gap-4 lg:grid-cols-12">
         {/* W1 */}
-        <StaggerItem className="lg:col-span-8 lg:row-span-2">
+        <StaggerItem className="lg:col-span-8">
           <Card className="h-full">
             <CardHeader title="Today's touch list" sub="Calls, WhatsApps and emails due today, overdue first" action={<span className="text-[12px] text-ink-3 num">{touch.length} due · <span className={overdue.length ? "font-medium text-danger" : ""}>{overdue.length} overdue</span></span>} />
             <ul className="divide-y divide-line border-t border-line">
@@ -114,21 +114,26 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
           </Card>
         </StaggerItem>
         {/* W2 + W3 */}
-        <StaggerItem className="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-2">
+        <StaggerItem className="flex flex-col gap-4 lg:col-span-4">
+          <div className="grid grid-cols-2 gap-4">
           <Link href="/tasks" className={cn("flex flex-col justify-between rounded-md border p-4 shadow-1", overdue.length ? "border-danger/30 bg-danger-soft" : "border-line bg-surface")}>
             <span className="flex items-center justify-between text-[12px] font-medium text-ink-2">Overdue<AlertTriangle className={cn("size-4", overdue.length ? "text-danger" : "text-ink-3")} aria-hidden /></span>
-            <span className={cn("mt-3 text-[28px] font-semibold leading-8 num", overdue.length ? "text-danger" : "text-ink")}>{overdue.length}</span>
+            <span className={cn("mt-2 text-[28px] font-semibold leading-8 num", overdue.length ? "text-danger" : "text-ink")}>{overdue.length}</span>
             <span className="text-[12px] text-ink-3">{overdue.length ? `oldest ${oldest} day${oldest > 1 ? "s" : ""}` : "all caught up"}</span>
           </Link>
           <Link href="/leads?view=sla" className="rounded-md border border-line bg-surface p-4 shadow-1">
             <span className="flex items-center justify-between text-[12px] font-medium text-ink-2">Unread inbox<Inbox className="size-4 text-ink-3" aria-hidden /></span>
-            <span className="mt-3 block text-[28px] font-semibold leading-8 num">{unread.reduce((a, c) => a + c.unread, 0)}</span>
-            <span className="text-[12px] text-ink-3">{unread.length} conversations · WhatsApp window open</span>
+            <span className="mt-2 block text-[28px] font-semibold leading-8 num">{unread.reduce((a, c) => a + c.unread, 0)}</span>
+            <span className="text-[12px] text-ink-3">{unread.length} conversation{unread.length === 1 ? "" : "s"} · WhatsApp window open</span>
           </Link>
-        </StaggerItem>
-        <StaggerItem className="lg:col-span-4">
-          <Kpi className="h-full" label={`First-response SLA (${SLA_MINUTES / 60} business hours)`} metric="M14" value={sla.within} format="pct" spark={slaSpark}
+          </div>
+          <Kpi label={`First-response SLA (${SLA_MINUTES / 60} business hours)`} metric="M14" value={sla.within} format="pct" spark={slaSpark}
             foot={<>Median {minsToHuman(sla.median)} · team {pct(teamSla.within, 0)} · last 30 days, n={sla.n}</>} />
+          <div className="rounded-md border border-line bg-surface p-4 shadow-1">
+            <div className="text-[12px] font-medium text-ink-2">Quick log</div>
+            <p className="mt-1 text-[12px] text-ink-3">Log the outcome right after each call so the SLA clock and the touch list stay true.</p>
+            <div className="mt-3"><QuickActions size="sm" /></div>
+          </div>
         </StaggerItem>
 
         {/* W4 */}

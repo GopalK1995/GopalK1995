@@ -2,12 +2,13 @@ import Link from "next/link";
 import { ArrowRight, CircleAlert, Clock, DatabaseBackup, PlugZap, UserX } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
 import {
-  CHANNEL_LABEL, DEAL_STAGES, DEAL_STAGE_LABEL, campaignStats, channelMix, funnel, isDemo, leaderboard, leadsPerDay, pipelineTotals, slaStats, topFirms,
+  SLA_MINUTES, DEAL_STAGES, DEAL_STAGE_LABEL, campaignStats, channelMix, funnel, isDemo, leaderboard, leadsPerDay, pipelineTotals, slaStats, topFirms,
 } from "@/lib/data/metrics";
 import { fmtWeekday, fmtDate, inr, inrCompact, num, pct, ratio, minsToHuman } from "@/lib/format";
 import { Card, CardBody, CardHeader, NavyPanel } from "@/components/ui/card";
 import { Kpi } from "@/components/ui/kpi";
-import { PageHeader, Table, Meter, td, tdNum, th, thNum } from "@/components/ui/misc";
+import { PageHeader, Meter } from "@/components/ui/misc";
+import { DataTable } from "@/components/ui/data-table";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { DealStageBadge } from "@/components/ui/domain";
 import { Avatar } from "@/components/ui/avatar";
@@ -23,8 +24,8 @@ const DAY = 86400e3;
 
 export default async function CommandCenter() {
   const { ds, now, masked } = await pageCtx();
-  const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, syncRuns] = await Promise.all([
-    ds.leads(), ds.deals(), ds.campaigns(), ds.campaignDays(), ds.ga4(), ds.team(), ds.accounts(), ds.syncRuns(),
+  const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, syncRuns, acts] = await Promise.all([
+    ds.leads(), ds.deals(), ds.campaigns(), ds.campaignDays(), ds.ga4(), ds.team(), ds.accounts(), ds.syncRuns(), ds.activities(),
   ]);
   const nowMs = new Date(now).getTime();
   const tot = pipelineTotals(deals, now);
@@ -38,8 +39,11 @@ export default async function CommandCenter() {
   const stats = campaigns.map((c) => campaignStats(c, days, leads, deals));
   const spend30 = days.filter((x) => nowMs - new Date(x.date + "T12:00:00+05:30").getTime() < 30 * DAY).reduce((a, x) => a + x.spend, 0);
   const spendPrev = days.filter((x) => { const t = nowMs - new Date(x.date + "T12:00:00+05:30").getTime(); return t >= 30 * DAY && t < 60 * DAY; }).reduce((a, x) => a + x.spend, 0);
-  const cpd = ratio(spend30, l30.filter((l) => l.campaignId).filter(isDemo).length);
-  const cpdPrev = ratio(spendPrev, lPrev.filter((l) => l.campaignId).filter(isDemo).length);
+  // Cost per demo by the date the demo was booked (not lead cohort), so recent leads don't look artificially expensive.
+  const paidIds = new Set(leads.filter((l) => l.campaignId).map((l) => l.id));
+  const booked = (from: number, to: number) => acts.filter((a) => a.kind === "demo_booked" && paidIds.has(a.leadId) && nowMs - new Date(a.at).getTime() >= from * DAY && nowMs - new Date(a.at).getTime() < to * DAY).length;
+  const cpd = ratio(spend30, booked(0, 30));
+  const cpdPrev = ratio(spendPrev, booked(30, 60));
   const sla = slaStats(l30, now), slaPrev = slaStats(lPrev, now);
 
   const perDay = leadsPerDay(leads, ga4, 90);
@@ -56,7 +60,7 @@ export default async function CommandCenter() {
   const byStage = DEAL_STAGES.filter((s) => s !== "won" && s !== "lost").map((s, i) => ({ s, v: open.filter((x) => x.stage === s).reduce((a, x) => a + x.value, 0), c: [`var(--seq-1)`, `var(--seq-2)`, `var(--seq-3)`, `var(--accent-on-navy)`, `var(--chart-5)`][i] }));
 
   const closing = [...open].filter((x) => x.stage === "proposal" || x.stage === "negotiation").sort((a, b) => a.expectedClose.localeCompare(b.expectedClose)).slice(0, 3);
-  const unanswered = leads.filter((l) => l.firstResponseMins === null && nowMs - new Date(l.createdAt).getTime() > 4 * 3600e3);
+  const unanswered = leads.filter((l) => l.firstResponseMins === null && nowMs - new Date(l.createdAt).getTime() > SLA_MINUTES * 60e3);
   const failed = syncRuns.filter((r) => r.status === "failed" && nowMs - new Date(r.startedAt).getTime() < 72 * 3600e3);
   const quietMadurai = accounts.filter((a) => a.city === "Madurai" && nowMs - new Date(a.lastActivityAt).getTime() > 5 * DAY && a.status === "prospect").length;
   const repName = (id: string) => team.find((t) => t.id === id)?.name ?? "—";
@@ -69,7 +73,7 @@ export default async function CommandCenter() {
       {/* alerts strip: specific, actionable, never generic */}
       <Stagger className="mb-6 flex flex-wrap gap-2">
         {[
-          { icon: UserX, tone: "danger", text: `${unanswered.length} leads past the 4-hour first-response SLA without a reply`, href: "/leads?view=sla" },
+          { icon: UserX, tone: "danger", text: `${unanswered.length} lead${unanswered.length === 1 ? "" : "s"} past the 2-hour first-response SLA without a reply`, href: "/leads?view=sla" },
           { icon: Clock, tone: "warn", text: `${quietMadurai} Madurai ${quietMadurai === 1 ? "firm has" : "firms have"} had no contact in 5+ days`, href: "/accounts?city=Madurai" },
           { icon: PlugZap, tone: "warn", text: failed.length ? `LinkedIn sync failed ${failed.length}× (token expired)` : "All syncs healthy", href: "/integrations/linkedin" },
           { icon: DatabaseBackup, tone: "ok", text: "Last backup 6 h ago · within 26 h threshold", href: "/data-health" },
@@ -134,7 +138,7 @@ export default async function CommandCenter() {
           <Kpi label="Lead → demo" metric="M12" value={ratio(demos30, l30.length)} format="pct" delta={ratio(demos30, l30.length) - ratio(demosPrev, lPrev.length)} deltaLabel="pts vs prev."
             foot={<>{demos30} demos from {l30.length} leads</>} />
           <Kpi label="Cost per demo" metric="M11" value={cpd} format="inr" delta={ratio(cpd - cpdPrev, cpdPrev)} goodWhen="down"
-            foot={<>Paid spend {inrCompact(spend30)} · SLA met {pct(sla.within, 0)} (median {minsToHuman(sla.median)}, prev. {pct(slaPrev.within, 0)})</>} />
+            foot={<>{booked(0, 30)} paid demos booked · spend {inrCompact(spend30)} · SLA met {pct(sla.within, 0)} (median {minsToHuman(sla.median)}, prev. {pct(slaPrev.within, 0)})</>} />
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-8">
@@ -169,19 +173,12 @@ export default async function CommandCenter() {
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
             <CardHeader title="Top firms in pipeline" sub="Open deal value, best lead score at the firm" action={<Link href="/accounts" className="text-[12px] font-medium text-accent hover:underline">Law firms</Link>} />
-            <Table minWidth={480}>
-              <thead><tr className="border-y border-line bg-paper/60"><th className={th}>Firm</th><th className={th}>Stage</th><th className={thNum}>Best score</th><th className={thNum}>Open value</th></tr></thead>
-              <tbody>
-                {firms.map((f) => (
-                  <tr key={f.id} className="border-b border-line last:border-0 hover:bg-paper/60">
-                    <td className={cn(td, "h-14")}><Link href={`/accounts/${f.id}`} className="block font-medium text-ink hover:text-accent">{f.name}</Link><span className="text-[12px] text-ink-3">{f.locality}, {f.city === "Tiruchirappalli" ? "Trichy" : f.city} · {f.lawyers} lawyers</span></td>
-                    <td className={td}>{f.openStage && <DealStageBadge stage={f.openStage} />}</td>
-                    <td className={tdNum}>{f.topScore}</td>
-                    <td className={cn(tdNum, "font-medium")}>{inr(f.openValue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            <DataTable rows={firms} rowKey={(f) => f.id} minWidth={480} caption="Top firms by open pipeline value" columns={[
+              { key: "firm", header: "Firm", mobile: "title", className: "h-14", cell: (f) => <><Link href={`/accounts/${f.id}`} className="block font-medium text-ink hover:text-accent">{f.name}</Link><span className="hidden text-[12px] text-ink-3 md:inline">{f.locality}, {f.city === "Tiruchirappalli" ? "Trichy" : f.city} · {f.lawyers} lawyers</span></> },
+              { key: "stage", header: "Stage", mobile: "fact", cell: (f) => (f.openStage ? <DealStageBadge stage={f.openStage} /> : null) },
+              { key: "score", header: "Best score", align: "right", cell: (f) => f.topScore },
+              { key: "value", header: "Open value", align: "right", mobile: "fact", cell: (f) => <span className="font-medium">{inr(f.openValue)}</span> },
+            ]} />
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-5">

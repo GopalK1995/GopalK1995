@@ -54,14 +54,14 @@ export const MEMBERSHIPS: Membership[] = [
 
 /** Demo personas shown on /login. */
 export const PERSONAS: { key: string; userId: string; label: string; detail: string; secondary?: boolean }[] = [
-  { key: "owner-lawsome", userId: "u-meenakshi", label: "Owner — LAWSOME", detail: "Revenue, pipeline, team, branding. Owner in Tamil Nadu and Kerala pilot." },
-  { key: "mgr-lawsome", userId: "u-priya", label: "Sales Manager — LAWSOME TN", detail: "Team pipeline, assignment, targets and SLAs." },
-  { key: "rep-lawsome", userId: "u-arun", label: "Sales Rep — LAWSOME TN", detail: "Own leads, demos and follow-ups. Also Viewer in the Kerala pilot." },
-  { key: "mkt-lawsome", userId: "u-nithya", label: "Marketing — LAWSOME", detail: "Campaigns, audience, web analytics. Both LAWSOME workspaces." },
-  { key: "owner-kaveri", userId: "u-lavanya", label: "Owner — Kaveri LegalTech", detail: "A second white-label tenant with its own brand and data." },
-  { key: "super", userId: "u-vikram", label: "Super admin (Synthan)", detail: "Platform operator: tenants, workspaces, users, audit. No business data without a support session." },
-  { key: "data-lawsome", userId: "u-sanjay", label: "Data — LAWSOME TN", detail: "Imports, integrations, backups.", secondary: true },
-  { key: "viewer-lawsome", userId: "u-rahul", label: "Viewer — LAWSOME TN", detail: "Read-only, masked personal data.", secondary: true },
+  { key: "owner-lawsome", userId: "u-meenakshi", label: "Owner · LAWSOME", detail: "Revenue, pipeline, team, branding. Owner in Tamil Nadu and Kerala pilot." },
+  { key: "mgr-lawsome", userId: "u-priya", label: "Sales Manager · TN", detail: "Team pipeline, assignment, targets and SLAs." },
+  { key: "rep-lawsome", userId: "u-arun", label: "Sales Rep · TN", detail: "Own leads, demos and follow-ups. Also Viewer in the Kerala pilot." },
+  { key: "mkt-lawsome", userId: "u-nithya", label: "Marketing · LAWSOME", detail: "Campaigns, audience, web analytics. Both LAWSOME workspaces." },
+  { key: "owner-kaveri", userId: "u-lavanya", label: "Owner · Kaveri LegalTech", detail: "A second white-label tenant with its own brand and data." },
+  { key: "super", userId: "u-vikram", label: "Super admin · Synthan", detail: "Platform operator: tenants, workspaces, users, audit. No business data without a support session." },
+  { key: "data-lawsome", userId: "u-sanjay", label: "Data · TN", detail: "Imports, integrations, backups.", secondary: true },
+  { key: "viewer-lawsome", userId: "u-rahul", label: "Viewer · TN", detail: "Read-only, masked personal data.", secondary: true },
 ];
 
 export const tenantOf = (wsId: string) => TENANTS.find((t) => t.id === WORKSPACES.find((w) => w.id === wsId)?.tenantId);

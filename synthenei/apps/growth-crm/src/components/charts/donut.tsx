@@ -15,8 +15,8 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
   const total = rows.reduce((a, r) => a + r.n, 0);
   const color = (r: { key: string }, i: number) => (r.key === "other" ? OTHER : SERIES[i % SERIES.length]);
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-      <motion.div className="relative shrink-0" style={{ width: size, height: size }} initial={reduce ? false : { opacity: 0, rotate: -12, scale: 0.96 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+    <div className="@container"><div className="flex flex-col items-center gap-4 @[400px]:flex-row @[400px]:items-center">
+      <motion.div className="relative shrink-0" style={{ width: size, height: size }} initial={{ opacity: 0, rotate: -12, scale: 0.96 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: reduce ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}>
         <ChartFrame label={label} height={size}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -44,6 +44,6 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
           ))}
         </tbody>
       </table>
-    </div>
+    </div></div>
   );
 }

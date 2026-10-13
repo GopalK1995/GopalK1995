@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Briefcase, Building2, Database, Eye, Megaphone, ShieldCheck, UserRound } from "lucide-react";
 import { demoLogin, passwordLogin } from "@/lib/auth/actions";
-import { PERSONAS, userById } from "@/lib/tenancy";
+import { PERSONAS, TENANTS, WORKSPACES, userById } from "@/lib/tenancy";
+import { datasetFor } from "@/lib/data/mock/generate-index";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { demoModeOn } from "@/lib/auth/cookies";
-import { BrandMark } from "@/components/shell/brand-mark";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Sign in" };
@@ -14,31 +14,40 @@ const ERR: Record<string, string> = {
   inactive: "Your access was removed by your admin.", no_profile: "You are signed in but not invited to a workspace.", revoked: "Your access to that workspace was removed. Sign in again.", role: "Pick one of the demo roles.", demo_disabled: "Demo roles are disabled on this deployment.",
 };
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; signed_out?: string }> }) {
+function Mono({ letter, size = 32 }: { letter: string; size?: number }) {
+  return <span aria-hidden className="grid shrink-0 place-items-center rounded-[6px] bg-accent font-semibold text-accent-ink" style={{ width: size, height: size, fontSize: size * 0.46 }}>{letter}</span>;
+}
+
+export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; signed_out?: string; t?: string }> }) {
   const sp = await searchParams;
+  // ?t=<tenant id> previews another tenant's branded login (white-label).
+  const tenant = TENANTS.find((x) => x.id === sp.t) ?? TENANTS[0];
+  const ws = WORKSPACES.find((w) => w.tenantId === tenant.id)!;
+  const d = datasetFor(ws.dataset);
+  const districts = new Set(d.accounts.map((a) => a.district)).size;
   const live = supabaseConfigured();
   const demo = demoModeOn();
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(420px,5fr)_7fr]">
+      <style>{`:root{--brand-h:${tenant.hue}}`}</style>
       {/* 30%: navy structure panel with a real product fact sheet, not a slogan */}
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-navy-900 p-10 text-navy-ink lg:flex">
-        <div className="flex items-center gap-3"><BrandMark size={32} /><div><div className="text-[15px] font-semibold tracking-[0.02em]">LAWSOME</div><div className="text-[12px] text-navy-ink-3">Growth CRM</div></div></div>
+        <div className="flex items-center gap-3"><Mono letter={tenant.monogram} /><div><div className="text-[15px] font-semibold tracking-[0.02em]">{tenant.name}</div><div className="text-[12px] text-navy-ink-3">{tenant.product}</div></div></div>
         <div className="max-w-sm">
           <p className="text-[24px] font-semibold leading-8 tracking-[-0.02em]">Every campaign, lead and law firm in one ledger, from first click to signed seats.</p>
-          <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-navy-line bg-navy-line text-[12px]">
-            {[["Leads tracked", "120"], ["Law firms", "40"], ["Districts", "6 in Tamil Nadu"], ["Channels", "LinkedIn · Meta · Google · WhatsApp · Email"]].map(([k, v]) => (
+          <div className="mt-8 mb-2 text-[11px] uppercase tracking-[0.08em] text-navy-ink-3">{ws.name} workspace · sample data</div>
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-navy-line bg-navy-line text-[12px]">
+            {[["Leads (90 days)", String(d.leads.length)], ["Law firms", String(d.accounts.length)], ["Open deals", String(d.deals.filter((x) => x.stage !== "won" && x.stage !== "lost").length)], ["Districts", `${districts} · ${ws.region.split(" · ").slice(0, 3).join(", ")}`]].map(([k, v]) => (
               <div key={k} className="bg-navy-900 p-3"><dt className="text-navy-ink-3">{k}</dt><dd className="mt-1 font-medium text-navy-ink num">{v}</dd></div>
             ))}
           </dl>
         </div>
         <p className="text-[11px] leading-4 text-navy-ink-3">Sample tenant. Firms and people are fictional; nothing is sent to WhatsApp, email or ad platforms.</p>
-        {/* ledger rule lines: structural, not decorative blobs */}
-        <svg className="pointer-events-none absolute inset-y-0 right-0 h-full w-24 opacity-[0.07]" aria-hidden><defs><pattern id="rule" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M0 23.5h24" stroke="white" /></pattern></defs><rect width="100%" height="100%" fill="url(#rule)" /></svg>
       </aside>
 
       <main className="flex items-start justify-center px-4 py-10 sm:px-8 lg:items-center">
         <div className="w-full max-w-[560px]">
-          <div className="mb-8 flex items-center gap-3 lg:hidden"><BrandMark size={32} /><div><div className="text-[15px] font-semibold">LAWSOME</div><div className="text-[12px] text-ink-3">Growth CRM</div></div></div>
+          <div className="mb-8 flex items-center gap-3 lg:hidden"><Mono letter={tenant.monogram} /><div><div className="text-[15px] font-semibold">{tenant.name}</div><div className="text-[12px] text-ink-3">{tenant.product}</div></div></div>
           <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Sign in</h1>
           <p className="mt-1 text-[13px] text-ink-2">{sp.signed_out ? "You have been signed out." : "Use your work email, or open the demo as one of the personas below."}</p>
           {sp.error && <p role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">{ERR[sp.error] ?? "Sign-in failed."}</p>}

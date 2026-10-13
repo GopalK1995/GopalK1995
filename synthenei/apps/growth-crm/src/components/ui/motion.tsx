@@ -8,21 +8,18 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
 const container: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.035, delayChildren: 0.02 } } };
 const item: Variants = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0, transition: { duration: 0.24, ease: EASE } } };
 
+// Never branch markup on useReducedMotion() (null on the server -> hydration mismatch). MotionConfig
+// reducedMotion="user" in Providers drops transforms; durations below shrink to 0 on the client.
 export function Stagger({ children, className }: { children: ReactNode; className?: string }) {
-  const reduce = useReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
   return <motion.div className={className} variants={container} initial="hidden" animate="show">{children}</motion.div>;
 }
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
-  const reduce = useReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
   return <motion.div className={cn("min-w-0", className)} variants={item}>{children}</motion.div>;
 }
 /** Card hover lift (2px, 160 ms). */
 export function Lift({ children, className }: { children: ReactNode; className?: string }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.div className={className} whileHover={reduce ? undefined : { y: -2 }} transition={{ duration: 0.16, ease: EASE }}>
+    <motion.div className={className} whileHover={{ y: -2 }} transition={{ duration: 0.16, ease: EASE }}>
       {children}
     </motion.div>
   );

@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Role } from "@/lib/data/types";
 import { TipProvider } from "@/components/ui/tooltip";
+import { MotionConfig } from "motion/react";
 
 /** What client components know about the viewer: identity, active workspace and the role held there. */
 export interface ShellCtx {
@@ -46,7 +47,7 @@ export function Providers({ session, children }: { session: ShellCtx; children: 
   return (
     <SessionCtx.Provider value={session}>
       <BrandCtx.Provider value={{ brand, setBrand, reset }}>
-        <TipProvider delayDuration={200}>{children}</TipProvider>
+        <MotionConfig reducedMotion="user"><TipProvider delayDuration={200}>{children}</TipProvider></MotionConfig>
       </BrandCtx.Provider>
     </SessionCtx.Provider>
   );
