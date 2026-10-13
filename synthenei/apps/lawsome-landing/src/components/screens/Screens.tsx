@@ -1,4 +1,5 @@
 import { AppFrame } from "./AppFrame";
+import { CountUp } from "../motion/CountUp";
 import {
   firm, stats, statusBars, growth, months, upcomingHearings, sites, cases,
   calendarEvents, hearingsList, team, savedCases,
@@ -26,10 +27,10 @@ export function DashboardScreen() {
         <div className="qa">+ Quick actions</div>
       </div>
       <div className="cards4">
-        <div className="c stat"><div className="ico">▤</div><strong>{stats.total}</strong><span>Total cases · {stats.thisMonth} this month</span></div>
-        <div className="c stat"><div className="ico">⚖</div><strong>{stats.upcoming}</strong><span>Upcoming hearings</span></div>
-        <div className="c stat"><div className="ico">✓</div><strong>{stats.resolved}</strong><span>Resolved cases</span></div>
-        <div className="c stat"><div className="ico">☺</div><strong>{stats.team}</strong><span>Lawyers &amp; staff · {stats.sites} sites</span></div>
+        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M2 2.5h8M2 6h8M2 9.5h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></div><strong><CountUp value={stats.total} /></strong><span>Total cases · {stats.thisMonth} this month</span></div>
+        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M6 1.5v9M3 10.5h6M2 4h8M2 4 .9 7h2.2L2 4Zm8 0-1.1 3h2.2L10 4Z" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" /></svg></div><strong><CountUp value={stats.upcoming} /></strong><span>Upcoming hearings</span></div>
+        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="m2.5 6.2 2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg></div><strong><CountUp value={stats.resolved} /></strong><span>Resolved cases</span></div>
+        <div className="c stat"><div className="ico"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden><circle cx="4.3" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.2" fill="none" /><path d="M1.3 10c.4-1.7 1.6-2.6 3-2.6s2.6.9 3 2.6M8 2.4a1.7 1.7 0 0 1 0 3.2M9 7.6c.9.4 1.5 1.2 1.7 2.4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" /></svg></div><strong><CountUp value={stats.team} /></strong><span>Lawyers &amp; staff · {stats.sites} sites</span></div>
       </div>
       <div className="cols">
         <div>

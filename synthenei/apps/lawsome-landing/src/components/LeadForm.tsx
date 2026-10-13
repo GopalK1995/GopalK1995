@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { captureUtm, track } from "@/lib/track";
+import { submitLead } from "@/lib/submitLead";
 
 const ROLES = ["Managing partner / owner", "Senior advocate / practice head", "Associate / lawyer", "Legal operations / admin", "Other"];
 type Errors = Partial<Record<"name" | "email" | "firm" | "role" | "phone" | "consent", string>>;
@@ -14,7 +15,8 @@ export function LeadForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const body = { name: f.get("name"), email: f.get("email"), firm: f.get("firm"), role: f.get("role"), phone: f.get("phone"), website: f.get("website"), consent: f.get("consent") === "on", utm: captureUtm() };
+    const str = (k: string) => String(f.get(k) ?? "");
+    const body = { name: str("name"), email: str("email"), firm: str("firm"), role: str("role"), phone: str("phone"), website: str("website"), consent: f.get("consent") === "on", utm: captureUtm() };
     const local: Errors = {};
     if (String(body.name ?? "").trim().length < 2) local.name = "Please enter your name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(body.email ?? "").trim())) local.email = "Please enter a valid work email.";
@@ -25,9 +27,8 @@ export function LeadForm() {
     if (Object.keys(local).length) return;
     setState("sending");
     try {
-      const r = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const j = await r.json();
-      if (r.status === 422) { setErrors(j.errors ?? {}); setState("idle"); return; }
+      const r = await submitLead(body);
+      if (!r.ok && r.status === 422 && r.errors) { setErrors(r.errors); setState("idle"); return; }
       if (!r.ok) throw new Error();
       track("form_submit", { role: body.role });
       setState("done");
@@ -37,7 +38,7 @@ export function LeadForm() {
   if (state === "done")
     return (
       <div className="success" role="status">
-        <div style={{ fontSize: 34 }}>✅</div>
+        <svg className="success-mark" width="40" height="40" viewBox="0 0 40 40" aria-hidden><circle cx="20" cy="20" r="19" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="m12.5 20.5 5 5 10-11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <h3>Thank you — your demo request is in.</h3>
         <p style={{ color: "var(--c-ink-2)" }}>Our team will reach out within one working day to schedule your guided LAWSOME walkthrough.</p>
       </div>

@@ -28,6 +28,6 @@ export function track(event: TrackEvent, props: Record<string, unknown> = {}) {
   const payload = { event, ...props, utm: captureUtm(), path: location.pathname, ts: Date.now() };
   safe(() => {
     (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push(payload);
-    navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+    if (process.env.NEXT_PUBLIC_STATIC_EXPORT !== "1") navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
   }, undefined);
 }

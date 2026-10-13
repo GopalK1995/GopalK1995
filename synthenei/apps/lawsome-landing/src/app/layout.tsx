@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 import "@/styles/globals.css";
+
+const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--ff-sans", display: "swap" });
+const serif = Source_Serif_4({ subsets: ["latin"], variable: "--ff-serif", display: "swap", weight: ["500", "600"] });
 
 export const metadata: Metadata = {
   title: "LAWSOME — Your Entire Law Firm. One Clear View.",
@@ -9,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (<html lang="en"><body>{children}</body></html>);
+  return (<html lang="en" className={`${sans.variable} ${serif.variable}`}><body>{children}</body></html>);
 }

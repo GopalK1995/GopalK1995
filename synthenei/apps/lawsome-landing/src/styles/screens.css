@@ -1,7 +1,5 @@
 /* Faithful replicas of the LAWSOME product UI, used as marketing screens. */
-.app{display:grid;grid-template-columns:168px 1fr;min-height:420px;border-radius:16px;overflow:hidden;background:
-  radial-gradient(500px 300px at 90% 90%,var(--glow-peach),transparent 70%),
-  radial-gradient(500px 300px at 50% 100%,var(--glow-teal),transparent 70%),#fbfaf8;
+.app{display:grid;grid-template-columns:168px 1fr;min-height:420px;border-radius:16px;overflow:hidden;background:#fbfaf8;
   border:1px solid rgba(15,23,42,.12);box-shadow:var(--shadow-float);font-size:11px;color:var(--c-ink);text-align:left}
 .app .chrome{grid-column:1/-1;background:#dfe3ec;height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid #cdd3e2}
 .app .chrome i{width:8px;height:8px;border-radius:50%;background:#b8bfd0;display:block}
@@ -69,12 +67,13 @@
 }
 
 /* Ask Nidhi chat */
-.nidhi{background:#fff;border:1px solid var(--c-line);border-radius:var(--r-lg);box-shadow:var(--shadow-float);overflow:hidden;min-height:620px}
+.nidhi{background:#fff;border:1px solid var(--c-line);border-radius:16px;box-shadow:var(--shadow-card);overflow:hidden;min-height:620px}
 .nidhi-head{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--c-navy-800);color:#fff;font-weight:700}
 .nidhi-head em{margin-left:auto;font-style:normal;font-size:.7rem;font-weight:600;color:#b8c2e6;border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:2px 9px}
-.nidhi-dot{width:9px;height:9px;border-radius:50%;background:#7fe0b4;box-shadow:0 0 0 4px rgba(127,224,180,.2)}
+.nidhi-dot{width:8px;height:8px;border-radius:50%;background:#7fe0b4}
+.verify{font-size:.75rem;color:var(--c-ink-3);border-top:1px solid var(--c-line);padding-top:10px}
 .nidhi-body{padding:16px;display:grid;gap:12px;align-content:start}
-.bubble{padding:12px 14px;border-radius:14px;font-size:.88rem;max-width:92%;animation:rise .35s ease both}
+.bubble{padding:12px 14px;border-radius:14px;font-size:.88rem;max-width:92%}
 .bubble.me{background:var(--c-blue-600);color:#fff;justify-self:end;border-bottom-right-radius:4px}
 .bubble.bot{background:#f3f5fb;border:1px solid var(--c-line);border-bottom-left-radius:4px;display:grid;gap:12px}
 .bubble.typing{display:flex;gap:4px;width:64px}.typing i{width:7px;height:7px;border-radius:50%;background:#98a2c3;animation:blink 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
