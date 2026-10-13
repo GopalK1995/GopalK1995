@@ -1,6 +1,6 @@
 # Master task list (all workstreams)
 
-Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersedes `sprint-1-hour.md` (written before we knew LAWSOME already exists).
+Updated: 2026-10-13 (redesign rows in section H). Status: `done` · `doing` · `todo` · `blocked` · `showcase only for now`. Supersedes `sprint-1-hour.md` (written before we knew LAWSOME already exists).
 
 ## A. Tomorrow's pitch (priority 1)
 | ID | Task | Description | Owner | Status | Needs |
@@ -22,7 +22,7 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 | B1 | Email copy | Draft in `06-skills/email-campaign.md`; finalise subject lines + 2 variants | Venket | doing | — |
 | B2 | UTM links | Build tracked links using the UTM convention | Venket | todo | A2 URL |
 | B3 | Prospect list | Advocates / law-firm leaders, segmented, with source + lawful basis logged | Kiruba | todo | — |
-| B4 | Send tool setup | Pick tool (Brevo/Zoho/Mailchimp etc.), domain auth (SPF/DKIM), unsubscribe | Venket + Krishna | todo | Tool decision |
+| B4 | Send tool setup | Pick tool (Brevo/Zoho/Mailchimp etc.), domain auth (SPF/DKIM), unsubscribe. In the CRM, Mailchimp is shown as a showcase placeholder | Venket + Krishna | showcase only for now | Tool decision |
 | B5 | LinkedIn campaign | Posts/carousels/outreach with same message | Venket | todo | — |
 | B6 | Launch + monitor | Send in batches, watch replies, visits, form submits | Venket + Shaun | todo | B1-B4 |
 
@@ -39,7 +39,7 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 | C8 | Meta Ads connector | Marketing API after ad-account access | Krishna | todo | Ad account access |
 | C9 | Backup monitor | Daily DB dump job + heartbeat, retention, restore-drill log shown on screen | Krishna | todo | Who owns backups, storage target |
 | C10 | AI assist | Claude-based lead summaries / campaign insight drafts, off by default | Krishna | todo | Data-terms check, API key |
-| C11 | Roles + consent | Admin/marketer/viewer roles; consent log, deletion requests (DPDP) | Krishna | todo | — |
+| C11 | Roles + consent | Replaced by H4 (six roles) + consent log/erasure in schema.sql | Krishna | doing | — |
 | C12 | Venket walkthrough | Review screens with Venket, adjust metrics to what he actually uses | Krishna + Venket | todo | C3 |
 
 ## D. Sales & data
@@ -66,9 +66,9 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 | ID | Task | Description | Owner | Status |
 |---|---|---|---|---|
 | F1 | Vercel account | For A2 | Krishna | todo |
-| F2 | Supabase project + plan | Leads/CRM database; Pro plan gives 7-day backups | Krishna | todo |
-| F3 | GA4 property | Create or grant access; link to landing page | Venket | todo |
-| F4 | LinkedIn Company Page admin + verification | Needed before any API application | Venket | todo |
+| F2 | Supabase project + plan | Leads/CRM database (Supabase approved); plan, region and ownership still open (G5) | Krishna | doing |
+| F3 | GA4 property | Create or grant access; link to landing page. In the CRM, GA4 is shown on sample data | Venket | showcase only for now |
+| F4 | LinkedIn Company Page admin + verification | Needed before any API application. In the CRM, LinkedIn is shown as showcase + CSV import | Venket | showcase only for now |
 | F5 | Domain + email sending domain | Landing URL and campaign sender | Krishna | todo |
 
 ## G. Later (not now)
@@ -78,3 +78,21 @@ Updated: 2026-10-13. Status: `done` · `doing` · `todo` · `blocked`. Supersede
 | G2 | Multi-product marketing platform | Reuse growth CRM for other products only after LAWSOME works |
 | G3 | Referral programme | Only after legal review (E6) |
 | G4 | WhatsApp channel | Only if Venket confirms it's a real channel |
+
+## H. Growth CRM redesign: white-label, multi-tenant (added 2026-10-13)
+Spec: `03-projects/growth-crm/03-product-spec.md`. Schema: `apps/growth-crm/supabase/schema.sql`.
+| ID | Task | Description | Owner | Status | Needs |
+|---|---|---|---|---|---|
+| H1 | Product spec | Research, personas, features, `/sales` dashboard, page-by-page spec, metrics M1-M63, integrations, architecture, AI, permissions, design, demo script, canonical IDs | Krishna (agent) | done | — |
+| H2 | Multi-tenant schema + RLS | 29 tables, tenant + role RLS, invitation-based profiles, `submit_lead` / `track_event` RPCs for the landing page, audit log, views; validated locally on PG16 | Krishna (agent) | done | — |
+| H3 | UI redesign | Rebuild all routes in the spec (login, role-aware home, `/sales`, leads, pipeline, accounts, campaigns, audience, analytics, inbox, tasks, ai, integrations, data-health, settings) on sample data | Krishna (build agent) | doing | H1 |
+| H4 | Auth + roles | Supabase Auth (password + magic link), six roles, invite flow, demo-mode role picker, logout, idle timeout, RLS tests per role | Krishna | doing | F2 |
+| H5 | Integrations showcase | 16 showcase cards + detail pages (flows, field maps, sync log, blockers); CSV import is the only live path | Krishna | doing | H1 |
+| H6 | White-label branding | Tenant branding tokens (name, logo, colours with contrast check, sender, custom domain), applied via CSS variables | Krishna | todo | H3 |
+| H7 | Client meeting (LAWSOME owner) | Book and run the meeting; 9-minute demo (spec section 12); capture current tools, team, pricing, platform access; propose a 30-day pilot with 2 salespeople | Ashique | todo | H3 demo build |
+| H8 | AI features | Rule-based lead score with factors (live); summaries / next-best-action / reply drafts as showcase, off by default; data-terms checklist | Krishna | todo | G9 sign-off |
+| H9 | Apply schema to Supabase + seed | Migrations from schema.sql, synthetic Tamil Nadu seed, generated types, landing page wired to `submit_lead()` | Krishna (backend agent) | doing | F2 |
+| H10 | Pipeline rules | Agree stage definitions, SLA (default 120 business minutes), district territories, lost reasons | Shaun | todo | H7 |
+| H11 | Data sourcing for TN firms | Lawful sources, dedupe rules, credible market-size figure | Kiruba | todo | — |
+| H12 | Backup job | Nightly offsite dump + heartbeat row + alert rules + first restore drill | Krishna | todo | F2, G6 |
+
