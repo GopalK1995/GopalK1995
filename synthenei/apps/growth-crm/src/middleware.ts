@@ -14,7 +14,8 @@ export async function middleware(req: NextRequest) {
   // RSC requests (Link prefetch / client navigation) to a route this role cannot open get an empty 204: no payload
   // and no browser console error. A non-RSC response makes the router fall back to a full load, which then
   // renders the 403 page.
-  const isPrefetch = req.nextUrl.searchParams.has("_rsc") || req.headers.get("rsc") === "1" || req.headers.get("next-router-prefetch") === "1";
+  // Next strips the RSC/_rsc markers before middleware; router fetches still carry `next-url` and are not documents.
+  const isPrefetch = req.headers.has("next-url") && req.headers.get("sec-fetch-dest") !== "document";
   const forbid = (page: string, role = "") => {
     if (isPrefetch) return new NextResponse(null, { status: 204 });
     const url = new URL("/forbidden", req.url); url.searchParams.set("page", page); if (role) url.searchParams.set("role", role);

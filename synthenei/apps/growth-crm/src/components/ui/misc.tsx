@@ -51,7 +51,7 @@ export const td = "h-11 px-3 text-[13px] text-ink whitespace-nowrap";
 export const tdNum = td + " text-right num";
 export function Table({ children, className, minWidth = 720 }: { children: ReactNode; className?: string; minWidth?: number }) {
   return (
-    <div className={cn("scrollbar-thin overflow-x-auto", className)}>
+    <div className={cn("scrollbar-thin relative overflow-x-auto", className)}>
       <table className="w-full border-collapse" style={{ minWidth }}>{children}</table>
     </div>
   );

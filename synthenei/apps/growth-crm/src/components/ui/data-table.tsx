@@ -16,7 +16,7 @@ export function DataTable<T>({ rows, columns, rowKey, minWidth = 720, empty = "N
   const title = columns.find((c) => c.mobile === "title"), facts = columns.filter((c) => c.mobile === "fact").slice(0, 2), action = columns.find((c) => c.mobile === "action");
   return (
     <>
-      <div className="scrollbar-thin hidden overflow-x-auto md:block">
+      <div className="scrollbar-thin relative hidden overflow-x-auto md:block">
         <table className="w-full border-collapse" style={{ minWidth }}>
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead><tr className="border-y border-line bg-paper/60">{columns.map((c) => <th key={c.key} scope="col" className={cn(c.align === "right" ? thNum : th, c.className)}>{c.header}</th>)}</tr></thead>
