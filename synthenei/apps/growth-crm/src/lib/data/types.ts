@@ -75,7 +75,7 @@ export interface Deal {
 }
 
 export interface Campaign {
-  id: string; name: string; channel: Exclude<Channel, "organic" | "referral" | "event">;
+  id: string; name: string; channel: Exclude<Channel, "organic" | "event">; /* referral = OTA / travel-agent programmes (hospitality) */
   status: "live" | "paused" | "ended"; objective: string;
   startDate: string; endDate: string | null; budget: number;
   audience: string; audienceSize: number;
