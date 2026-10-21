@@ -10,6 +10,19 @@ export type DealStage = "discovery" | "demo_scheduled" | "demo_done" | "proposal
 export type City = string; // Tamil Nadu, Kerala, … per workspace
 export type PracticeArea = "Civil" | "Criminal" | "Family" | "Property" | "Corporate" | "Labour" | "Tax";
 export type FirmSize = "Solo" | "2–5" | "6–20" | "21–50" | "50+";
+/** Hospitality vertical (dataset "wg"). Trip types shown as Account.interests / StayInfo.tripType. */
+export type TripType = "Couples" | "Family" | "Friends group" | "Workation" | "Wedding & events" | "Corporate retreat" | "Trekking";
+/** Hospitality: kind of guest/partner account. */
+export type GuestKind = "family" | "travel_agent" | "corporate" | "wedding_planner";
+/** Hospitality: stay specifics on an enquiry (Lead) or booking (Deal). `origin` = how the guest found the property. */
+export interface StayInfo {
+  checkIn: string; /* YYYY-MM-DD */ nights: number; guests: number; rooms: number; room: string; tripType: TripType | string;
+  origin: "new" | "repeat" | "referral"; occasion?: string; flexibleDates?: boolean;
+}
+export interface BookingStay extends StayInfo {
+  ratePerNight: number; /* INR, blended */ advancePct: number; advancePaid: number; /* INR */ viaOta: boolean; /* true = Booking.com / MakeMyTrip / agent commission */ commissionPct: number;
+  status: "enquiry" | "hold" | "confirmed" | "checked_in" | "completed" | "cancelled";
+}
 
 export interface TeamMember {
   id: string; name: string; role: Role; title: string; email: string;
@@ -22,6 +35,8 @@ export interface Account {
   founded: number; website: string; ownerId: string;
   status: "prospect" | "trial" | "customer" | "churned";
   icpTier: "A" | "B" | "C"; arr: number; lastActivityAt: string;
+  /** Hospitality (wg) only. practiceAreas/courts are [] there; size reuses FirmSize as party size: Solo=1-2, 2–5=3-5, 6–20=6-10, 21–50=11-25, 50+=25+. lawyers = typical guests per stay (or 0). */
+  guestKind?: GuestKind; interests?: TripType[]; roomsOfInterest?: string[]; stays?: number; repeatGuest?: boolean;
 }
 
 export interface ScoreFactor { label: string; points: number; detail: string }
@@ -40,6 +55,8 @@ export interface Lead {
   score: number; scoreFactors: ScoreFactor[];
   consent: { followup: boolean; marketing: boolean; whatsapp: boolean; at: string; noticeVersion: string };
   potentialValue: number; tags: string[];
+  /** Hospitality (wg): trip type text is `title`; stay specifics here. */
+  stay?: StayInfo;
 }
 
 export type ActivityKind =
@@ -53,6 +70,8 @@ export interface Deal {
   stage: DealStage; value: number; seats: number; plan: "Practice" | "Chambers" | "Enterprise"; // plan keys per spec; prices are placeholders until LAWSOME shares pricing
   probability: number; createdAt: string; expectedClose: string; stageEnteredAt: string;
   wonAt?: string; lostReason?: string;
+  /** Hospitality (wg): a booking. seats = nights; plan is unused (always "Practice"). */
+  stay?: BookingStay;
 }
 
 export interface Campaign {
@@ -82,6 +101,8 @@ export interface Message { id: string; from: "lead" | "us"; authorId?: string; a
 export interface Conversation {
   id: string; leadId: string; channel: "whatsapp" | "email" | "linkedin"; subject: string;
   unread: number; lastAt: string; messages: Message[];
+  /** Hospitality (wg): real medium when it is not one of `channel` (Instagram DM, phone call note). channel is then "whatsapp" as the closest chat style. */
+  via?: "instagram" | "phone";
   aiDraft: { body: string; rationale: string[]; basedOn: string; needsReview?: string };
 }
 
