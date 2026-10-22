@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
 import { saveWeights } from "../actions";
+import { useVocab } from "@/components/shell/providers";
+import { localize } from "@/lib/vertical";
 
 export type FactorRow = { label: string; weight: number; avg: number; share: number; example: string };
 const BANDS = [{ k: "0–39", lo: 0, hi: 39 }, { k: "40–69", lo: 40, hi: 69 }, { k: "70–100", lo: 70, hi: 100 }];
@@ -13,6 +15,7 @@ const bandOf = (s: number) => BANDS.findIndex((b) => s >= b.lo && s <= b.hi);
 
 /** Factor weights (max points) with a live "score distribution if saved" preview. Scores are rule-based, not ML. */
 export function WeightsEditor({ factors, points, scores, edit }: { factors: FactorRow[]; points: number[][]; scores: number[]; edit: Verdict }) {
+  const vv = useVocab(), L = (x: string) => localize(vv, x);
   const [w, setW] = useState(factors.map((f) => f.weight));
   const [pending, start] = useTransition();
   const preview = useMemo(() => scores.map((s, i) => {
@@ -28,12 +31,12 @@ export function WeightsEditor({ factors, points, scores, edit }: { factors: Fact
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <div className="scrollbar-thin overflow-x-auto">
         <table className="w-full min-w-[480px] border-collapse text-[13px]">
-          <caption className="sr-only">Lead score factors and weights</caption>
+          <caption className="sr-only">{L("Lead score factors and weights")}</caption>
           <thead><tr className="border-y border-line bg-paper/60 text-[11px] uppercase tracking-[0.05em] text-ink-3">
             <th scope="col" className="h-9 px-3 text-left font-medium">Factor</th>
             <th scope="col" className="h-9 px-3 text-right font-medium">Max points</th>
             <th scope="col" className="h-9 px-3 text-right font-medium">Avg earned</th>
-            <th scope="col" className="h-9 px-3 text-right font-medium">Leads earning</th>
+            <th scope="col" className="h-9 px-3 text-right font-medium">{L("Leads earning")}</th>
           </tr></thead>
           <tbody>{factors.map((f, i) => (
             <tr key={f.label} className="border-b border-line last:border-0">
@@ -49,12 +52,12 @@ export function WeightsEditor({ factors, points, scores, edit }: { factors: Fact
             </tr>
           ))}</tbody>
         </table>
-        <p className="mt-2 text-[12px] text-ink-3">No protected attributes (gender, religion, caste or name-based guesses) are used. Weights are rule-based until 200+ deals have closed.</p>
+        <p className="mt-2 text-[12px] text-ink-3">No protected attributes (gender, religion, caste or name-based guesses) are used. {L("Weights are rule-based until 200+ deals have closed.")}</p>
       </div>
 
       <div>
         <h3 className="text-[13px] font-semibold text-ink">Score distribution if saved</h3>
-        <p className="text-[12px] text-ink-3 num">{scores.length} leads · current vs preview</p>
+        <p className="text-[12px] text-ink-3 num">{scores.length} {L("leads")} · current vs preview</p>
         <ul className="mt-3 space-y-3">
           {BANDS.map((b, i) => (
             <li key={b.k}>

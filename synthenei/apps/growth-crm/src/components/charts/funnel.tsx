@@ -2,11 +2,15 @@
 import type { ReactNode } from "react";
 import { num, pct } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useVocab } from "@/components/shell/providers";
+import { localize } from "@/lib/vertical";
 
 /** Horizontal funnel: bar width = share of step 1, step conversion beside each bar; biggest drop flagged. */
 const DEFAULT_NOTE = "Grey steps are consented web visitors (under-count vs GA4). Right column: conversion from the previous step; red marks the biggest drop after lead capture.";
 /** mutedSteps: how many leading steps render grey (pre-lead). note: footer text; null hides it. */
-export function Funnel({ steps, className, lowN = 20, mutedSteps = 3, note = DEFAULT_NOTE }: { steps: { key: string; label: string; n: number; step: number; cum: number }[]; className?: string; lowN?: number; mutedSteps?: number; note?: ReactNode | null }) {
+export function Funnel({ steps, className, lowN = 20, mutedSteps = 3, note: noteProp }: { steps: { key: string; label: string; n: number; step: number; cum: number }[]; className?: string; lowN?: number; mutedSteps?: number; note?: ReactNode | null }) {
+  const vv = useVocab();
+  const note = noteProp === undefined ? localize(vv, DEFAULT_NOTE) : noteProp;
   const max = steps[0]?.n || 1;
   const drops = steps.slice(1).map((s, i) => ({ i: i + 1, drop: 1 - s.step }));
   const worst = drops.filter((d) => d.i >= mutedSteps).sort((a, b) => b.drop - a.drop)[0]?.i;

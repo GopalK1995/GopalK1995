@@ -11,12 +11,14 @@ import { cn } from "@/lib/utils";
 import { addCampaignNote } from "../../_actions";
 import { MktGate, notify } from "../../_components/action";
 import { useVocab } from "@/components/shell/providers";
+import { localize } from "@/lib/vertical";
 
 type Day = { date: string; spend: number; clicks: number; leads: number };
 const PERIODS = [{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "90", label: "90 days" }] as const;
 
 /** Spend and leads share a time axis but not a unit, so they are two aligned charts (no dual axis). */
 export function TrendPanel({ days, name }: { days: Day[]; name: string }) {
+  const vv = useVocab(), L = (x: string) => localize(vv, x);
   const [p, setP] = useState<"30" | "60" | "90">(days.length > 45 ? "60" : "30");
   const xs = days.slice(-Number(p));
   const withAvg = xs.map((d, i) => ({ ...d, avg: Math.round((xs.slice(Math.max(0, i - 6), i + 1).reduce((a, x) => a + x.leads, 0) / Math.min(7, i + 1)) * 10) / 10 }));
@@ -24,7 +26,7 @@ export function TrendPanel({ days, name }: { days: Day[]; name: string }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12px] text-ink-3 num">{inr(spend)} spent · {num(leads)} CRM leads in the last {p} days{days.length < Number(p) ? ` (campaign ran ${days.length} days)` : ""}</p>
+        <p className="text-[12px] text-ink-3 num">{inr(spend)} spent · {num(leads)} CRM {L("leads")} in the last {p} days{days.length < Number(p) ? ` (campaign ran ${days.length} days)` : ""}</p>
         <Segmented label="Trend period" options={[...PERIODS]} value={p} onChange={setP} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
@@ -33,9 +35,9 @@ export function TrendPanel({ days, name }: { days: Day[]; name: string }) {
           <LineTrend label={`${name}: daily spend over the last ${p} days`} data={xs} series={[{ key: "spend", label: "Spend", color: "var(--chart-1)", area: true }]} yFormat="inrCompact" height={200} />
         </div>
         <div>
-          <h3 className="mb-2 text-[12px] font-medium text-ink-2">CRM leads per day</h3>
-          <LineTrend label={`${name}: CRM leads per day and 7-day average over the last ${p} days`} data={withAvg}
-            series={[{ key: "leads", label: "Leads", color: "var(--seq-3)", bar: true }, { key: "avg", label: "7-day average", color: "var(--chart-1)" }]} yFormat="num" height={200} />
+          <h3 className="mb-2 text-[12px] font-medium text-ink-2">CRM {L("leads")} per day</h3>
+          <LineTrend label={`${name}: CRM ${L("leads")} per day and 7-day average over the last ${p} days`} data={withAvg}
+            series={[{ key: "leads", label: L("Leads"), color: "var(--seq-3)", bar: true }, { key: "avg", label: "7-day average", color: "var(--chart-1)" }]} yFormat="num" height={200} />
         </div>
       </div>
     </div>
@@ -68,7 +70,7 @@ export function CampaignFunnel({ steps }: { steps: { key: string; label: string;
           );
         })}
       </ol>
-      <figcaption className="mt-2 text-[11px] leading-4 text-ink-3">Grey steps come from the platform export and GA4 (sample); blue steps are counted in the CRM. Right column: conversion from the previous step; red marks the weakest step after lead capture.</figcaption>
+      <figcaption className="mt-2 text-[11px] leading-4 text-ink-3">{localize(useVocab(), "Grey steps come from the platform export and GA4 (sample); blue steps are counted in the CRM. Right column: conversion from the previous step; red marks the weakest step after lead capture.")}</figcaption>
     </figure>
   );
 }

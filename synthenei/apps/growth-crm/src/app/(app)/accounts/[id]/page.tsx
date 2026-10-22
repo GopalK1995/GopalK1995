@@ -200,7 +200,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
             <Card>
               <CardHeader title={d_.nextTitle} />
               <CardBody className="text-[13px] leading-5 text-ink-2">
-                {open.length ? <>Open deal in <strong className="font-medium text-ink">{open[0].stage.replace("_", " ")}</strong>, expected close {fmtDate(open[0].expectedClose)}.</>
+                {open.length ? <>Open deal in <strong className="font-medium text-ink">{hosp ? v.dealStage[open[0].stage] : open[0].stage.replace("_", " ")}</strong>, expected close {fmtDate(open[0].expectedClose)}.</>
                   : (hosp ? contacts.length > 0 : contacts.some((c) => DECISION.includes(c.title))) ? d_.nextDecision : d_.nextNone}
               </CardBody>
             </Card>
