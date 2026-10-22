@@ -53,3 +53,50 @@ Status: planned 2026-10-21. Goal: the same CRM serves two unrelated businesses. 
 3. Every page works for both tenants at 1440 / 390; production build passes; no console errors.
 4. Server actions and middleware still re-check workspace membership (a Shola Mist session cannot open a LAWSOME workspace via `?ws=`).
 5. Real database: not changed in phase 1 (demo mode). Phase 2 = SQL seed for the new tenant, pasted in the Supabase SQL editor.
+
+---
+
+# Addendum (2026-10-22): everything configurable, not hard-coded
+
+Requirement: wording, stages, taxonomies, navigation, fonts, branding and data must be editable by the **super admin** (platform) and the **org admin** (tenant owner) from the UI, with nothing client-specific baked into pages.
+
+## A. Configuration model (one JSON document per tenant)
+`TenantConfig` (versioned, validated with a schema) with these sections:
+1. **preset**: `legal` | `hospitality` | `blank` (starting template; presets are code, a tenant's overrides are data).
+2. **vocabulary**: singular/plural nouns (lead, account, deal, visit/demo), nav labels, KPI labels, page titles, empty-state text, form labels. Merged over the preset.
+3. **stages**: lead stages and deal stages: label, order, win probability, colour token, "counts as won/lost". Maps onto the fixed internal enums, so metrics keep working.
+4. **taxonomies**: interests/trip types or practice areas, rooms or products, party/firm-size buckets, lost reasons, channels' display names (not the channel enum).
+5. **modules**: on/off per module (inbox, copilot, integrations, audience, analytics, tasks, accounts) and per-vertical features (hearings/eCourts only for legal).
+6. **branding**: name, product label, logo, accent hue, **font pair** (heading + body) chosen from an allow-list of self-hosted/next-font fonts; contrast check blocks unsafe combinations.
+7. **dashboard**: which 4 headline KPI tiles and which charts appear on Command Center / My day (chosen from a catalogue of metric IDs).
+8. **data**: sample-data switch (on for demo tenants, off for real ones), CSV import mappings, targets (monthly targets per rep), SLA hours, business hours.
+
+## B. Who can change what
+| Section | Org admin (tenant owner) | Super admin (Synthan) |
+|---|---|---|
+| vocabulary, stages, taxonomies, targets, SLA | edit own tenant | edit any tenant |
+| branding (name, logo, hue, fonts) | tenant primary owner only | edit any tenant |
+| modules on/off | can switch off modules they don't want | can switch any on/off, incl. vertical-only features |
+| preset / vertical | read-only | change (with a preview + warning) |
+| dashboard tiles | pick from the allowed catalogue | extend the catalogue per tenant |
+| data: import, sample-data switch | import own data; switch sample data off | any tenant, but real business data only inside an audited support session (existing rules) |
+| create tenant from template | no | yes (Legal, Guesthouse, Blank) |
+Every change writes an audit-log row (who, what changed, before/after). Changes are versioned so an admin can roll back.
+
+## C. Storage and delivery
+- Database: table `tenant_config` (tenant_id PK, version, config jsonb, updated_by, updated_at) plus `tenant_config_history`. RLS: members read their tenant's config; only the tenant's owners (and, via the audited RPC, platform admins) write. No DROP/DELETE statements in the migration.
+- App: `lib/config` resolves `effective = deepMerge(preset, tenantConfig)`; the shell layout loads it once per request and feeds the existing `vocabFor()` / `useVocab()` / `useBrand()` API, so pages don't change when the source moves from code to data.
+- Demo mode (no Supabase session): overrides persist in a signed, httpOnly cookie per tenant and are labelled "Saved in this browser (demo)"; real mode persists to `tenant_config`.
+- Fonts are chosen by key from an allow-list (no arbitrary URLs), applied through CSS variables.
+
+## D. Screens
+- Org admin: **Settings -> Configuration** tabs (Wording, Stages, Categories, Modules, Dashboard, Branding & fonts, Data & import, History/rollback), with a live preview and "Reset to preset".
+- Super admin: **Admin -> Tenants -> <tenant> -> Configuration** (same editors, plus Preset, Modules and tile catalogue, "Create tenant from template", "Copy config from another tenant").
+
+## E. Acceptance
+1. Renaming "Enquiries" to "Requests" as org admin changes every page for that tenant only, immediately, and the other tenant is unaffected.
+2. Changing a stage label/order/probability updates pipeline, funnel and forecasts consistently.
+3. Switching a module off hides its nav entry and blocks its route (403), server-side.
+4. A font change applies to that tenant's pages only; the contrast/branding check still blocks bad combinations.
+5. Org admin cannot edit another tenant, nor super-admin-only sections (server-side checks, tested). Super admin edits are audited.
+6. Presets still render exactly as today when a tenant has no overrides.
