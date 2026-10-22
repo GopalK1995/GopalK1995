@@ -96,7 +96,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
       <Stagger className="grid gap-4">
         <StaggerItem className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi label={ac.kAll} value={accounts.length} foot={<>{ac.kAllFoot(rows.filter((r) => r.openCount).length)}</>} />
-          <Kpi label={rep ? "My open pipeline" : "Open pipeline"} metric="M34" value={pipelineTotals(deals, now).openValue} format="inrCompact" foot={<>{ac.kOpenFoot(rows.reduce((s, r) => s + r.openCount, 0))}</>} />
+          <Kpi label={hosp ? (rep ? "My open bookings value" : "Open enquiry value") : rep ? "My open pipeline" : "Open pipeline"} metric="M34" value={pipelineTotals(deals, now).openValue} format="inrCompact" foot={<>{ac.kOpenFoot(rows.reduce((s, r) => s + r.openCount, 0))}</>} />
           <Kpi label={ac.kMulti} metric="M55" value={ratio(hosp ? accounts.filter((a) => a.repeatGuest).length : multi, accounts.length)} format="pct" foot={<>{ac.kMultiFoot(hosp ? accounts.filter((a) => a.repeatGuest).length : multi, accounts.length)}</>} />
           <Kpi label={ac.kArr} value={arr} format="inrCompact" foot={<>{ac.kArrFoot(customers.length)}</>} />
         </StaggerItem>
