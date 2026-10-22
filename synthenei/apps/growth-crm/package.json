@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3201",
     "typecheck": "tsc --noEmit",
+    "test:config": "rm -rf .cfgtest && tsc scripts/config-test.ts --outDir .cfgtest --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop --strict --jsx preserve >/dev/null; node .cfgtest/scripts/config-test.js",
     "e2e": "node scripts/e2e-matrix.mjs"
   },
   "dependencies": {
