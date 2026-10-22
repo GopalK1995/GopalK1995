@@ -79,7 +79,7 @@ export function can(action: Action, ctx: { role: Role; support?: { mode: "read_o
 }
 /** Settings tabs per role (spec 10.2). */
 export const SETTINGS_TABS: Record<Role, string[]> = {
-  owner: ["users", "branding", "pipeline", "privacy", "audit"],
+  owner: ["users", "config", "pipeline", "privacy", "audit"],
   sales_manager: ["users", "pipeline", "privacy", "audit"],
   data: ["privacy"],
   sales_rep: [], marketing: [], viewer: [],

@@ -69,3 +69,25 @@ export function authorize(actor: Actor, target: string, before: TenantConfig, af
   }
   return { ok: true, sections };
 }
+
+/** Per-section access for the editors: "edit" or the reason it is locked. Mirrors authorize() for the UI only. */
+export function sectionAccess(actor: Actor, target: string): Record<Section, "edit" | { locked: string }> {
+  const all = (v: "edit" | { locked: string }) => Object.fromEntries(SECTIONS.map((s) => [s, v])) as Record<Section, "edit" | { locked: string }>;
+  if (actor.kind === "platform") return all("edit");
+  if (actor.tenantId !== target) return all({ locked: "This is not your organisation." });
+  if (actor.support) return all({ locked: "Not available in a support session. The platform operator changes configuration in the admin console." });
+  if (actor.role !== "owner") return all({ locked: "Only the Owner can change configuration." });
+  const a = all("edit");
+  for (const s of PLATFORM_ONLY) a[s] = { locked: "Only the platform operator can change this." };
+  if (!actor.isPrimaryOwner) a.branding = { locked: "Only the primary owner can change branding and fonts." };
+  return a;
+}
+/** Why an org admin cannot switch a module on (empty = free to toggle). */
+export function moduleLocks(cfg: TenantConfig, brand: BrandDefaults): Record<string, string> {
+  const preset = presetConfig(cfg.preset, brand), out: Record<string, string> = {};
+  for (const m of MODULE_IDS) {
+    if (cfg.modulesLocked.includes(m)) out[m] = "Locked by the platform operator.";
+    else if (!preset.modules[m]) out[m] = "Not part of this plan. Ask the platform operator to enable it.";
+  }
+  return out;
+}

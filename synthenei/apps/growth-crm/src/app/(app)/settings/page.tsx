@@ -15,11 +15,12 @@ import { TabBar } from "./_components/tab-bar";
 import { UsersTab, type MemberRow } from "./_components/users-tab";
 import { BrandingTab } from "./_components/branding-tab";
 import { PipelineTab, type Stage } from "./_components/pipeline-tab";
+import { ConfigTab } from "./_components/config-tab";
 import { EraseButton } from "./_components/privacy-controls";
 import type { DealStage } from "@/lib/data/types";
 
 export const metadata = { title: "Settings" };
-const LABEL: Record<string, string> = { users: "Users & roles", branding: "White-label branding", pipeline: "Pipeline stages", privacy: "Consent & privacy", audit: "Audit log" };
+const LABEL: Record<string, string> = { users: "Users & roles", branding: "White-label branding", config: "Configuration", pipeline: "Pipeline stages", privacy: "Consent & privacy", audit: "Audit log" };
 const DEFAULT_STAGES: [DealStage, number, number | null][] = [["discovery", 10, 14], ["demo_scheduled", 25, 10], ["demo_done", 40, 14], ["proposal", 60, 21], ["negotiation", 80, 21], ["won", 100, null], ["lost", 0, null]];
 const PURPOSE: Record<string, string> = { demo_followup: "Demo follow-up", marketing_email: "Marketing email", whatsapp: "WhatsApp" };
 const KIND: Record<string, string> = { erasure: "Erasure", withdrawal: "Withdrawal", access: "Access" };
@@ -52,6 +53,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
                 initial={DEFAULT_STAGES.map(([key, probability, maxDays]): Stage => ({ key, label: vocabFor(active.tenant).dealStage[key], probability, maxDays, terminal: key === "won" ? "won" : key === "lost" ? "lost" : undefined }))} />
             )}
             {tab === "privacy" && <Privacy q={sp.q} />}
+            {tab === "config" && <ConfigTab />}
             {tab === "audit" && <Audit actor={sp.actor} kind={sp.kind} owner={role === "owner"} />}
           </div>
         </>

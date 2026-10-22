@@ -2,6 +2,7 @@
 //   candidate -> validate -> cross-field rules -> authorize(actor, tenant, before, after) -> sparse diff -> store.write
 // so permissions are checked on the actual CHANGE, whatever the client sent.
 import { TENANTS } from "../tenancy";
+import { contrastChecks } from "../../app/(app)/settings/_components/contrast";
 import { deepMerge, diffOverrides } from "./merge";
 import type { Actor } from "./permissions";
 import { authorize, SECTION_LABEL } from "./permissions";
@@ -18,11 +19,17 @@ const issueText = (i: Issue[]) => i.map((x) => x.message).slice(0, 3).join(" ");
 /** Sections whose preset values are replaced when the preset changes; branding, data and locks are kept. */
 const PRESET_OWNED = ["vocabulary", "stages", "taxonomies", "modules", "features", "dashboard"] as const;
 
+/** Branding check, recomputed on the server (never trusted from the client): unsafe hues are refused. */
+const checkHue = (before: TenantConfig, after: TenantConfig) =>
+  before.branding.hue !== after.branding.hue && contrastChecks(after.branding.hue).some((c) => c.value < c.min) ? "Text contrast is below 4.5:1 for that hue. Pick another hue." : null;
+
 async function commit(actor: Actor, tenantId: string, before: TenantConfig, after: TenantConfig, reason: string | undefined, expectedVersion: number): Promise<ApplyResult> {
   if (!TENANTS.some((t) => t.id === tenantId)) return fail("Unknown tenant.");
   const eff = validateEffective(after);
   if (eff.length) return fail(issueText(eff), eff);
   const brand = brandDefaults(tenantId);
+  const hue = checkHue(before, after);
+  if (hue) return fail(hue);
   const d = authorize(actor, tenantId, before, after, brand);
   if (!d.ok) return fail(d.message);
   if (!d.sections.length) return fail("Nothing changed.");
@@ -57,7 +64,11 @@ export async function applyPatch(actor: Actor, tenantId: string, patch: unknown,
     base = { ...before, preset: np.preset };
     for (const k of PRESET_OWNED) (base as unknown as Record<string, unknown>)[k] = np[k];
   }
-  return commit(actor, tenantId, before, deepMerge(base, v.value), reason, stored.version);
+  const after = deepMerge(base, v.value);
+  // Import mappings are open maps keyed by CSV header: a patch replaces the whole map (merge could never delete a key).
+  const maps = v.value.data?.importMappings;
+  if (maps) for (const k of Object.keys(maps) as (keyof typeof maps)[]) after.data.importMappings[k] = { ...(maps[k] as Record<string, string> | undefined) };
+  return commit(actor, tenantId, before, after, reason, stored.version);
 }
 /** Put the named sections back to the preset's values. */
 export async function resetToPreset(actor: Actor, tenantId: string, sections: (keyof TenantConfig)[], reason?: string): Promise<ApplyResult> {
@@ -65,6 +76,9 @@ export async function resetToPreset(actor: Actor, tenantId: string, sections: (k
   const p = presetConfig(before.preset, brandDefaults(tenantId));
   const after = { ...before } as unknown as Record<string, unknown>;
   for (const s of sections) if (s !== "v" && s !== "preset") after[s] = (p as unknown as Record<string, unknown>)[s];
+  // The tile catalogue and module locks are platform decisions: a reset never removes them.
+  if (sections.includes("dashboard")) after.dashboard = { ...p.dashboard, catalogueExtra: before.dashboard.catalogueExtra };
+  if (sections.includes("modules")) after.modulesLocked = before.modulesLocked;
   return commit(actor, tenantId, before, after as unknown as TenantConfig, reason, stored.version);
 }
 /** Replace the tenant's whole override document (rollback, copy from tenant). Still authorized per changed section. */
