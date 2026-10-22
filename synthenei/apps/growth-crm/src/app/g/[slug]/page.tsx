@@ -22,7 +22,13 @@ const tenantFor = (slug: string) => ((SIGNIN_SLUGS as readonly string[]).include
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const t = tenantFor((await params).slug);
-  return { title: t ? `Sign in · ${t.name}` : "Sign in" };
+  if (!t) return { title: "Sign in" };
+  // Set explicitly so link previews (WhatsApp, Slack) never show another client's name before anyone is signed in.
+  const title = `Sign in · ${t.name}`;
+  const description = t.vertical === "hospitality"
+    ? `${t.name}: enquiries, bookings and campaigns in one place (sample data).`
+    : `${t.name}: leads, pipeline and campaigns in one place (sample data).`;
+  return { title: { absolute: title }, description, openGraph: { title, description, type: "website" }, robots: { index: false, follow: false } };
 }
 
 function Mono({ letter, size = 32 }: { letter: string; size?: number }) {
