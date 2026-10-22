@@ -208,6 +208,10 @@ const LEGAL = {
     dealEyebrow: "Open deal", dealLine: (plan: string, seats: number) => `${plan} · ${seats} seats`, noDeal: "No open deal. Open one from the firm page once a demo is agreed.", followUp: "Demo follow-up", linked: "Linked lead",
     needsReview: "It needs Owner or counsel review before it goes out.", linkedMsg: "That lead is not in this workspace.",
   },
+  login: {
+    line: "Every campaign, lead and law firm in one ledger, from first click to signed seats.", facts: (leads: number, accounts: number, open: number, towns: string) => [["Leads (90 days)", String(leads)], ["Law firms", String(accounts)], ["Open deals", String(open)], ["Districts", towns]] as [string, string][],
+    foot: "Sample tenant. Firms and people are fictional; nothing is sent to WhatsApp, email or ad platforms.", emailPh: "you@firm.example", short: "Your sign-in for the sales and marketing desk.",
+  },
   // @@LEGAL
 };
 export type Vocab = typeof LEGAL;
@@ -404,6 +408,10 @@ const HOSPITALITY: Vocab = {
     dealEyebrow: "Booking", dealLine: (plan: string, seats: number) => `${seats} ${seats === 1 ? "night" : "nights"}`, noDeal: "No open booking. Open one from the guest page once dates and rooms are agreed.", followUp: "Stay follow-up", linked: "Linked enquiry",
     needsReview: "It needs the owner's review before it goes out.", linkedMsg: "That enquiry is not in this workspace.",
   },
+  login: {
+    line: "Every enquiry, booking and returning guest in one place, from the first WhatsApp message to the morning of arrival.", facts: (leads: number, accounts: number, open: number, towns: string) => [["Enquiries (90 days)", String(leads)], ["Guests & partners", String(accounts)], ["Open bookings", String(open)], ["Home towns", towns]],
+    foot: "Sample property. Guests and people are fictional; nothing is sent to WhatsApp, email or ad platforms.", emailPh: "you@sholamist.example", short: "Your sign-in for enquiries, bookings and campaigns.",
+  },
   // @@HOSP
 };
 
@@ -417,3 +425,6 @@ export function verticalOf(t: TenantLike): Vertical {
 }
 /** Server side: `vocabFor(active.tenant)`. Client side: `useVocab()` from components/shell/providers. */
 export const vocabFor = (t: TenantLike): Vocab => VERTICALS[verticalOf(t)];
+
+/** Public client sign-in links: /g/<slug>. Slug equals the tenant id. */
+export const SIGNIN_SLUGS = ["shola-mist", "lawsome"] as const;

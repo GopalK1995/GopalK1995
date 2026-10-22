@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { HOME_FOR } from "./roles";
 import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, sign, signSession, verifySession, verifySupport, type Session } from "./session";
 import { createSupabaseServerClient } from "../supabase/server";
-import { PERSONAS, membershipsFor, userById, workspaceById } from "../tenancy";
+import { PERSONAS, membershipsFor, tenantOf, userById, workspaceById } from "../tenancy";
+import { SIGNIN_SLUGS } from "../vertical";
 import type { Role } from "../data/types";
 
 import { WS_MAX_AGE, cookieOpts as opts, demoModeOn, safeNext } from "./cookies";
@@ -49,6 +50,9 @@ export async function passwordLogin(formData: FormData) {
   const memberships = ((ws as { workspace_id: string; role: Role }[] | null) ?? []).map((w) => ({ ws: w.workspace_id, role: w.role }));
   const { data: pa } = await sb.from("platform_admins").select("user_id").eq("user_id", data.user.id).maybeSingle();
   if (!memberships.length && !pa) { await sb.auth.signOut(); redirect("/login?error=no_profile"); }
+  // Client sign-in links (/g/<slug>) only admit members of that client.
+  const via = String(formData.get("tenant") || "");
+  if (via && !pa && !memberships.some((m) => workspaceById(m.ws)?.tenantId === via)) { await sb.auth.signOut(); redirect(`/g/${via}?error=wrong_tenant`); }
   await start({ uid: data.user.id, name: (profile?.full_name as string) || email, email, demo: false, platformAdmin: !!pa, memberships, iat: Date.now() }, safeNext(formData.get("next")));
 }
 
@@ -72,8 +76,10 @@ export async function logout() {
   }
   if (sb) await sb.auth.signOut();
   const wasAdmin = s?.platformAdmin;
+  const tid = tenantOf(store.get(WS_COOKIE)?.value ?? "")?.id;
   store.delete(SESSION_COOKIE); store.delete(SUPPORT_COOKIE);
-  redirect(wasAdmin ? "/admin/login?signed_out=1" : "/login?signed_out=1");
+  // Clients return to their own branded link, not the internal hub.
+  redirect(wasAdmin ? "/admin/login?signed_out=1" : tid && (SIGNIN_SLUGS as readonly string[]).includes(tid) && tid !== "lawsome" ? `/g/${tid}?signed_out=1` : "/login?signed_out=1");
 }
 
 export async function switchWorkspace(wsId: string) {

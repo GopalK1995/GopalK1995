@@ -7,7 +7,11 @@ import { WS_COOKIE } from "@/lib/auth/session";
 import { tenantOf } from "@/lib/tenancy";
 import "./globals.css";
 
-export const metadata: Metadata = { title: { default: "Growth CRM", template: "%s · Growth CRM" }, description: "Sales and marketing CRM for LAWSOME (sample data)." };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = tenantOf((await cookies()).get(WS_COOKIE)?.value ?? "");
+  const product = t?.vertical === "hospitality" ? t.product : "Growth CRM";
+  return { title: { default: product, template: `%s · ${product}` }, description: t?.vertical === "hospitality" ? `${product} for ${t.name} (sample data).` : "Sales and marketing CRM for LAWSOME (sample data)." };
+}
 export const viewport: Viewport = { themeColor: "#0e2236", width: "device-width", initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

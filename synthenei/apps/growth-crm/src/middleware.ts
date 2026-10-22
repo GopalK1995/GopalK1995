@@ -22,8 +22,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.rewrite(url, { status: 403 });
   };
 
-  if (PUBLIC.includes(pathname)) {
-    if (session && pathname === "/login" && !session.platformAdmin) return NextResponse.redirect(new URL("/", req.url));
+  const isClientLink = pathname.startsWith("/g/");
+  if (PUBLIC.includes(pathname) || isClientLink) {
+    if (session && (pathname === "/login" || isClientLink) && !session.platformAdmin) return NextResponse.redirect(new URL("/", req.url));
     if (session && pathname === "/admin/login" && session.platformAdmin) return NextResponse.redirect(new URL("/admin", req.url));
     return NextResponse.next();
   }
