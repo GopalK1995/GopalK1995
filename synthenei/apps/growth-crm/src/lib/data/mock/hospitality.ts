@@ -245,12 +245,12 @@ export function buildHospitality(): Dataset {
     const ordered = pref ? [...pool.filter(pref), ...pool.filter((l) => !pref(l))] : pool;
     for (const l of ordered.slice(0, n)) { used.add(l.id); perAcc.set(l.accountId, (perAcc.get(l.accountId) ?? 0) + 1); l.stage = stage; }
   };
-  // 16 booked: 9 from repeat/referral guests (about 55%), 7 new guests.
-  take((l) => ageOf(l) > 6 && l.stay!.origin !== "new", 9, "won");
-  take((l) => ageOf(l) > 6 && l.stay!.origin === "new", 7, "won");
-  take((l) => ageOf(l) > 5, 4, "lost");
-  take((l) => ageOf(l) < 25, 3, "qualified");
-  take((l) => ageOf(l) < 22, 3, "demo_booked");
+  // 22 booked: 12 from repeat/referral guests (about 55%), 10 new guests; 3 lost; 8 open (dates confirmed, quote, advance pending, hold).
+  take((l) => ageOf(l) > 6 && l.stay!.origin !== "new", 12, "won");
+  take((l) => ageOf(l) > 6 && l.stay!.origin === "new", 10, "won");
+  take((l) => ageOf(l) > 5, 3, "lost");
+  take((l) => ageOf(l) < 25, 2, "qualified");
+  take((l) => ageOf(l) < 22, 2, "demo_booked");
   take((l) => ageOf(l) < 18, 2, "demo_done");
   take((l) => ageOf(l) < 14, 2, "proposal");
   const dealLeadIds = new Set(used);
@@ -335,9 +335,65 @@ export function buildHospitality(): Dataset {
     } satisfies Deal;
   });
   deals.sort((a, b) => a.id.localeCompare(b.id));
+  // ---- forward occupancy plan: CRM bookings fill the next weeks, Diwali weekend (7-9 Nov) near full, shoulders moderate.
+  {
+    const todayS = ymd(NOW_MS), N = 39; // nights today .. today+38
+    const occ = new Array<number>(N).fill(0);
+    const nightIdx = (d: string) => Math.round((new Date(d + "T12:00:00Z").getTime() - new Date(todayS + "T12:00:00Z").getTime()) / DAY);
+    const target = (n: number) => { const d = addDays(todayS, n); if (d >= "2026-11-06" && d <= "2026-11-10") return 13; if (n >= 30) return 6; if (d >= "2026-11-02" && d < "2026-11-06") return 9; const w = dowOf(d); return w === 5 || w === 6 ? 11 : 8; };
+    const apply = (d: Deal, rooms: number, nights: number, checkIn: string) => {
+      const st = d.stay!, l = leads.find((x) => x.id === d.leadId)!;
+      if (rooms !== st.rooms || nights !== st.nights) {
+        st.guests = Math.max(st.guests, rooms * 2 + rng.int(0, 1));
+        if (st.tripType === "Couples" || st.tripType === "Workation") st.tripType = rooms >= 4 ? "Friends group" : "Family";
+        if (rooms > 2 && st.room === ROOMS.suite) st.room = ROOMS.valley;
+        if (rooms > 2 && st.room === ROOMS.heritage) st.room = ROOMS.cottage;
+      }
+      st.rooms = rooms; st.nights = nights; st.checkIn = checkIn; d.seats = nights;
+      const rate = rateFor(st.room, checkIn); st.ratePerNight = rate; d.value = rate * rooms * nights;
+      st.advancePaid = Math.round(d.value * st.advancePct / 100 / 100) * 100;
+      const ended = addDays(checkIn, nights) < todayS;
+      st.status = ended ? "completed" : checkIn <= todayS ? "checked_in" : "confirmed";
+      const acc = accOf(d.accountId);
+      d.name = `${acc.name}: ${st.room}${rooms > 1 ? ` x${rooms}` : ""}, ${nights} nights`;
+      const tt = ({ Couples: "Couple's getaway", Family: "Family trip", "Friends group": "Friends group", Workation: "Workation", "Wedding & events": "Wedding party", "Corporate retreat": "Corporate retreat", Trekking: "Trekking group" } as Record<string, string>)[st.tripType as string];
+      l.title = `${tt}, ${st.guests} guest${st.guests > 1 ? "s" : ""}`;
+      l.stay = { ...st }; l.potentialValue = d.value;
+    };
+    const place = (d: Deal, rooms: number, nights: number, checkIn: string) => { apply(d, rooms, nights, checkIn); const i0 = nightIdx(checkIn); for (let k = 0; k < nights; k++) if (i0 + k >= 0 && i0 + k < N) occ[i0 + k] += rooms; };
+    const won = deals.filter((d) => d.stage === "won").sort((a, b) => a.wonAt!.localeCompare(b.wonAt!));
+    won.slice(0, 5).forEach((d) => { // completed stays from the lean season
+      const nights = d.stay!.nights, wd = ymd(new Date(d.wonAt!).getTime());
+      let ci = addDays(wd, rng.int(4, 20)); if (ci > addDays(todayS, -nights - 2)) ci = addDays(todayS, -nights - rng.int(2, 6));
+      if (ci <= wd) ci = addDays(wd, 2);
+      apply(d, d.stay!.rooms, nights, ci);
+    });
+    const fwd = won.slice(5);
+    const anchors: [number, string, number][] = [[3, "2026-11-06", 4], [3, "2026-11-06", 4], [3, "2026-11-07", 3], [3, "2026-11-07", 3], [1, "2026-11-07", 4]];
+    fwd.slice(0, anchors.length).forEach((d, i) => place(d, anchors[i][0], anchors[i][2], anchors[i][1]));
+    fwd.slice(anchors.length).sort((a, b) => (a.wonAt! < "2026-10-01" ? 0 : 1) - (b.wonAt! < "2026-10-01" ? 0 : 1) || b.value - a.value).forEach((d) => {
+      const wd = ymd(new Date(d.wonAt!).getTime()), recent = wd >= "2026-10-01"; // recent wins are small, earlier festival bookings are big groups
+      const rooms = recent ? rng.int(3,3) : rng.int(7,8), nights = recent ? rng.int(3,4) : 5;
+      let bestI = -1, bestScore = -1e9;
+      for (let i0 = Math.max(0, nightIdx(addDays(wd, 2))); i0 <= 36; i0++) {
+        let ok = true, score = 0;
+        for (let k = 0; k < nights; k++) { const n = i0 + k; if (n >= N || occ[n] + rooms > 14) { ok = false; break; } if (target(n) === 13) { ok = false; break; } score += Math.min(rooms, Math.max(0, target(n) - occ[n])) - Math.max(0, occ[n] + rooms - target(n)) * 0.6; }
+        if (ok && score > bestScore) { bestScore = score; bestI = i0; }
+      }
+      if (bestI < 0) bestI = 12;
+      place(d, rooms, nights, addDays(todayS, bestI));
+    });
+    // Open deals: quotes expiring, holds ending, advances due this week (tasks below come from these next actions).
+    for (const d of deals) {
+      const l = leads.find((x) => x.id === d.leadId)!;
+      if (d.stage === "demo_done") { l.nextAction = `Collect advance (Razorpay link): Rs ${(Math.round(d.value * (d.stay!.advancePct) / 100 / 100) * 100).toLocaleString("en-IN")} due`; l.nextActionAt = istAt(rng.int(0, 3), 11, 30); }
+      if (d.stage === "proposal" || d.stage === "negotiation") { l.nextAction = "Hold expires in 24 hours: confirm or release"; l.nextActionAt = istAt(rng.int(0, 1), 16); }
+      if (d.stage === "demo_scheduled") { l.nextAction = "Quote expires tomorrow: remind guest on WhatsApp"; l.nextActionAt = istAt(rng.int(0, 2), 12); }
+    }
+  }
   for (const dl of deals) {
     const acc = accOf(dl.accountId), l = leads.find((x) => x.id === dl.leadId)!;
-    l.stay = { ...l.stay!, checkIn: dl.stay!.checkIn };
+    const { ratePerNight: _r, advancePct: _a, advancePaid: _p, viaOta: _v, commissionPct: _c, status: _s, ...base } = dl.stay!; l.stay = { ...l.stay!, ...base };
     l.potentialValue = dl.value;
     if (dl.stage === "won") { acc.status = "customer"; acc.arr += dl.value; acc.repeatGuest = acc.repeatGuest ?? false; acc.stays = (acc.stays ?? 0) + 1; }
     else if ((dl.stage === "proposal" || dl.stage === "negotiation") && acc.status === "prospect") acc.status = "trial";
