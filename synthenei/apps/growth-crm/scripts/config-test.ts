@@ -8,7 +8,8 @@ import { resolveEffective } from "../src/lib/config/resolve-pure";
 import { decodeCfgCookie, encodeCfgCookie } from "../src/lib/config/cookie-codec";
 import { csvColumns, csvTemplate } from "../src/lib/config/csv";
 import { fontStack } from "../src/lib/config/fonts";
-import { PRESETS, vocabFor } from "../src/lib/vertical";
+import { PRESETS, vocabFor, deepMerge as vMerge, resolveVocab } from "../src/lib/vertical";
+import { toVerticalOverrides } from "../src/lib/config/adapter";
 
 const rows: [string, boolean, string][] = [];
 const t = async (name: string, fn: () => void | Promise<void>) => { try { await fn(); rows.push([name, true, ""]); } catch (e) { rows.push([name, false, (e as Error).message.split("\n")[0]]); } };
@@ -30,6 +31,15 @@ const edit = (c: TenantConfig, f: (x: TenantConfig) => void) => { const x = clon
       assert.deepEqual(c.taxonomies.partySize, v.partySize); assert.deepEqual(c.taxonomies.lost, v.lost);
     }
     assert.deepEqual(Object.keys(PRESETS), ["legal", "hospitality", "blank"]);
+  });
+  await t("adapter: untouched config merges to the exact preset (renders as today)", () => {
+    const strip = <T extends object>(x: T) => { const y = { ...x } as Record<string, unknown>; delete y.preset; return y; };
+    assert.deepEqual(strip(vMerge(PRESETS.legal, toVerticalOverrides(legal))), strip(PRESETS.legal)); assert.deepEqual(strip(vMerge(PRESETS.hospitality, toVerticalOverrides(hosp))), strip(PRESETS.hospitality));
+  });
+  await t("adapter: rename + stage label reach the Vocab pages read; other tenant unchanged", () => {
+    const eff = edit(hosp, (x) => { x.vocabulary.n.lead = { one: "request", many: "requests" }; x.vocabulary.nav.leads = "Requests"; x.stages.deal.discovery.label = "Dates agreed"; });
+    const v = resolveVocab(vMerge(PRESETS.hospitality, toVerticalOverrides(eff)));
+    assert.equal(v.n.lead.many, "requests"); assert.equal(v.nav.leads, "Requests"); assert.equal(v.dealStage.discovery, "Dates agreed"); assert.equal(vocabFor("lawsome").nav.leads, "Leads");
   });
   await t("validate: valid rename accepted", () => { const r = validateOverrides({ vocabulary: { n: { lead: { one: "request", many: "requests" } } } }); assert.equal(r.issues.length, 0); });
   await t("validate: unknown key rejected (strict), dropped (lenient)", () => {
