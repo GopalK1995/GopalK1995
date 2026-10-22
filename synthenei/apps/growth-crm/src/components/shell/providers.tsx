@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Role } from "@/lib/data/types";
 import { TipProvider } from "@/components/ui/tooltip";
 import { MotionConfig } from "motion/react";
-import { vocabFor, type Vertical, type Vocab } from "@/lib/vertical";
+import { FONT_STACKS, vocabFor, type Vertical, type Vocab } from "@/lib/vertical";
 
 /** What client components know about the viewer: identity, active workspace and the role held there. */
 export interface ShellCtx {
@@ -23,7 +23,7 @@ export const useSession = () => {
 export const useVocab = (): Vocab => vocabFor(useSession().tenant);
 
 /** White-label branding. Stored per browser for the demo (a real tenant stores it in `tenants.brand_*`). */
-export type Brand = { name: string; product: string; hue: number };
+export type Brand = { name: string; product: string; hue: number; /** Keys into FONT_STACKS (allow-list); "default" = built-in fonts. */ fonts?: { heading: string; body: string } };
 export const DEFAULT_BRAND: Brand = { name: "LAWSOME", product: "Growth CRM", hue: 245 };
 export const BRAND_KEY = "gcrm-brand"; // per tenant: `${BRAND_KEY}:${tenantId}`
 const BrandCtx = createContext<{ brand: Brand; setBrand: (b: Partial<Brand>) => void; reset: () => void }>({ brand: DEFAULT_BRAND, setBrand: () => {}, reset: () => {} });
@@ -41,6 +41,12 @@ export function Providers({ session, children }: { session: ShellCtx; children: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => { document.documentElement.style.setProperty("--brand-h", String(brand.hue)); }, [brand.hue]);
+  const fh = brand.fonts?.heading ?? "default", fb = brand.fonts?.body ?? "default";
+  useEffect(() => {
+    const r = document.documentElement.style;
+    if (FONT_STACKS[fb]) r.setProperty("--font-ui", FONT_STACKS[fb]); else r.removeProperty("--font-ui");
+    if (FONT_STACKS[fh]) r.setProperty("--font-heading", FONT_STACKS[fh]); else r.removeProperty("--font-heading");
+  }, [fh, fb]);
   const setBrand = useCallback((p: Partial<Brand>) => set((b) => {
     const n = { ...b, ...p };
     try { localStorage.setItem(key, JSON.stringify(n)); } catch { /* ignore */ }

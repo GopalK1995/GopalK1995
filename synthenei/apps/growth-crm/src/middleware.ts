@@ -4,6 +4,7 @@ const ADMIN_IDLE_MS = 30 * 60e3;
 import { HOME_FOR, ROLE_LABEL, accessFor } from "./lib/auth/roles";
 import { resolveActive } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
+import { isModuleEnabled, moduleForPath } from "./lib/vertical";
 
 const PUBLIC = ["/login", "/admin/login"];
 
@@ -63,6 +64,13 @@ export async function middleware(req: NextRequest) {
   if (!active) return NextResponse.redirect(new URL(session.platformAdmin ? "/admin" : "/login?error=no_profile", req.url));
   if (pathname === "/" && HOME_FOR[active.role] !== "/") return NextResponse.redirect(new URL(HOME_FOR[active.role], req.url));
   if (!accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
+  // Module switches (tenant config) are enforced here, server-side, as well as hidden in the nav.
+  const mod = moduleForPath(pathname);
+  if (mod && !isModuleEnabled(active.tenant, mod)) {
+    if (isPrefetch) return new NextResponse(null, { status: 204 });
+    const url = new URL("/forbidden", req.url); url.searchParams.set("page", pathname); url.searchParams.set("off", "1");
+    return NextResponse.rewrite(url, { status: 403 });
+  }
   return touch(NextResponse.next());
 }
 

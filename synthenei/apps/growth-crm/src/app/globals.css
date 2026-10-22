@@ -51,6 +51,7 @@
 }
 
 @layer base {
+  h1, h2, h3 { font-family: var(--font-heading, var(--font-ui)); }
   html { -webkit-text-size-adjust: 100%; }
   body {
     background: var(--paper);

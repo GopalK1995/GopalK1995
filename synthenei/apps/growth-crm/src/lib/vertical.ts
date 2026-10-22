@@ -212,6 +212,29 @@ const LEGAL = {
     line: "Every campaign, lead and law firm in one ledger, from first click to signed seats.", facts: (leads: number, accounts: number, open: number, towns: string) => [["Leads (90 days)", String(leads)], ["Law firms", String(accounts)], ["Open deals", String(open)], ["Districts", towns]] as [string, string][],
     foot: "Sample tenant. Firms and people are fictional; nothing is sent to WhatsApp, email or ad platforms.", emailPh: "you@firm.example", short: "Your sign-in for the sales and marketing desk.",
   },
+  md: {
+    sub: (touch: number, overdue: number, demos: number) => `${touch} touches due today, ${overdue} overdue, ${demos} demos left this week.`,
+    nothing: "Nothing due today. Check hot leads on the right.", slaLabel: (h: number) => `First-response SLA (${h} business hours)`,
+    hot: "Hot leads", hotNone: "No leads above 70 yet. Scores rise with pricing-page visits and WhatsApp replies.",
+    wk: "Demos this week", wkSub: "Monday to Saturday, IST", wkAria: "Demos per day this week", wkSeries: "Demos", days: 6,
+    pipe: "My pipeline by stage", pipeSub: (n: number, val: string) => `${n} open deals · ${val}`, pipeNote: (n: number) => `${n} deals`, pipeAria: "My open pipeline value by stage",
+    target: "Target vs achieved", targetSub: (m: string) => `${m}, pace tick = share of month gone`, won: "Won value", done: "Demos done",
+    conv: [["Lead", "new"], ["Contacted", "contacted"], ["Demo booked", "demo_booked"], ["Proposal", "proposal"], ["Won", "won"]] as [string, string][], convSub: "Last 90 days, cohort by lead created",
+    actSeries: "Demos", mixTitle: "My leads by source", mixAria: "My leads by source channel", mixCenter: "leads",
+    stuck: "Stuck deals", stuckSub: "More than 10 days in the current stage", stuckNone: "No deal has sat in one stage for more than 10 days.",
+    foot: "Working hours 10:00–19:00 IST, Monday to Saturday. Court hours (10:30–17:00) are the worst time to call partners.",
+  },
+  pl: {
+    bands: [["lt1", "Under ₹1 L", 0, 1e5], ["1to3", "₹1 L – ₹3 L", 1e5, 3e5], ["gt3", "₹3 L and above", 3e5, Infinity]] as [string, string, number, number][],
+    eyebrowRep: "Your deals", eyebrowAll: "All reps", eyebrowRO: (role: string, masked: boolean) => `Read-only for ${role}${masked ? ": firm names only" : ""}`, title: "Pipeline",
+    sub: (open: string, value: string, wtd: string, won: string, n: number) => `${open} open deals worth ${value}, weighted ${wtd} by stage probability. Won this month: ${won} from ${n} deal${n === 1 ? "" : "s"}.`,
+    district: "District", close: "Close month", hint: "Drag a card to another column, or use its move button (keyboard: Tab to the button, Enter, arrow keys). Cards turn amber after 10 days in a stage and red after 14.",
+    seatsLine: (seats: number, plan: string) => `${seats} seats · ${plan}`, shareAria: "Share of deals that reached the next stage", firmCol: "Firm", seatsCol: "Seats", tableAria: "Deals",
+    emptyTitle: "No deals yet.", emptyHint: "Convert a qualified lead from Leads to start the pipeline.", drop: "Drop a deal here", noDeals: "No deals", noIn: (stage: string) => `No deals in ${stage}. Swipe to the next stage.`, deals: (n: number) => `${n} deals`,
+    wonTitle: (f: string) => `Mark ${f} as Won`, wonDesc: "Nothing is Won without plan, seats and value, so the forecast stays honest.", plan: "Plan", seats: "Seats", value: "Annual value (₹)", start: "Start date", wonNote: (name: string) => `Plan names are placeholders until ${name} shares its price list.`,
+    wonErr: "Fill plan, seats, annual value and start date.", wonBtn: "Mark Won", plans: ["Practice", "Chambers", "Enterprise"], lostTitle: (f: string) => `Mark ${f} as Lost`, lostDesc: "Pick the main reason. It feeds the win/loss review on the Command Center.", compPh: "e.g. a Delhi-based case management vendor",
+    a: { wonNeedsPlan: "Won needs a plan.", seatsMax: "Won needs seats (1 to 500).", needValue: "Won needs an annual value in rupees.", wonMsg: (name: string, val: string, seats: number, plan: string) => `${name} marked Won: ${val}, ${seats} seats, ${plan}`, notFound: "Deal not found in this workspace.", ownOnly: "You can move only your own deals.", roleCant: (role: string) => `Your role (${role}) cannot move deals.` },
+  },
   // @@LEGAL
 };
 export type Vocab = typeof LEGAL;
@@ -412,10 +435,92 @@ const HOSPITALITY: Vocab = {
     line: "Every enquiry, booking and returning guest in one place, from the first WhatsApp message to the morning of arrival.", facts: (leads: number, accounts: number, open: number, towns: string) => [["Enquiries (90 days)", String(leads)], ["Guests & partners", String(accounts)], ["Open bookings", String(open)], ["Home towns", towns]],
     foot: "Sample property. Guests and people are fictional; nothing is sent to WhatsApp, email or ad platforms.", emailPh: "you@sholamist.example", short: "Your sign-in for enquiries, bookings and campaigns.",
   },
+  md: {
+    sub: (touch: number, overdue: number, demos: number) => `${touch} touches due today, ${overdue} overdue, ${demos} arrivals left this week.`,
+    nothing: "Nothing due today. Check hot enquiries on the right.", slaLabel: (h: number) => `First reply within ${h * 1} hours`,
+    hot: "Hot enquiries", hotNone: "No enquiries above 70 yet. Scores rise with rate-page visits and WhatsApp replies.",
+    wk: "Arrivals this week", wkSub: "Monday to Sunday, check-in dates of confirmed bookings", wkAria: "Arrivals per day this week", wkSeries: "Arrivals", days: 7,
+    pipe: "My bookings by stage", pipeSub: (n: number, val: string) => `${n} open bookings · ${val}`, pipeNote: (n: number) => `${n} bookings`, pipeAria: "My open booking value by stage",
+    target: "Target vs achieved", targetSub: (m: string) => `${m}, pace tick = share of month gone`, won: "Booked value", done: "Rooms held",
+    conv: [["Enquiry", "new"], ["Replied", "contacted"], ["Quote sent", "demo_booked"], ["Advance pending", "proposal"], ["Booked", "won"]], convSub: "Last 90 days, cohort by enquiry received",
+    actSeries: "Quotes", mixTitle: "My enquiries by source", mixAria: "My enquiries by source channel", mixCenter: "enquiries",
+    stuck: "Stalled bookings", stuckSub: "More than 10 days in the current stage", stuckNone: "No booking has sat in one stage for more than 10 days.",
+    foot: "Reply window 8:00–21:00 IST, every day. Guests tend to message in the evening, so check WhatsApp after 7 pm.",
+  },
+  pl: {
+    bands: [["lt1", "Under ₹25K", 0, 25e3], ["1to3", "₹25K – ₹75K", 25e3, 75e3], ["gt3", "₹75K and above", 75e3, Infinity]],
+    eyebrowRep: "Your bookings", eyebrowAll: "All hosts", eyebrowRO: (role: string, masked: boolean) => `Read-only for ${role}${masked ? ": guest names only" : ""}`, title: "Pipeline",
+    sub: (open: string, value: string, wtd: string, won: string, n: number) => `${open} bookings in progress worth ${value}, weighted ${wtd} by stage probability. Booked this month: ${won} from ${n} ${n === 1 ? "booking" : "bookings"}.`,
+    district: "Home town", close: "Decision month", hint: "Drag a card to another column, or use its move button (keyboard: Tab to the button, Enter, arrow keys). Cards turn amber after 10 days in a stage and red after 14.",
+    seatsLine: (seats: number, plan: string) => `${seats} ${seats === 1 ? "night" : "nights"}`, shareAria: "Share of bookings that reached the next stage", firmCol: "Guest", seatsCol: "Nights", tableAria: "Bookings",
+    emptyTitle: "No bookings yet.", emptyHint: "Convert an enquiry from Enquiries once dates are confirmed to start the pipeline.", drop: "Drop a booking here", noDeals: "No bookings", noIn: (stage: string) => `No bookings in ${stage}. Swipe to the next stage.`, deals: (n: number) => `${n} bookings`,
+    wonTitle: (f: string) => `Confirm booking for ${f}`, wonDesc: "A booking is confirmed only with room type, nights, value and check-in date, so occupancy stays honest.", plan: "Room type", seats: "Nights", value: "Total booking value (₹)", start: "Check-in date", wonNote: (name: string) => `Room types and rates follow the ${name} rate card.`,
+    wonErr: "Fill room type, nights, booking value and check-in date.", wonBtn: "Confirm booking", plans: ["Valley-view Room", "Garden Cottage", "Family Suite", "Heritage Room", "Dorm loft"], lostTitle: (f: string) => `Mark ${f} as Lost`, lostDesc: "Pick the main reason. It feeds the lost-enquiry review on the Command Center.", compPh: "e.g. a homestay in Ooty, or an OTA listing",
+    a: { wonNeedsPlan: "Booking needs a room type.", seatsMax: "Booking needs nights (1 to 500).", needValue: "Booking needs a value in rupees.", wonMsg: (name: string, val: string, seats: number, plan: string) => `${name} confirmed: ${val}, ${seats} ${seats === 1 ? "night" : "nights"}, ${plan}`, notFound: "Booking not found in this workspace.", ownOnly: "You can move only your own bookings.", roleCant: (role: string) => `Your role (${role}) cannot move bookings.` },
+  },
   // @@HOSP
 };
 
-export const VERTICALS: Record<Vertical, Vocab> = { legal: LEGAL, hospitality: HOSPITALITY };
+/** Template layer (functions + page copy). INTERNAL: pages must go through vocabFor()/useVocab(), never import this. */
+const TEMPLATES: Record<Vertical, Vocab> = { legal: LEGAL, hospitality: HOSPITALITY };
+
+// ---------------------------------------------------------------- preset data (JSON-mergeable, no functions/JSX)
+export type ModuleKey = "inbox" | "ai" | "integrations" | "audience" | "analytics" | "tasks" | "accounts" | "campaigns" | "data-health";
+export const MODULE_KEYS: ModuleKey[] = ["inbox", "ai", "integrations", "audience", "analytics", "tasks", "accounts", "campaigns", "data-health"];
+/** Route prefix -> module. A disabled module hides its nav entry and 403s its route (middleware). */
+export const MODULE_ROUTE: Record<string, ModuleKey> = { "/inbox": "inbox", "/ai": "ai", "/integrations": "integrations", "/audience": "audience", "/analytics": "analytics", "/tasks": "tasks", "/accounts": "accounts", "/campaigns": "campaigns", "/data-health": "data-health" };
+export const FONT_STACKS: Record<string, string> = {
+  default: "", geist: "var(--font-geist-sans), system-ui, sans-serif", system: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", serif: "ui-serif, Georgia, 'Times New Roman', serif",
+};
+export interface TenantConfigPreset {
+  id: "legal" | "hospitality" | "blank";
+  /** Which template set supplies page copy that is not (yet) a data field. */
+  base: Vertical;
+  search: string; rooms: number;
+  n: Vocab["n"]; nav: Vocab["nav"]; leadStage: Vocab["leadStage"]; dealStage: Vocab["dealStage"]; partySize: Vocab["partySize"];
+  channelFamily: Record<string, string>; funnel: Record<string, string>; role: Record<string, string>;
+  lost: [string, string][]; views: Record<string, string>; plans: string[];
+  modules: Record<ModuleKey, boolean>; features: { ecourts: boolean; hearings: boolean };
+  fonts: { heading: string; body: string };
+  /** Headline tiles on the Command Center, by metric id (see kpiTiles()). */
+  kpiTiles: string[];
+}
+const ALL_ON = Object.fromEntries(MODULE_KEYS.map((k) => [k, true])) as Record<ModuleKey, boolean>;
+const fromTemplate = (id: TenantConfigPreset["id"], base: Vertical, features: TenantConfigPreset["features"], kpiTiles: string[]): TenantConfigPreset => {
+  const t = TEMPLATES[base];
+  return JSON.parse(JSON.stringify({ id, base, search: t.search, rooms: t.rooms, n: t.n, nav: t.nav, leadStage: t.leadStage, dealStage: t.dealStage, partySize: t.partySize, channelFamily: t.channelFamily, funnel: t.funnel, role: t.role, lost: t.lost, views: t.views, plans: t.pl.plans, modules: ALL_ON, features, fonts: { heading: "default", body: "default" }, kpiTiles }));
+};
+export const PRESETS: Record<TenantConfigPreset["id"], TenantConfigPreset> = {
+  legal: fromTemplate("legal", "legal", { ecourts: true, hearings: true }, ["won", "new", "conv", "cost"]),
+  hospitality: fromTemplate("hospitality", "hospitality", { ecourts: false, hearings: false }, ["won", "new", "conv", "cost"]),
+  // Blank: neutral nouns; page copy still comes from the legal template until a tenant overrides it (CONFIG agent editors).
+  blank: { ...fromTemplate("blank", "legal", { ecourts: false, hearings: false }, ["won", "new", "conv", "cost"]), n: { lead: { one: "lead", many: "leads" }, deal: { one: "deal", many: "deals" }, demo: { one: "meeting", many: "meetings" }, firm: { one: "account", many: "accounts" } }, nav: { leads: "Leads", accounts: "Accounts", sell: "Sell" } },
+};
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? U[] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
+/** Per-tenant overrides, merged over a preset. Data only. */
+export type TenantConfigOverrides = DeepPartial<Omit<TenantConfigPreset, "id" | "base">> & { preset?: TenantConfigPreset["id"] };
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
+export function deepMerge<T>(base: T, over: unknown): T {
+  if (!isObj(base) || !isObj(over)) return (over === undefined ? base : over) as T;
+  const out: Record<string, unknown> = { ...base };
+  for (const k of Object.keys(over)) out[k] = deepMerge((base as Record<string, unknown>)[k], over[k]);
+  return out as T;
+}
+/** Config source hook: code today (presets only); the CONFIG agent swaps in tenant_config / cookie overrides here. */
+let overridesFor: (tenantId: string) => TenantConfigOverrides | undefined = () => undefined;
+export const setConfigResolver = (fn: typeof overridesFor) => { overridesFor = fn; };
+
+export function effectiveConfig(t: TenantLike): TenantConfigPreset {
+  const id = typeof t === "string" ? t : t?.id ?? "";
+  const ov = overridesFor(id);
+  const preset = PRESETS[ov?.preset ?? verticalOf(t)];
+  return deepMerge(preset, ov);
+}
+/** Pure: preset/effective config -> the Vocab pages consume (data fields from config, copy from the base template). */
+export function resolveVocab(cfg: TenantConfigPreset): Vocab {
+  const t = TEMPLATES[cfg.base];
+  return { ...t, id: cfg.base, search: cfg.search, rooms: cfg.rooms, n: cfg.n, nav: cfg.nav, leadStage: cfg.leadStage, dealStage: cfg.dealStage, partySize: cfg.partySize, channelFamily: cfg.channelFamily, funnel: cfg.funnel, role: cfg.role, lost: cfg.lost, views: cfg.views, pl: { ...t.pl, plans: cfg.plans } };
+}
 
 type TenantLike = { vertical?: Vertical; id?: string } | string | null | undefined;
 export function verticalOf(t: TenantLike): Vertical {
@@ -424,7 +529,17 @@ export function verticalOf(t: TenantLike): Vertical {
   return t.vertical ?? (t.id ? TENANTS.find((x) => x.id === t.id)?.vertical : undefined) ?? "legal";
 }
 /** Server side: `vocabFor(active.tenant)`. Client side: `useVocab()` from components/shell/providers. */
-export const vocabFor = (t: TenantLike): Vocab => VERTICALS[verticalOf(t)];
+export const vocabFor = (t: TenantLike): Vocab => resolveVocab(effectiveConfig(t));
+
+// ---------------------------------------------------------------- accessors (pages use these, not the tables)
+export const stageLabel = (t: TenantLike, kind: "lead" | "deal", key: string) => (kind === "lead" ? vocabFor(t).leadStage : vocabFor(t).dealStage)[key as never] as string;
+export const taxonomy = (t: TenantLike) => { const c = effectiveConfig(t); return { partySize: c.partySize, lostReasons: c.lost, plans: c.plans, channelFamily: c.channelFamily }; };
+export const isModuleEnabled = (t: TenantLike, module: ModuleKey) => effectiveConfig(t).modules[module] !== false;
+/** Module a pathname belongs to (undefined = not gated). */
+export const moduleForPath = (pathname: string): ModuleKey | undefined => { const k = Object.keys(MODULE_ROUTE).find((r) => pathname === r || pathname.startsWith(r + "/")); return k ? MODULE_ROUTE[k] : undefined; };
+export const isFeatureEnabled = (t: TenantLike, f: keyof TenantConfigPreset["features"]) => effectiveConfig(t).features[f] === true;
+export const kpiTiles = (t: TenantLike) => effectiveConfig(t).kpiTiles;
+export const fontsFor = (t: TenantLike) => effectiveConfig(t).fonts;
 
 /** Public client sign-in links: /g/<slug>. Slug equals the tenant id. */
 export const SIGNIN_SLUGS = ["shola-mist", "lawsome"] as const;

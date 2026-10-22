@@ -3,7 +3,7 @@ import {
   Plug, Settings, SquareKanban, Users, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
-import type { Vocab } from "@/lib/vertical";
+import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
 import { accessFor } from "@/lib/auth/roles";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: string };
@@ -17,7 +17,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Assist", items: [{ href: "/ai", label: "Copilot", icon: MessagesSquare }] },
   { group: "Admin", items: [{ href: "/integrations", label: "Integrations", icon: Plug }, { href: "/data-health", label: "Data health", icon: Database }, { href: "/settings", label: "Settings", icon: Settings }] },
 ];
-export const navFor = (role: Role) => NAV.map((g) => ({ ...g, items: g.items.filter((i) => accessFor(role, i.href)) })).filter((g) => g.items.length);
+export const navFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => NAV.map((g) => ({ ...g, items: g.items.filter((i) => accessFor(role, i.href) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!))) })).filter((g) => g.items.length);
 /** Five bottom-bar items per role on mobile. */
 const MOBILE: Record<Role, string[]> = {
   owner: ["/", "/pipeline", "/leads", "/campaigns", "/settings"],
@@ -27,7 +27,7 @@ const MOBILE: Record<Role, string[]> = {
   data: ["/data-health", "/integrations", "/leads", "/accounts", "/settings"],
   viewer: ["/", "/pipeline", "/campaigns", "/analytics", "/accounts"],
 };
-export const mobileNavFor = (role: Role) => MOBILE[role].map((h) => NAV.flatMap((g) => g.items).find((i) => i.href === h)!).filter(Boolean);
+export const mobileNavFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => MOBILE[role].filter((h) => !tenant || !moduleForPath(h) || isModuleEnabled(tenant, moduleForPath(h)!)).map((h) => NAV.flatMap((g) => g.items).find((i) => i.href === h)!).filter(Boolean);
 export const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path === href || path.startsWith(href + "/"));
 
 /** Vocabulary-aware nav label (legal output is unchanged). */

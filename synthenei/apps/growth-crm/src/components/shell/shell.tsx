@@ -22,12 +22,12 @@ const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
 function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onNavigate?: () => void; layoutKey: string }) {
   const path = usePathname();
-  const { role } = useSession();
+  const { role, tenant } = useSession();
   const v = useVocab();
   const reduce = useReducedMotion();
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
-      {navFor(role).map((g) => (
+      {navFor(role, tenant).map((g) => (
         <div key={g.group}>
           {!collapsed && <div className="mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.08em] text-navy-ink-3">{navGroup(v, g.group)}</div>}
           <ul className="flex flex-col gap-0.5">
@@ -122,7 +122,7 @@ function GlobalSearch() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
-  const { role, support } = useSession();
+  const { role, support, tenant } = useSession();
   const v = useVocab();
   const path = usePathname();
   useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* ignore */ } }, []);
@@ -176,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-navy-line bg-navy-900 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {mobileNavFor(role).slice(0, 4).map((it) => {
+        {mobileNavFor(role, tenant).slice(0, 4).map((it) => {
           const active = isActive(it.href, path);
           return (
             <Link key={it.href} href={it.href} className={cn("relative flex h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium", active ? "text-navy-ink" : "text-navy-ink-3")} aria-current={active ? "page" : undefined}>
