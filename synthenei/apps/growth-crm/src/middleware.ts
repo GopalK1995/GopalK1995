@@ -4,7 +4,9 @@ const ADMIN_IDLE_MS = 30 * 60e3;
 import { HOME_FOR, ROLE_LABEL, accessFor } from "./lib/auth/roles";
 import { resolveActive } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
-import { isModuleEnabled, moduleForPath } from "./lib/vertical";
+import { moduleForPath } from "./lib/vertical";
+import { cfgCookieName, decodeCfgCookie } from "./lib/config/cookie-codec";
+import { resolveEffective } from "./lib/config/resolve-pure";
 
 const PUBLIC = ["/login", "/admin/login"];
 
@@ -66,12 +68,16 @@ export async function middleware(req: NextRequest) {
   if (!accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
   // Module switches (tenant config) are enforced here, server-side, as well as hidden in the nav.
   const mod = moduleForPath(pathname);
-  if (mod && !isModuleEnabled(active.tenant, mod)) {
+  // Demo sessions keep config in a signed cookie, which the edge can read; real sessions are checked in requireActive().
+  const cfgCookie = mod && session.demo ? await decodeCfgCookie(active.tenant.id, req.cookies.get(cfgCookieName(active.tenant.id))?.value) : null;
+  if (mod && resolveEffective(active.tenant.id, cfgCookie?.ovr).modules[mod] === false) {
     if (isPrefetch) return new NextResponse(null, { status: 204 });
     const url = new URL("/forbidden", req.url); url.searchParams.set("page", pathname); url.searchParams.set("off", "1");
     return NextResponse.rewrite(url, { status: 403 });
   }
-  return touch(NextResponse.next());
+  // Pass the path to server components (requireActive uses it for the module guard).
+  const fwd = new Headers(req.headers); fwd.set("x-pathname", pathname);
+  return touch(NextResponse.next({ request: { headers: fwd } }));
 }
 
 export const config = { matcher: ["/((?!_next/|api/|icon|favicon|.*\\.(?:png|svg|jpg|ico|woff2?)$).*)"] };

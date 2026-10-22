@@ -2,7 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, verifySession, verifySupport, type Session } from "./session";
 import { resolveActive, type Active } from "./context";
+import { headers } from "next/headers";
 import { createSupabaseServerClient } from "../supabase/server";
+import { getEffectiveConfig } from "../config/resolve";
+import { toVerticalOverrides } from "../config/adapter";
+import { isModuleEnabled, moduleForPath } from "../vertical";
 
 export async function getSession(): Promise<Session | null> {
   return verifySession((await cookies()).get(SESSION_COOKIE)?.value);
@@ -28,6 +32,13 @@ export async function requireActive(): Promise<{ session: Session; active: Activ
     active.role = live.role as typeof active.role;
   }
   if (!active) redirect(session.platformAdmin ? "/admin" : "/login?error=no_profile");
+  // Tenant configuration (preset + overrides) rides on the tenant object, so vocabFor(active.tenant) needs no changes.
+  const cfg = await getEffectiveConfig(active.tenant.id);
+  active.tenant = { ...active.tenant, name: cfg.branding.name, product: cfg.branding.product, hue: cfg.branding.hue, config: toVerticalOverrides(cfg) };
+  // Module switch, second line of defence (middleware 403s demo sessions at the edge; real sessions are checked here).
+  const path = (await headers()).get("x-pathname");
+  const mod = path ? moduleForPath(path) : undefined;
+  if (mod && !isModuleEnabled(active.tenant, mod)) redirect(`/forbidden?page=${encodeURIComponent(path!)}&off=1`);
   return { session, active };
 }
 export async function requirePlatformAdmin(): Promise<Session> {

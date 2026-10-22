@@ -606,9 +606,9 @@ export type ModuleKey = "inbox" | "ai" | "integrations" | "audience" | "analytic
 export const MODULE_KEYS: ModuleKey[] = ["inbox", "ai", "integrations", "audience", "analytics", "tasks", "accounts", "campaigns", "data-health"];
 /** Route prefix -> module. A disabled module hides its nav entry and 403s its route (middleware). */
 export const MODULE_ROUTE: Record<string, ModuleKey> = { "/inbox": "inbox", "/ai": "ai", "/integrations": "integrations", "/audience": "audience", "/analytics": "analytics", "/tasks": "tasks", "/accounts": "accounts", "/campaigns": "campaigns", "/data-health": "data-health" };
-export const FONT_STACKS: Record<string, string> = {
-  default: "", geist: "var(--font-geist-sans), system-ui, sans-serif", system: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", serif: "ui-serif, Georgia, 'Times New Roman', serif",
-};
+/** Font allow-list (key -> CSS stack) lives with the tenant config. */
+export { FONT_STACKS } from "./config/fonts";
+import { makeRewriter, rewriteDeep } from "./config/rewrite";
 export interface TenantConfigPreset {
   id: "legal" | "hospitality" | "blank";
   /** Which template set supplies page copy that is not (yet) a data field. */
@@ -649,17 +649,27 @@ export const setConfigResolver = (fn: typeof overridesFor) => { overridesFor = f
 
 export function effectiveConfig(t: TenantLike): TenantConfigPreset {
   const id = typeof t === "string" ? t : t?.id ?? "";
-  const ov = overridesFor(id);
+  // Per-request overrides ride on the tenant object (server: requireActive attaches them; client: ShellCtx.tenant).
+  const ov = (typeof t === "object" && t?.config) || overridesFor(id);
   const preset = PRESETS[ov?.preset ?? verticalOf(t)];
   return deepMerge(preset, ov);
 }
 /** Pure: preset/effective config -> the Vocab pages consume (data fields from config, copy from the base template). */
+const rewritten = new Map<string, Vocab>();
 export function resolveVocab(cfg: TenantConfigPreset): Vocab {
-  const t = TEMPLATES[cfg.base];
+  let t: Vocab = TEMPLATES[cfg.base];
+  // A renamed noun (lead/deal/demo/firm) is carried through all template copy, not only the data fields below.
+  const rw = makeRewriter(t.n as never, cfg.n as never);
+  if (rw) {
+    const key = `${cfg.base}|${JSON.stringify(cfg.n)}`;
+    let hit = rewritten.get(key);
+    if (!hit) { hit = rewriteDeep(t, rw); if (rewritten.size > 50) rewritten.clear(); rewritten.set(key, hit); }
+    t = hit;
+  }
   return { ...t, id: cfg.base, search: cfg.search, rooms: cfg.rooms, n: cfg.n, nav: cfg.nav, leadStage: cfg.leadStage, dealStage: cfg.dealStage, partySize: cfg.partySize, channelFamily: cfg.channelFamily, funnel: cfg.funnel, role: cfg.role, lost: cfg.lost, views: cfg.views, pl: { ...t.pl, plans: cfg.plans } };
 }
 
-type TenantLike = { vertical?: Vertical; id?: string } | string | null | undefined;
+type TenantLike = { vertical?: Vertical; id?: string; config?: TenantConfigOverrides } | string | null | undefined;
 export function verticalOf(t: TenantLike): Vertical {
   if (!t) return "legal";
   if (typeof t === "string") return TENANTS.find((x) => x.id === t)?.vertical ?? "legal";

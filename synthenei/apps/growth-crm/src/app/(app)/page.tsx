@@ -25,7 +25,7 @@ export const metadata = { title: "Command Center" };
 const DAY = 86400e3;
 
 export default async function CommandCenter() {
-  const { ds, now, masked, active } = await pageCtx();
+  const { ds, now, masked, active, stageOrder } = await pageCtx();
   const v = vocabFor(active.tenant), c = v.cc, hosp = v.id === "hospitality";
   const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, _syncRuns, acts] = await Promise.all([
     ds.leads(), ds.deals(), ds.campaigns(), ds.campaignDays(), ds.ga4(), ds.team(), ds.accounts(), ds.syncRuns(), ds.activities(),
@@ -63,7 +63,7 @@ export default async function CommandCenter() {
   const firms = topFirms(accounts, deals, leads, 6);
   const board = leaderboard(team, deals, leads, acts, now);
   const open = deals.filter((x) => x.stage !== "won" && x.stage !== "lost");
-  const byStage = DEAL_STAGES.filter((s) => s !== "won" && s !== "lost").map((s, i) => ({ s, v: open.filter((x) => x.stage === s).reduce((a, x) => a + x.value, 0), c: [`var(--seq-1)`, `var(--seq-2)`, `var(--seq-3)`, `var(--accent-on-navy)`, `var(--chart-5)`][i] }));
+  const byStage = stageOrder.deal.filter((s) => s !== "won" && s !== "lost").map((s, i) => ({ s, v: open.filter((x) => x.stage === s).reduce((a, x) => a + x.value, 0), c: [`var(--seq-1)`, `var(--seq-2)`, `var(--seq-3)`, `var(--accent-on-navy)`, `var(--chart-5)`][i] }));
 
   const closing = [...open].filter((x) => x.stage === "proposal" || x.stage === "negotiation").sort((a, b) => a.expectedClose.localeCompare(b.expectedClose)).slice(0, 3);
   const unanswered = leads.filter((l) => l.firstResponseMins === null && nowMs - new Date(l.createdAt).getTime() > SLA_MINUTES * 60e3);

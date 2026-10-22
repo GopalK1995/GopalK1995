@@ -19,7 +19,7 @@ const PAGE = 40;
 type SP = { view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const { ds, now, role, session, scope, masked, support, active } = await pageCtx();
+  const { ds, now, role, session, scope, masked, support, active, stageOrder } = await pageCtx();
   const vc = vocabFor(active.tenant), t = vc.ls;
   const sp = await searchParams;
   const [all, accounts, team, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.team(), ds.campaigns()]);
@@ -87,7 +87,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const districts = [...new Set(visible.map((l) => acc.get(l.accountId)?.district).filter(Boolean) as string[])].sort();
   const channels = [...new Set(visible.map((l) => l.channel))] as Channel[];
   const filters = [
-    { key: "stage", label: "Stage", options: LEAD_STAGES.map((s: LeadStage) => ({ value: s, label: vc.leadStage[s] })) },
+    { key: "stage", label: "Stage", options: stageOrder.lead.map((s: LeadStage) => ({ value: s, label: vc.leadStage[s] })) },
     { key: "status", label: "Status", options: (["new", "contacted", "qualified", "nurturing", "disqualified", "converted"] as const).map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })) },
     { key: "source", label: "Source", options: channels.map((c) => ({ value: c, label: CHANNEL_LABEL[c] })) },
     { key: "district", label: t.district, options: districts.map((d) => ({ value: d, label: d })) },

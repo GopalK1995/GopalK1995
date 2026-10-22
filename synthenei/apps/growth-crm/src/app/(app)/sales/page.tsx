@@ -23,7 +23,7 @@ const KIND_ICON: Record<Task["kind"], typeof Phone> = { call: Phone, whatsapp: M
 const DAY = 86400e3;
 
 export default async function MyDay({ searchParams }: { searchParams: Promise<{ rep?: string }> }) {
-  const { ds, now, session, role, active } = await pageCtx();
+  const { ds, now, session, role, active, stageOrder } = await pageCtx();
   const v = vocabFor(active.tenant), m = v.md, hosp = v.id === "hospitality";
   const sp = await searchParams;
   const [allLeads, allDeals, allTasks, team, accounts, acts, convs] = await Promise.all([ds.leads(), ds.deals(), ds.tasks(), ds.team(), ds.accounts(), ds.activities(), ds.conversations()]);
@@ -62,7 +62,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const demoCols = week.map((d) => ({ day: `${fmtWeekday(d + "T06:00:00Z")} ${Number(d.slice(8))}`, demos: demos.filter((t) => hosp ? t.dueAt.slice(0, 10) === d : dayKey(t.dueAt) === d).length }));
   // W6
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
-  const byStage = DEAL_STAGES.filter((s) => s !== "won" && s !== "lost").map((s) => ({ label: v.dealStage[s], value: open.filter((d) => d.stage === s).reduce((a, d) => a + d.value, 0), note: m.pipeNote(open.filter((d) => d.stage === s).length) }));
+  const byStage = stageOrder.deal.filter((s) => s !== "won" && s !== "lost").map((s) => ({ label: v.dealStage[s], value: open.filter((d) => d.stage === s).reduce((a, d) => a + d.value, 0), note: m.pipeNote(open.filter((d) => d.stage === s).length) }));
   // W7
   const month = now.slice(0, 7);
   const rm = repMonth(repId, allDeals, allLeads, acts, now);

@@ -3,11 +3,13 @@
 // TENANT = white-label client org (brand). WORKSPACE = isolated data area inside a tenant. ROLE is per workspace membership.
 // Pure data, no Node APIs: imported by middleware (edge) too.
 import type { Role } from "./data/types";
+import type { TenantConfigOverrides } from "./vertical";
 
 export interface Tenant {
   id: string; name: string; product: string; hue: number; monogram: string;
   plan: "Growth" | "Scale" | "Pilot"; seats: number; primaryOwnerId: string; status: "active" | "suspended" | "trial"; createdAt: string; supportEmail: string;
   /** Industry vocabulary set. Absent = legal. */ vertical?: "legal" | "hospitality";
+  /** Effective tenant config for this request (attached by requireActive; never stored on the static record). */ config?: TenantConfigOverrides;
 }
 export interface Workspace { id: string; /** DB uuid (BACKEND demo seed) */ uuid: string; tenantId: string; name: string; region: string; createdAt: string; dataset: "tn" | "kerala" | "kaveri" | "wg" }
 export interface PlatformUser { id: string; name: string; email: string; platformAdmin?: boolean; lastSignIn: string; status: "active" | "invited" | "deactivated" }

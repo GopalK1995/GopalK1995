@@ -1,6 +1,7 @@
 // Server-side resolution: effective = preset(tenant) merged with the tenant's stored overrides. Cached per request.
 import { cache } from "react";
-import { getSession } from "../auth/server";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE, verifySession } from "../auth/session";
 import { supabaseConfigured } from "../supabase/server";
 import { brandDefaults, presetOfTenant, resolveEffective } from "./resolve-pure";
 import { CookieConfigStore, SupabaseConfigStore, type ConfigStore, type StoredConfig } from "./store";
@@ -8,7 +9,7 @@ import { MODULE_IDS, VERTICAL_FEATURES, type ModuleId, type TenantConfig, type V
 
 /** Demo/mock sessions and deployments without Supabase use the cookie store; real sessions use tenant_config. */
 export const getStore = cache(async (): Promise<ConfigStore> => {
-  const s = await getSession();
+  const s = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
   return !s || s.demo || !supabaseConfigured() ? new CookieConfigStore() : new SupabaseConfigStore();
 });
 export const getStored = cache(async (tenantId: string): Promise<StoredConfig> => {

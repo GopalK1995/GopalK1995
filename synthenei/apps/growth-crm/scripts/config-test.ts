@@ -41,6 +41,13 @@ const edit = (c: TenantConfig, f: (x: TenantConfig) => void) => { const x = clon
     const v = resolveVocab(vMerge(PRESETS.hospitality, toVerticalOverrides(eff)));
     assert.equal(v.n.lead.many, "requests"); assert.equal(v.nav.leads, "Requests"); assert.equal(v.dealStage.discovery, "Dates agreed"); assert.equal(vocabFor("lawsome").nav.leads, "Leads");
   });
+  await t("rewrite: a renamed noun reaches template copy (functions, strings), case kept; untouched tenant identical", () => {
+    const eff = edit(hosp, (x) => { x.vocabulary.n.lead = { one: "request", many: "requests" }; });
+    const v = resolveVocab(vMerge(PRESETS.hospitality, toVerticalOverrides(eff)));
+    const sample = JSON.stringify([v.cc.unanswered(3), v.cc.unansweredOk, v.ls.title, v.cc.sub(5, "Coonoor circuit")]);
+    assert.ok(!/enquir/i.test(sample), sample); assert.match(v.cc.unanswered(1), /1 request /);
+    assert.deepEqual(JSON.stringify(resolveVocab(PRESETS.legal)), JSON.stringify(vocabFor("lawsome")));
+  });
   await t("validate: valid rename accepted", () => { const r = validateOverrides({ vocabulary: { n: { lead: { one: "request", many: "requests" } } } }); assert.equal(r.issues.length, 0); });
   await t("validate: unknown key rejected (strict), dropped (lenient)", () => {
     assert.ok(validateOverrides({ evil: 1 }).issues.length > 0);

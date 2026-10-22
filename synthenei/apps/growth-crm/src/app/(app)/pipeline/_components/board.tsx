@@ -7,8 +7,7 @@ import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState, useTransition, type PointerEvent as RPE } from "react";
 import { ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight, Hourglass } from "lucide-react";
 import type { DealStage } from "@/lib/data/types";
-import { DEAL_STAGES } from "@/lib/data/metrics";
-import { useSession, useVocab } from "@/components/shell/providers";
+import { useDealStages, useSession, useVocab } from "@/components/shell/providers";
 import { fmtDate, inr, inrCompact, pct } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +35,7 @@ function AgeBadge({ days }: { days: number }) {
 }
 
 export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; canMove: boolean; masked: boolean; today: string }) {
+  const DEAL_STAGES = useDealStages();
   const vv = useVocab(), pl = vv.pl, DEAL_STAGE_LABEL = vv.dealStage, PLANS = pl.plans, LOST_REASONS = vv.lost.map(([key, label]) => ({ key, label })), tenantName = useSession().tenant.name;
   const [items, setItems] = useState(deals);
   const [view, setView] = useState<"board" | "table">("board");

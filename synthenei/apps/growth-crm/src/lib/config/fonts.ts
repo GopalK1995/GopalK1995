@@ -2,7 +2,7 @@
 // Self-hosted/system only (no runtime or build-time font fetch). "geist" is the font the app already ships.
 import type { FontKey } from "./types";
 
-export const FONT_STACKS: Record<FontKey, string> = {
+export const FONT_STACKS: Record<string, string> = {
   default: "",
   geist: "var(--font-geist-sans), system-ui, sans-serif",
   system: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
