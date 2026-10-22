@@ -15,6 +15,7 @@ import { RoleChip, TenantMark, TenantStatus, UserStatus } from "../../../_compon
 import { ActionDialog } from "../../../_components/action-dialog";
 import { createWorkspace, inviteOwner, setTenantStatus } from "../../../_components/actions";
 import { BrandingEditor } from "../../../_components/branding-editor";
+import { TenantConfigTab } from "./_components/config-tab";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -97,6 +98,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
             <BrandingEditor tenantId={tenant.id} initial={{ name: tenant.name.replace(" (demo)", ""), product: tenant.product, hue: tenant.hue, monogram: tenant.monogram }} />
           </CardBody></Card>
         ) },
+        { value: "config", label: "Configuration", content: <TenantConfigTab tenantId={tenant.id} /> },
         { value: "workspaces", label: `Workspaces (${sum.workspaces.length})`, content: (
           <Card><CardHeader title="Workspaces" sub="Counts only. Open a support session to see records inside a workspace." />
             <DataTable rows={sum.workspaces} columns={wsCols} rowKey={(w) => w.ws.id} minWidth={900} caption="Workspaces" />
