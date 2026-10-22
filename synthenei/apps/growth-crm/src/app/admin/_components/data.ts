@@ -61,6 +61,7 @@ export const allTenants = () => TENANTS.map(tenantSummary);
 export const USAGE: Record<string, { aiCalls: number; aiCap: number; storageMb: number; storageCapMb: number }> = {
   lawsome: { aiCalls: 0, aiCap: 2000, storageMb: 184, storageCapMb: 5120 },
   "kaveri-demo": { aiCalls: 0, aiCap: 250, storageMb: 12, storageCapMb: 1024 },
+  "shola-mist": { aiCalls: 0, aiCap: 500, storageMb: 9, storageCapMb: 1024 },
 };
 
 // ---- users -------------------------------------------------------------------------------------------------

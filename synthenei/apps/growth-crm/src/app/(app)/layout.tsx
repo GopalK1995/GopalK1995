@@ -1,6 +1,7 @@
 import { requireActive } from "@/lib/auth/server";
 import { Providers, type ShellCtx } from "@/components/shell/providers";
 import { AppShell } from "@/components/shell/shell";
+import { verticalOf } from "@/lib/vertical";
 import { TENANTS, WORKSPACES } from "@/lib/tenancy";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -9,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx: ShellCtx = {
     uid: session.uid, name: session.name, email: session.email, demo: session.demo, platformAdmin: session.platformAdmin, role: active.role,
     ws: { id: active.ws.id, name: active.ws.name, region: active.ws.region },
-    tenant: { id: active.tenant.id, name: active.tenant.name, product: active.tenant.product, hue: active.tenant.hue, monogram: active.tenant.monogram, workspaceCount: WORKSPACES.filter((w) => w.tenantId === active.tenant.id).length, isPrimaryOwner: active.tenant.primaryOwnerId === session.uid },
+    tenant: { id: active.tenant.id, name: active.tenant.name, product: active.tenant.product, hue: active.tenant.hue, monogram: active.tenant.monogram, vertical: verticalOf(active.tenant), workspaceCount: WORKSPACES.filter((w) => w.tenantId === active.tenant.id).length, isPrimaryOwner: active.tenant.primaryOwnerId === session.uid },
     workspaces: workspaces.map((m) => {
       const w = WORKSPACES.find((x) => x.id === m.ws)!; const t = TENANTS.find((x) => x.id === w.tenantId)!;
       return { id: w.id, name: w.name, tenantId: t.id, tenantName: t.name, monogram: t.monogram, role: m.role };

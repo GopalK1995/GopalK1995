@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Lock, Mail, MessageCircle, Phone } from "lucide-react";
 import { pageCtx, maskName } from "@/lib/data/context";
-import { CHANNEL_LABEL, DEAL_STAGE_LABEL, LEAD_STAGE_LABEL, SLA_MINUTES } from "@/lib/data/metrics";
+import { CHANNEL_LABEL, SLA_MINUTES } from "@/lib/data/metrics";
 import { accessFor, ROLE_LABEL } from "@/lib/auth/roles";
 import { dayKey, fmtDate, fmtDateY, fmtTime, inr, minsToHuman, relTime } from "@/lib/format";
 import type { Activity, ActivityKind, Lead } from "@/lib/data/types";
@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Dl, PageHeader } from "@/components/ui/misc";
 import { ChannelMark, DealStageBadge, LeadStageBadge } from "@/components/ui/domain";
 import { cn } from "@/lib/utils";
+import { vocabFor, type Vocab } from "@/lib/vertical";
 import { DAY, isOpenLead, ownsOrManages, shortCity } from "../_lib/sales";
 import { ScoreWithFactors } from "../_components/leads-table";
 import { LeadActions } from "./_components/lead-actions";
@@ -19,7 +20,8 @@ import { Timeline, type TimelineCat, type TimelineItem } from "./_components/tim
 import { AiPanel, type Suggestion } from "./_components/ai-panel";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  return { title: `Lead ${(await params).id}` };
+  const { active } = await pageCtx();
+  return { title: vocabFor(active.tenant).ld.metaTitle((await params).id) };
 }
 
 const CAT: Record<ActivityKind, TimelineCat> = {
@@ -29,8 +31,9 @@ const CAT: Record<ActivityKind, TimelineCat> = {
 const INBOUND = new Set<ActivityKind>(["whatsapp_in", "form_submit", "email_click"]);
 
 /** Rule-based next best action from a fixed list (spec 9): call, WhatsApp template, email, schedule demo, send proposal, nurture. */
-function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined): Suggestion {
+function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined, v: Vocab): Suggestion {
   if (!isOpenLead(l)) return null;
+  const n = v.ld.nextBest;
   const nowMs = new Date(now).getTime();
   const tomorrow = fmtDate(new Date(nowMs + DAY).toISOString());
   const top = [...l.scoreFactors].sort((a, b) => b.points - a.points).slice(0, 2).map((f) => `${f.label} ${f.points > 0 ? "+" : ""}${f.points}`);
@@ -38,29 +41,30 @@ function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activi
   const intent = l.scoreFactors.find((f) => f.label === "Pricing page visit" || f.label === "Demo page 3+ visits");
   switch (l.stage) {
     case "new":
-      return { action: "Call now to start the conversation", reason: l.firstResponseMins === null ? `No first touch yet; the lead came in ${relTime(l.createdAt, now)} and the 2-hour SLA ${(nowMs - new Date(l.createdAt).getTime()) / 60e3 > SLA_MINUTES ? "has already passed" : "is still running"}.` : "First touch done; confirm interest and a demo slot.", due: "Today", factors: top };
+      return { action: n.newCall, reason: l.firstResponseMins === null ? n.newNoTouch(relTime(l.createdAt, now), (nowMs - new Date(l.createdAt).getTime()) / 60e3 > SLA_MINUTES) : n.newTouched, due: "Today", factors: top };
     case "contacted":
       return consentWa
-        ? { action: "Send WhatsApp template demo_invite_ta", reason: `${quiet ? `Last touch ${quiet} day${quiet > 1 ? "s" : ""} ago` : "Touched today"}; WhatsApp consent is on record${intent ? " and they viewed pricing" : ""}.`, due: tomorrow, factors: top }
-        : { action: "Call to book a demo with the partners", reason: `No WhatsApp consent, so a call is the fastest route. ${intent ? intent.detail + "." : ""}`, due: tomorrow, factors: top };
+        ? { action: n.contactedWa, reason: `${quiet ? `Last touch ${quiet} day${quiet > 1 ? "s" : ""} ago` : "Touched today"}; WhatsApp consent is on record${intent ? " and they viewed pricing" : ""}.`, due: tomorrow, factors: top }
+        : { action: n.contactedCall, reason: `${n.noWa} ${intent ? intent.detail + "." : ""}`, due: tomorrow, factors: top };
     case "qualified":
-      return { action: "Schedule demo", reason: `Qualified but no demo yet. Partners are usually free after 17:30 or on Saturday mornings.`, due: tomorrow, factors: top };
+      return { action: n.qualifiedAct, reason: n.qualifiedWhy, due: tomorrow, factors: top };
     case "demo_booked":
-      return { action: consentWa ? "Send WhatsApp template demo_reminder_en" : "Email demo reminder with the Meet link", reason: "Demo is booked; a reminder the day before cuts no-shows.", due: tomorrow, factors: top };
+      return { action: consentWa ? n.bookedWa : n.bookedMail, reason: n.bookedWhy, due: tomorrow, factors: top };
     case "demo_done": {
       const since = lastDemoDone ? Math.round((nowMs - new Date(lastDemoDone.at).getTime()) / DAY) : null;
-      return { action: "Send proposal", reason: `Demo done${since !== null ? ` ${since} day${since === 1 ? "" : "s"} ago (${fmtDate(lastDemoDone!.at)})` : ""}${intent ? "; pricing page visited since" : ""}.`, due: since !== null && since > 3 ? "Today" : tomorrow, factors: top };
+      return { action: n.doneAct, reason: n.doneWhy(since !== null ? ` ${since} day${since === 1 ? "" : "s"} ago (${fmtDate(lastDemoDone!.at)})` : "", !!intent), due: since !== null && since > 3 ? "Today" : tomorrow, factors: top };
     }
     case "proposal":
-      return { action: "Call the managing partner to close", reason: `Proposal is with them; last two-way contact ${quiet} day${quiet === 1 ? "" : "s"} ago.`, due: quiet > 5 ? "Today" : tomorrow, factors: top };
+      return { action: n.propAct, reason: n.propWhy(quiet), due: quiet > 5 ? "Today" : tomorrow, factors: top };
     default:
-      return { action: "Mark as nurture", reason: "No clear buying signal yet.", due: tomorrow, factors: top };
+      return { action: n.defAct, reason: n.defWhy, due: tomorrow, factors: top };
   }
 }
 
 export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { ds, now, role, session, masked } = await pageCtx();
+  const { ds, now, role, session, masked, active } = await pageCtx();
+  const v = vocabFor(active.tenant), ld = v.ld, hosp = v.id === "hospitality";
   const lead = await ds.lead(id);
   if (!lead) notFound();
 
@@ -69,9 +73,9 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
     return (
       <div className="mx-auto mt-16 max-w-md rounded-md border border-line bg-surface p-6 shadow-1">
         <Lock className="size-5 text-ink-3" aria-hidden />
-        <h1 className="mt-3 text-[18px] font-semibold">This lead is assigned to another rep.</h1>
-        <p className="mt-1 text-[13px] text-ink-2">Sales Reps open only their own leads. Ask your Sales Manager to reassign it if the firm is in your territory.</p>
-        <Link href="/leads" className="mt-5 inline-flex h-9 items-center rounded-sm bg-accent px-4 text-[13px] font-medium text-accent-ink hover:bg-accent-strong">Back to my leads</Link>
+        <h1 className="mt-3 text-[18px] font-semibold">{ld.otherRepTitle}</h1>
+        <p className="mt-1 text-[13px] text-ink-2">{ld.otherRepBody}</p>
+        <Link href="/leads" className="mt-5 inline-flex h-9 items-center rounded-sm bg-accent px-4 text-[13px] font-medium text-accent-ink hover:bg-accent-strong">{ld.backToMine}</Link>
       </div>
     );
   }
@@ -84,22 +88,23 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const campaign = campaigns.find((c) => c.id === lead.campaignId);
   const nowMs = new Date(now).getTime();
   const name = masked ? maskName(lead.name) : lead.name;
-  const firm = account?.name ?? "Unknown firm";
+  const firm = account?.name ?? ld.unknownFirm;
+  const sizeLabel = account ? v.partySize[account.size] : "";
 
   const header = (
     <PageHeader
-      eyebrow={<Link href="/leads" className="inline-flex items-center gap-1 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />Leads · {lead.id}</Link>}
+      eyebrow={<Link href="/leads" className="inline-flex items-center gap-1 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />{ld.crumb(lead.id)}</Link>}
       title={name}
       sub={<>
-        {lead.title} at {account && !masked ? <Link href={`/accounts/${account.id}`} className="font-medium text-ink hover:text-accent">{firm}</Link> : firm}
-        {" · "}{account?.district ?? shortCity(lead.city)} district
+        {lead.title} {ld.subAt} {account && !masked ? <Link href={`/accounts/${account.id}`} className="font-medium text-ink hover:text-accent">{firm}</Link> : firm}
+        {" · "}{ld.district(account?.district ?? shortCity(lead.city))}
       </>}>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <LeadStageBadge stage={lead.stage} />
         <ScoreWithFactors score={lead.score} factors={[...lead.scoreFactors].sort((a, b) => b.points - a.points)} />
         {owner ? <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={owner.name} size={20} />{owner.name}</span> : <Badge tone="warn">Unassigned</Badge>}
         {!masked && <>
-          <Badge tone={lead.consent.followup ? "success" : "outline"}>Demo follow-up {lead.consent.followup ? "yes" : "no"}</Badge>
+          <Badge tone={lead.consent.followup ? "success" : "outline"}>{ld.followUp} {lead.consent.followup ? "yes" : "no"}</Badge>
           <Badge tone={lead.consent.marketing ? "success" : "outline"}>Marketing email {lead.consent.marketing ? "yes" : "no"}</Badge>
           <Badge tone={lead.consent.whatsapp ? "success" : "outline"}>WhatsApp {lead.consent.whatsapp ? "yes" : "no"}</Badge>
         </>}
@@ -114,12 +119,12 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         {header}
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader title="Firm" />
-            <CardBody><Dl items={[["Firm", firm], ["District", account?.district ?? "Unknown"], ["Size", account ? `${account.size} (${account.lawyers} lawyers)` : "Unknown"], ["Courts", account?.courts.join(", ") ?? "Unknown"], ["Source", CHANNEL_LABEL[lead.channel]]]} /></CardBody>
+            <CardHeader title={ld.maskedCard} />
+            <CardBody><Dl items={ld.maskedRows(firm, account?.district ?? "Unknown", sizeLabel, (hosp ? account?.roomsOfInterest?.join(", ") : account?.courts.join(", ")) ?? "Unknown", CHANNEL_LABEL[lead.channel], account ? account.lawyers : null)} /></CardBody>
           </Card>
           <Card>
             <CardHeader title="Why contact details and the timeline are hidden" />
-            <CardBody className="text-[13px] leading-5 text-ink-2">Your role ({ROLE_LABEL[role]}) reads masked records: initials, firm, district, stage and score. Phone, email, messages and activity stay with the sales team. Ask the Owner if you need full access.</CardBody>
+            <CardBody className="text-[13px] leading-5 text-ink-2">{ld.maskedNote(v.role[role])}</CardBody>
           </Card>
         </div>
       </>
@@ -133,7 +138,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
     ...acts.map((a) => ({ id: a.id, at: a.at, cat: CAT[a.kind], title: a.title, detail: a.detail, by: by(a.byId), inbound: INBOUND.has(a.kind) })),
     ...lc.flatMap((c) => c.messages.map((m) => ({
       id: `${c.id}-${m.id}`, at: m.at, cat: (c.channel === "linkedin" ? "web" : c.channel) as TimelineCat,
-      title: `${m.from === "lead" ? `${lead.name.split(" ")[0]} replied` : "Sent"} on ${c.channel === "whatsapp" ? "WhatsApp" : c.channel === "email" ? "email" : "LinkedIn"}${m.status ? ` · ${m.status}` : ""}`,
+      title: `${m.from === "lead" ? `${lead.name.split(" ")[0]} replied` : "Sent"} on ${c.via === "instagram" ? "Instagram" : c.via === "phone" ? "phone" : c.channel === "whatsapp" ? "WhatsApp" : c.channel === "email" ? "email" : "LinkedIn"}${m.status ? ` · ${m.status}` : ""}`,
       detail: m.body, by: m.from === "us" ? by(m.authorId) : undefined, inbound: m.from === "lead",
     }))),
   ].sort((a, b) => b.at.localeCompare(a.at));
@@ -146,10 +151,11 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const openTasks = tasks.filter((t) => t.leadId === lead.id && t.status === "open").sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const lastDemoDone = acts.filter((a) => a.kind === "demo_done").sort((a, b) => b.at.localeCompare(a.at))[0];
   const aiOn = ai.summaries || ai.nextBestAction; // Off by default per workspace; the Owner turns features on in /ai (spec 9).
-  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone);
+  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone, v);
   const inbound = raw.filter((r) => r.inbound).sort((a, b) => b.at.localeCompare(a.at))[0];
   const summary = [
-    `${lead.title} at a ${account?.size ?? ""} firm (${account?.lawyers ?? "?"} lawyers) in ${account?.district ?? lead.city}; ${LEAD_STAGE_LABEL[lead.stage].toLowerCase()} stage, came in via ${CHANNEL_LABEL[lead.channel]} ${relTime(lead.createdAt, now)}.`,
+    ld.summaryA(lead.title, hosp ? sizeLabel : account?.size ?? "", account?.lawyers ?? "?", account?.district ?? lead.city, hosp ? v.leadStage[lead.stage] : v.leadStage[lead.stage].toLowerCase(), CHANNEL_LABEL[lead.channel], relTime(lead.createdAt, now)),
+    ...(lead.stay ? [`Stay: ${fmtDate(lead.stay.checkIn + "T06:00:00Z")}, ${lead.stay.nights} nights, ${lead.stay.guests} guests, ${lead.stay.room}.`] : []),
     inbound ? `Last inbound ${relTime(inbound.at, now)}: "${(inbound.detail ?? inbound.title).slice(0, 110)}${(inbound.detail ?? inbound.title).length > 110 ? "…" : ""}"` : `No reply from ${lead.name.split(" ")[0]} yet; ${lead.scoreFactors.find((f) => f.label === "Pricing page visit")?.detail ?? "no pricing-page visits recorded"}.`,
     lead.nextAction ? `Open follow-up: ${lead.nextAction}${lead.nextActionAt ? ` (due ${fmtDate(lead.nextActionAt)}${lead.nextActionAt < now ? ", overdue" : ""})` : ""}.` : "No open follow-up promised.",
   ];
@@ -169,14 +175,14 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           <LeadActions lead={{ id: lead.id, name: lead.name, firm, email: lead.email, consentWa: lead.consent.whatsapp, ownerId: lead.ownerId || null, today, tomorrow }} owners={owners} />
         </div>
       )}
-      {!canWork && accessFor(role, "/leads") === "R" && <p className="mb-5 text-[12px] text-ink-3">Read-only for {ROLE_LABEL[role]}: calls, messages and stage changes are made by the sales team.</p>}
+      {!canWork && accessFor(role, "/leads") === "R" && <p className="mb-5 text-[12px] text-ink-3">{ld.readOnly(v.role[role])}</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Centre: timeline */}
         <Card className="order-2 lg:order-none lg:col-span-5 lg:col-start-4 lg:row-start-1">
           <CardHeader title="Activity timeline" sub="Calls, WhatsApp, email, meetings and web visits, newest first" />
           <CardBody>
-            {!firstTouchDone && canWork && <p className="mb-3 rounded-sm border border-warn/30 bg-warn-soft px-3 py-2 text-[13px] text-warn-ink">Log the first touch to start the SLA clock. The lead arrived {relTime(lead.createdAt, now)}.</p>}
+            {!firstTouchDone && canWork && <p className="mb-3 rounded-sm border border-warn/30 bg-warn-soft px-3 py-2 text-[13px] text-warn-ink">{ld.firstTouchWarn(relTime(lead.createdAt, now))}</p>}
             {items.length ? <Timeline items={items} /> : <p className="rounded-md border border-dashed border-line-strong px-4 py-8 text-center text-[13px] text-ink-3">No activity yet. Log the first call to start the timeline.</p>}
           </CardBody>
         </Card>
@@ -209,12 +215,9 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           </Card>
           {account && (
             <Card>
-              <CardHeader title="Firm snapshot" action={<Link href={`/accounts/${account.id}`} className="text-[12px] font-medium text-accent hover:underline">Open firm</Link>} />
+              <CardHeader title={ld.snapshot} action={<Link href={`/accounts/${account.id}`} className="text-[12px] font-medium text-accent hover:underline">{ld.openAccount}</Link>} />
               <CardBody>
-                <Dl items={[
-                  ["Firm", account.name], ["Location", `${account.locality}, ${shortCity(account.city)}`], ["Lawyers", <span key="n" className="num">{account.lawyers} ({account.size})</span>],
-                  ["Courts", account.courts.join(", ")], ["Practice", account.practiceAreas.join(", ")], ["ICP tier", account.icpTier],
-                ]} />
+                <Dl items={ld.snapRows({ name: account.name, where: `${account.locality}, ${shortCity(account.city)}`, lawyers: account.lawyers, size: hosp ? sizeLabel : account.size, courts: hosp ? (account.roomsOfInterest ?? []).join(", ") : account.courts.join(", "), practice: hosp ? (account.interests ?? []).join(", ") : account.practiceAreas.join(", "), tier: account.icpTier })} />
               </CardBody>
             </Card>
           )}
@@ -237,24 +240,42 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
                   </div>}
             </CardBody>
           </Card>
+          {lead.stay && (
+            <Card>
+              <CardHeader title="Stay details" sub={lead.stay.flexibleDates ? "Dates are flexible" : "Dates are fixed"} />
+              <CardBody>
+                <Dl items={[
+                  ["Check-in", <span key="ci" className="num">{fmtDateY(lead.stay.checkIn + "T06:00:00Z")}</span>],
+                  ["Nights", <span key="n" className="num">{lead.stay.nights}</span>],
+                  ["Guests", <span key="g" className="num">{lead.stay.guests}</span>],
+                  ["Rooms", <span key="r" className="num">{lead.stay.rooms}</span>],
+                  ["Room interest", lead.stay.room],
+                  ["Trip type", String(lead.stay.tripType)],
+                  ["Guest", lead.stay.origin === "new" ? "New guest" : lead.stay.origin === "repeat" ? "Repeat guest" : "Referral"],
+                  ...(lead.stay.occasion ? [["Occasion", lead.stay.occasion] as [string, string]] : []),
+                ]} />
+              </CardBody>
+            </Card>
+          )}
           {deal && (
             <Card>
-              <CardHeader title="Open deal" action={<Link href="/pipeline" className="text-[12px] font-medium text-accent hover:underline">Pipeline</Link>} />
+              <CardHeader title={ld.dealCard} action={<Link href="/pipeline" className="text-[12px] font-medium text-accent hover:underline">Pipeline</Link>} />
               <CardBody>
                 <Dl items={[
                   ["Stage", <DealStageBadge key="s" stage={deal.stage} />],
+                  ...(deal.stay ? [["Check-in", <span key="dci" className="num">{fmtDateY(deal.stay.checkIn + "T06:00:00Z")}</span>] as [string, React.ReactNode], ["Rate per night", <span key="rpn" className="num">{inr(deal.stay.ratePerNight)}</span>] as [string, React.ReactNode], ["Advance", <span key="adv" className="num">{inr(deal.stay.advancePaid)} of {deal.stay.advancePct}%</span>] as [string, React.ReactNode]] : []),
                   ["Value", <span key="v" className="num">{inr(deal.value)}</span>],
-                  ["Seats · plan", <span key="p" className="num">{deal.seats} · {deal.plan}</span>],
+                  [ld.seatsRow, <span key="p" className="num">{hosp ? `${deal.seats} ${deal.seats === 1 ? "night" : "nights"}${deal.stay ? ` · ${deal.stay.rooms} ${deal.stay.rooms === 1 ? "room" : "rooms"}` : ""}` : `${deal.seats} · ${deal.plan}`}</span>],
                   ["In stage", <span key="d" className="num">{Math.floor((nowMs - new Date(deal.stageEnteredAt).getTime()) / DAY)} days</span>],
-                  [deal.stage === "won" ? "Won on" : "Expected close", fmtDateY(deal.wonAt ?? deal.expectedClose)],
+                  [deal.stage === "won" ? ld.wonOn : ld.expectedClose, fmtDateY(deal.wonAt ?? deal.expectedClose)],
                   ...(deal.lostReason ? [["Lost reason", deal.lostReason] as [string, string]] : []),
                 ]} />
-                <p className="mt-2 text-[12px] text-ink-3">{DEAL_STAGE_LABEL[deal.stage]} · {deal.name}</p>
+                <p className="mt-2 text-[12px] text-ink-3">{v.dealStage[deal.stage]} · {deal.name}</p>
               </CardBody>
             </Card>
           )}
           <Card>
-            <CardHeader title="Tasks for this lead" sub={`${openTasks.length} open`} />
+            <CardHeader title={ld.tasksFor} sub={`${openTasks.length} open`} />
             {openTasks.length ? (
               <ul className="divide-y divide-line border-t border-line">
                 {openTasks.map((t) => (

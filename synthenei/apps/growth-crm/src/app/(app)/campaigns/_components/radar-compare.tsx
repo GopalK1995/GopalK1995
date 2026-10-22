@@ -3,14 +3,16 @@ import { useEffect, useState } from "react";
 import { RadarCompare } from "@/components/charts/radar";
 import { SERIES } from "@/components/charts/kit";
 import { cn } from "@/lib/utils";
+import { useVocab } from "@/components/shell/providers";
 
-const AXES = ["Reach", "Engagement", "CTR", "Lead rate", "Cost efficiency"] as const;
 export type RadarCampaign = { id: string; label: string; scores: number[]; raw: string[] };
 
 /** M45 reach profile. Pick up to 3 campaigns (2 on phones). A campaign keeps its colour slot while selected, so
  *  colour follows the campaign, never its position. A values table under the chart carries every number. */
 export function RadarPicker({ campaigns, initial, height = 360, total }: { campaigns: RadarCampaign[]; initial: string[]; height?: number; total: number }) {
   const campaignCount = total;
+  const vv = useVocab();
+  const AXES = ["Reach", "Engagement", "CTR", vv.mk.leadRate, "Cost efficiency"];
   const [slots, setSlots] = useState<(string | null)[]>(() => [initial[0] ?? null, initial[1] ?? null, initial[2] ?? null]);
   const [max, setMax] = useState(3);
   useEffect(() => {
@@ -81,7 +83,7 @@ export function RadarPicker({ campaigns, initial, height = 360, total }: { campa
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-[11px] leading-4 text-ink-3">Score = position among {campaignCount} campaigns in this workspace over the period (best = 100). Grey figures are the real values. Cost efficiency ranks cost per lead, lowest first; email with no media spend ranks best.</p>
+      <p className="mt-2 text-[11px] leading-4 text-ink-3">Score = position among {campaignCount} campaigns in this workspace over the period (best = 100). Grey figures are the real values. {vv.cd.radarFoot}</p>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { HBar } from "@/components/charts/hbar";
 import { Segmented } from "@/components/ui/tabs";
 import { pct } from "@/lib/format";
+import { useVocab } from "@/components/shell/providers";
 
 type Row = { ch: string; label: string; leads: number; demos: number; won: number };
 
@@ -11,19 +12,20 @@ export function AttributionPanel({ first, last }: { first: Row[]; last: Row[] })
   const [m, setM] = useState<"first" | "last">("first");
   const rows = m === "first" ? first : last;
   const other = m === "first" ? last : first;
+  const t = useVocab().an.att;
   const total = rows.reduce((a, r) => a + r.leads, 0);
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Segmented label="Attribution model" options={[{ value: "first", label: "First touch" }, { value: "last", label: "Last touch" }]} value={m} onChange={setM} />
-        <span className="text-[12px] text-ink-3">{m === "first" ? "Credit to the channel that brought the lead in" : "Credit to the lead's most recent touch"}</span>
+        <span className="text-[12px] text-ink-3">{m === "first" ? t.first : t.last}</span>
       </div>
-      <HBar label={`Leads by channel, ${m} touch. ${rows.map((r) => `${r.label} ${r.leads}`).join(", ")}`} data={rows.map((r) => ({ label: r.label, value: r.leads, note: `${r.demos} demos · ${r.won} won` }))} highlight={rows[0]?.label} labelWidth={92} valueLabel="Leads" />
+      <HBar label={`${t.bars}, ${m} touch. ${rows.map((r) => `${r.label} ${r.leads}`).join(", ")}`} data={rows.map((r) => ({ label: r.label, value: r.leads, note: t.note(r.demos, r.won) }))} highlight={rows[0]?.label} labelWidth={92} valueLabel={t.leads} />
       <div className="scrollbar-thin mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-[12px]">
-          <caption className="sr-only">Leads, demos and won deals by channel under {m}-touch attribution, with change vs the other model</caption>
+          <caption className="sr-only">{t.cap} {m}-touch attribution, with change vs the other model</caption>
           <thead><tr className="border-b border-line text-[11px] uppercase tracking-[0.05em] text-ink-3">
-            <th scope="col" className="py-1.5 text-left font-medium">Channel</th><th scope="col" className="py-1.5 text-right font-medium">Leads</th><th scope="col" className="py-1.5 text-right font-medium">Demos</th><th scope="col" className="py-1.5 text-right font-medium">Won</th><th scope="col" className="py-1.5 pl-2 text-right font-medium">vs {m === "first" ? "last" : "first"}</th>
+            <th scope="col" className="py-1.5 text-left font-medium">Channel</th><th scope="col" className="py-1.5 text-right font-medium">{t.leads}</th><th scope="col" className="py-1.5 text-right font-medium">{t.demos}</th><th scope="col" className="py-1.5 text-right font-medium">{t.won}</th><th scope="col" className="py-1.5 pl-2 text-right font-medium">vs {m === "first" ? "last" : "first"}</th>
           </tr></thead>
           <tbody>
             {rows.map((r) => {

@@ -18,21 +18,19 @@ import { Columns } from "@/components/charts/columns";
 import { OTHER } from "@/components/charts/kit";
 import type { Ga4Channel, Ga4Page } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
+import { vocabFor } from "@/lib/vertical";
 import { DAY_MS, attribution, ga4Weekly, inBucket, outcomeOf, weekBuckets } from "../campaigns/_lib/marketing";
 import { AttributionPanel } from "./_components/attribution";
 
 export const metadata = { title: "Web analytics" };
 // Four outcomes, each clearly separable: Won = accent, open after the demo = ochre, upcoming = light cobalt, Lost = grey.
-const STACK = [
-  { key: "won", label: "Won", color: "var(--chart-1)" },
-  { key: "open", label: "Demo done, deal open", color: "var(--chart-2)" },
-  { key: "booked", label: "Booked, upcoming", color: "var(--seq-2)" },
-  { key: "lost", label: "Lost", color: OTHER },
-];
+const STACK_COLOR = { won: "var(--chart-1)", open: "var(--chart-2)", booked: "var(--seq-2)", lost: OTHER } as const;
 const stackKey = (o: string) => (o === "proposal" || o === "done" ? "open" : o);
 
 export default async function Analytics() {
-  const { ds, now } = await pageCtx();
+  const { ds, now, active } = await pageCtx();
+  const v = vocabFor(active.tenant), a = v.an;
+  const STACK = (Object.keys(STACK_COLOR) as (keyof typeof STACK_COLOR)[]).map((key) => ({ key, label: a.stack[key], color: STACK_COLOR[key] }));
   const [{ days: ga4, pages }, leads, acts, integrations] = await Promise.all([ds.ga4(), ds.leads(), ds.activities(), ds.integrations()]);
   const ga = integrations.find((i) => i.id === "ga4");
   const connected = ga?.status === "connected";
@@ -78,19 +76,19 @@ export default async function Analytics() {
     { key: "s", header: "Sessions", align: "right", mobile: "fact", cell: (p) => <span>{num(p.sessions)}<span className="md:hidden"> sessions</span></span> },
     { key: "er", header: "Engaged", align: "right", cell: (p) => pct(p.engagementRate, 0) },
     { key: "t", header: "Avg time", align: "right", cell: (p) => `${Math.floor(p.avgSecs / 60)}m ${String(p.avgSecs % 60).padStart(2, "0")}s` },
-    { key: "c", header: "Key events", align: "right", mobile: "fact", cell: (p) => <span className={cn(p.path === "/demo" && "font-medium")}>{p.conversions}<span className="md:hidden"> key events</span></span> },
+    { key: "c", header: "Key events", align: "right", mobile: "fact", cell: (p) => <span className={cn(p.path === a.ctaPath && "font-medium")}>{p.conversions}<span className="md:hidden"> key events</span></span> },
   ];
 
   return (
     <>
       <PageHeader eyebrow="Marketing · website" title="Web analytics"
-        sub="How people move through the LAWSOME site before they become leads, and which channel gets credit once they do."
+        sub={a.sub(active.tenant.name)}
         actions={<><Gate can="connectIntegrations" reason="Only the Owner connects integrations."><Button variant="primary"><PlugZap />Connect GA4</Button></Gate></>} />
 
       {!connected && (
         <div role="note" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-dashed border-ink-3/60 bg-surface px-4 py-3 text-[13px] text-ink-2">
           <StatusChip status="showcase" />
-          <span>GA4 is not connected. Every number here is a sample series shaped like a GA4 property for the LAWSOME site.</span>
+          <span>{a.note(active.tenant.name)}</span>
           <Link href="/integrations/ga4" className="font-medium text-accent hover:underline">See what connecting needs</Link>
         </div>
       )}
@@ -101,10 +99,10 @@ export default async function Analytics() {
           <Kpi label="Engagement rate" metric="M21" value={er} format="pct" delta={er - erPrev} deltaLabel="" foot={<>points vs prior 30 days · engaged ÷ sessions</>} />
           <Kpi label="Avg engagement time · seconds" metric="M22" value={Math.round(avgSecs)} delta={ratio(avgSecs, avgPrev) - 1} deltaLabel="" foot={<>vs prior 30 days · {Math.floor(avgSecs / 60)}m {String(Math.round(avgSecs % 60)).padStart(2, "0")}s per session</>} />
           <div className={cn("flex min-w-0 flex-col justify-between gap-3 rounded-md border bg-surface p-4 shadow-1", Math.abs(gap) > 0.25 ? "border-warn/50" : "border-line")}>
-            <div className="flex items-start justify-between gap-2"><span className="text-[12px] font-medium leading-4 text-ink-2">GA4 vs CRM form submits</span><span className="font-mono text-[10px] text-ink-3">M23</span></div>
+            <div className="flex items-start justify-between gap-2"><span className="text-[12px] font-medium leading-4 text-ink-2">{a.formsKpi}</span><span className="font-mono text-[10px] text-ink-3">M23</span></div>
             <div>
               <div className="text-[26px] font-semibold leading-8 tracking-[-0.02em] num">{Number.isFinite(gap) ? `${gap > 0 ? "+" : "−"}${Math.abs(gap * 100).toFixed(0)}%` : "–"}</div>
-              <div className="mt-1 text-[12px] text-ink-2 num">{keyEv} GA4 key events · {crmSubmits} CRM submits</div>
+              <div className="mt-1 text-[12px] text-ink-2 num">{keyEv} GA4 key events · {crmSubmits} {a.crmSubmits}</div>
             </div>
             <div className="border-t border-line pt-2 text-[12px] leading-4 text-ink-3">{Math.abs(gap) > 0.25 ? <span className="font-medium text-warn-ink">Above the 25% flag. </span> : "Within the 25% tolerance. "}Consent gating and ad blockers make GA4 and the CRM differ.</div>
           </div>
@@ -134,23 +132,23 @@ export default async function Analytics() {
         </StaggerItem>
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
-            <CardHeader title="How many demos are booked each week, and where are they now?" sub={`${demoTotal} demos booked in 12 weeks, stacked by today's outcome`} action={<span className="font-mono text-[10px] text-ink-3">M10</span>} />
+            <CardHeader title={a.weeklyTitle} sub={a.weeklySub(demoTotal)} action={<span className="font-mono text-[10px] text-ink-3">M10</span>} />
             <CardBody>
-              <Columns label={`Demos booked per week stacked by outcome. ${demoWeeks.map((w) => `${w.week}: ${STACK.reduce((a, o) => a + Number(w[o.key]), 0)}`).join(", ")}`} data={demoWeeks} xKey="week" series={colSeries} height={240} />
-              <p className="mt-2 text-[11px] text-ink-3">Recent weeks are mostly upcoming or open: outcomes settle 2–4 weeks after the demo.</p>
+              <Columns label={`${a.weeklyAria} ${demoWeeks.map((w) => `${w.week}: ${STACK.reduce((a, o) => a + Number(w[o.key]), 0)}`).join(", ")}`} data={demoWeeks} xKey="week" series={colSeries} height={240} />
+              <p className="mt-2 text-[11px] text-ink-3">{a.weeklyNote}</p>
             </CardBody>
           </Card>
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
-            <CardHeader title="Top landing pages" sub="Last 90 days. Key event = form submit or demo booking." />
+            <CardHeader title="Top landing pages" sub={a.pagesSub} />
             <DataTable rows={[...pages].sort((a, b) => b.sessions - a.sessions)} columns={pageCols} rowKey={(p) => p.path} minWidth={520} caption="Top landing pages by sessions" />
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-5">
           <Card className="h-full">
-            <CardHeader title="Which channel gets the credit?" sub={`Leads from the last 90 days. ${pct(untagged, 0)} arrived without a utm_campaign (M19).`} />
+            <CardHeader title="Which channel gets the credit?" sub={a.credit(pct(untagged, 0))} />
             <CardBody><AttributionPanel first={first} last={last} /></CardBody>
           </Card>
         </StaggerItem>

@@ -6,11 +6,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import * as D from "@radix-ui/react-dialog";
 import { ChevronDown, Database, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isActive, mobileNavFor, navFor } from "./nav";
+import { isActive, mobileNavFor, navFor, navGroup, navLabel } from "./nav";
 import { WorkspaceSwitcher } from "./switcher";
 import { endSupport } from "@/lib/auth/actions";
 import { fmtTime } from "@/lib/format";
-import { useSession } from "./providers";
+import { useSession, useVocab } from "./providers";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
 import { Tip } from "@/components/ui/tooltip";
@@ -23,12 +23,13 @@ const COLLAPSE_KEY = "gcrm-nav-collapsed";
 function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onNavigate?: () => void; layoutKey: string }) {
   const path = usePathname();
   const { role } = useSession();
+  const v = useVocab();
   const reduce = useReducedMotion();
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {navFor(role).map((g) => (
         <div key={g.group}>
-          {!collapsed && <div className="mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.08em] text-navy-ink-3">{g.group}</div>}
+          {!collapsed && <div className="mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.08em] text-navy-ink-3">{navGroup(v, g.group)}</div>}
           <ul className="flex flex-col gap-0.5">
             {g.items.map((it) => {
               const active = isActive(it.href, path);
@@ -42,11 +43,11 @@ function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onN
                     </motion.span>
                   )}
                   <it.icon className={cn("relative size-4 shrink-0", active && "text-accent-on-navy")} aria-hidden />
-                  {!collapsed && <span className="relative truncate">{it.label}</span>}
+                  {!collapsed && <span className="relative truncate">{navLabel(v, it)}</span>}
                   {!collapsed && it.badge && <span className="relative ml-auto rounded-[3px] border border-navy-line px-1 text-[10px] font-normal text-navy-ink-3">{it.badge}</span>}
                 </Link>
               );
-              return <li key={it.href}>{collapsed ? <Tip content={it.label} side="right">{link}</Tip> : link}</li>;
+              return <li key={it.href}>{collapsed ? <Tip content={navLabel(v, it)} side="right">{link}</Tip> : link}</li>;
             })}
           </ul>
         </div>
@@ -106,11 +107,12 @@ function UserMenu() {
 
 function GlobalSearch() {
   const router = useRouter();
+  const v = useVocab();
   const [q, setQ] = useState("");
   return (
     <form role="search" onSubmit={(e) => { e.preventDefault(); router.push(`/leads?q=${encodeURIComponent(q)}`); }} className="relative hidden w-full max-w-sm sm:block">
       <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search leads, firms, cities" aria-label="Search leads, firms, cities"
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={v.search} aria-label={v.search}
         className="h-8 w-full rounded-sm border border-line bg-paper pl-8 pr-10 text-[13px] text-ink placeholder:text-ink-3 outline-none focus:border-ring focus:bg-surface" />
       <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-[3px] border border-line px-1 text-[10px] text-ink-3">/</kbd>
     </form>
@@ -121,6 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const { role, support } = useSession();
+  const v = useVocab();
   const path = usePathname();
   useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* ignore */ } }, []);
   useEffect(() => {
@@ -179,7 +182,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link key={it.href} href={it.href} className={cn("relative flex h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium", active ? "text-navy-ink" : "text-navy-ink-3")} aria-current={active ? "page" : undefined}>
               {active && <span className="absolute inset-x-5 top-0 h-0.5 rounded-b-full bg-accent-on-navy" />}
               <it.icon className={cn("size-[18px]", active && "text-accent-on-navy")} aria-hidden />
-              <span className="max-w-full truncate px-1">{it.label === "Command Center" ? "Overview" : it.label}</span>
+              <span className="max-w-full truncate px-1">{it.label === "Command Center" ? "Overview" : navLabel(v, it)}</span>
             </Link>
           );
         })}

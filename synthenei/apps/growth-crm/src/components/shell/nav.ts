@@ -3,6 +3,7 @@ import {
   Plug, Settings, SquareKanban, Users, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
+import type { Vocab } from "@/lib/vertical";
 import { accessFor } from "@/lib/auth/roles";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: string };
@@ -28,3 +29,7 @@ const MOBILE: Record<Role, string[]> = {
 };
 export const mobileNavFor = (role: Role) => MOBILE[role].map((h) => NAV.flatMap((g) => g.items).find((i) => i.href === h)!).filter(Boolean);
 export const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path === href || path.startsWith(href + "/"));
+
+/** Vocabulary-aware nav label (legal output is unchanged). */
+export const navLabel = (v: Vocab, it: NavItem) => (it.href === "/leads" ? v.nav.leads : it.href === "/accounts" ? v.nav.accounts : it.label);
+export const navGroup = (v: Vocab, g: string) => (g === "Sell" ? v.nav.sell : g);

@@ -10,6 +10,7 @@ import { inr, num, pct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { addCampaignNote } from "../../_actions";
 import { MktGate, notify } from "../../_components/action";
+import { useVocab } from "@/components/shell/providers";
 
 type Day = { date: string; spend: number; clicks: number; leads: number };
 const PERIODS = [{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "90", label: "90 days" }] as const;
@@ -73,6 +74,7 @@ export function CampaignFunnel({ steps }: { steps: { key: string; label: string;
 }
 
 export function NoteDialog({ campaignId }: { campaignId: string }) {
+  const notePh = useVocab().cd.notePh;
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
   return (
@@ -80,7 +82,7 @@ export function NoteDialog({ campaignId }: { campaignId: string }) {
       <MktGate can="editCampaigns"><DialogTrigger asChild><Button><StickyNote />Add note</Button></DialogTrigger></MktGate>
       <DialogContent title="Add a note" description="Notes and creative links stay with the campaign. No file uploads in this version.">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Note"
-          placeholder="Swapped the carousel's 2nd card to the Tamil cause-list screenshot on 9 Oct; CTR up from 0.9% to 1.2% since."
+          placeholder={notePh}
           className="w-full rounded-sm border border-line-strong bg-surface p-2.5 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-ring" />
         <div className="mt-3 flex justify-end gap-2">
           <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
@@ -94,11 +96,12 @@ export function NoteDialog({ campaignId }: { campaignId: string }) {
 export function AttributionToggle({ first, last }: { first: { leads: number; demos: number; won: number; revenue: string }; last: { leads: number; demos: number; won: number; revenue: string } }) {
   const [m, setM] = useState<"first" | "last">("first");
   const r = m === "first" ? first : last;
+  const a = useVocab().cd.attr;
   return (
     <div>
       <Segmented label="Attribution model" options={[{ value: "first", label: "First touch" }, { value: "last", label: "Last touch" }]} value={m} onChange={setM} />
       <dl className="mt-3 grid grid-cols-4 gap-2 text-[12px]">
-        {([["Leads", r.leads], ["Demos", r.demos], ["Won", r.won], ["Revenue", r.revenue]] as const).map(([k, v]) => (
+        {([[a.leads, r.leads], [a.demos, r.demos], [a.won, r.won], [a.revenue, r.revenue]] as const).map(([k, v]) => (
           <div key={k} className="rounded-sm border border-line px-2.5 py-2"><dt className="text-ink-3">{k}</dt><dd className="mt-0.5 text-[16px] font-semibold text-ink num">{v}</dd></div>
         ))}
       </dl>

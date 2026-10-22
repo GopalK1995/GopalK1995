@@ -2,6 +2,7 @@
 // Inbox mutations (Showcase). Re-checks role, ownership, support session, WhatsApp 24-hour window and consent on the
 // server. Nothing is ever sent: in demo every message gets status 'simulated'.
 import { pageCtx } from "@/lib/data/context";
+import { vocabFor } from "@/lib/vertical";
 import { allowed, deniedReason, type ActionResult } from "../accounts/_components/perms";
 
 const WINDOW_H = 24;
@@ -16,7 +17,7 @@ async function load(convId: string) {
 export type SendInput = { convId: string; kind: "reply" | "template" | "note"; body: string; templateId?: string; fromDraft?: boolean; edited?: boolean; lang?: "en" | "ta"; reviewed?: boolean };
 
 export async function sendMessage(input: SendInput): Promise<ActionResult & { status?: "simulated" }> {
-  const { conv, lead, role, support, session, now } = await load(input.convId);
+  const { conv, lead, role, support, session, now, active } = await load(input.convId);
   if (!conv || !lead) return { ok: false, message: "Conversation not found in your inbox.", sub: "Nothing was sent." };
   const ctx = { role, support, uid: session.uid, ownerId: lead.ownerId };
   if (!allowed("replyInbox", ctx)) return { ok: false, message: deniedReason("replyInbox", ctx), sub: "Checked on the server; nothing was sent." };
@@ -31,7 +32,7 @@ export async function sendMessage(input: SendInput): Promise<ActionResult & { st
     if (input.kind === "reply" && hours > WINDOW_H) return { ok: false, message: "The 24-hour WhatsApp window has closed.", sub: "Only approved templates can be sent now (Meta rule)." };
   }
   if (input.fromDraft && conv.aiDraft.needsReview && !input.edited && role !== "owner" && !input.reviewed)
-    return { ok: false, message: "This draft makes a contractual commitment.", sub: "It needs Owner or counsel review before it goes out." };
+    return { ok: false, message: "This draft makes a contractual commitment.", sub: vocabFor(active.tenant).ib.needsReview };
 
   const what = input.kind === "template" ? `Template ${input.templateId}` : input.fromDraft ? `Reviewed draft${input.edited ? " (edited)" : ""}` : "Reply";
   return {
@@ -42,11 +43,11 @@ export async function sendMessage(input: SendInput): Promise<ActionResult & { st
 }
 
 export async function linkConversation(convId: string, leadId: string): Promise<ActionResult> {
-  const { conv, lead, role, support, session, ds } = await load(convId);
+  const { conv, lead, role, support, session, ds, active } = await load(convId);
   if (!conv || !lead) return { ok: false, message: "Conversation not found in your inbox." };
   const target = await ds.lead(leadId);
   const ctx = { role, support, uid: session.uid, ownerId: target?.ownerId };
-  if (!target) return { ok: false, message: "That lead is not in this workspace." };
+  if (!target) return { ok: false, message: vocabFor(active.tenant).ib.linkedMsg };
   if (!allowed("linkConversation", ctx)) return { ok: false, message: deniedReason("linkConversation", ctx) };
   return { ok: true, message: `Conversation linked to ${target.name}`, sub: "Demo: link not saved. Future messages from this number join that lead's timeline." };
 }

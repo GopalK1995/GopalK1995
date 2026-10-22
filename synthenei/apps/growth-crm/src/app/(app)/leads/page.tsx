@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { pageCtx, maskName } from "@/lib/data/context";
-import { CHANNEL_LABEL, LEAD_STAGES, LEAD_STAGE_LABEL, SLA_MINUTES } from "@/lib/data/metrics";
+import { CHANNEL_LABEL, LEAD_STAGES, SLA_MINUTES } from "@/lib/data/metrics";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
 import { dayKey, num, relTime } from "@/lib/format";
 import type { Channel, Lead, LeadStage } from "@/lib/data/types";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { cn } from "@/lib/utils";
+import { vocabFor } from "@/lib/vertical";
 import { BAND_LABEL, VIEWS, bandOf, defaultView, isOpenLead, shortCity, type Band, type ViewKey } from "./_lib/sales";
 import { LeadsTable, type LeadRow } from "./_components/leads-table";
 import { ImportDialog } from "./_components/import-dialog";
@@ -18,7 +19,8 @@ const PAGE = 40;
 type SP = { view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const { ds, now, role, session, scope, masked, support } = await pageCtx();
+  const { ds, now, role, session, scope, masked, support, active } = await pageCtx();
+  const vc = vocabFor(active.tenant), t = vc.ls;
   const sp = await searchParams;
   const [all, accounts, team, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.team(), ds.campaigns()]);
   const visible = scope.leads(all);
@@ -69,7 +71,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     const cmp = campaigns.find((c) => c.id === l.campaignId);
     const ownerName = team.find((t) => t.id === l.ownerId)?.name ?? null;
     return {
-      id: l.id, name: masked ? maskName(l.name) : l.name, title: l.title, firm: a?.name ?? "Unknown firm", firmId: a?.id ?? null,
+      id: l.id, name: masked ? maskName(l.name) : l.name, title: l.title, firm: a?.name ?? t.unknownFirm, firmId: a?.id ?? null,
       district: a?.district ?? "Unknown", city: shortCity(l.city), channel: l.channel, campaign: cmp ? { id: cmp.id, name: cmp.name } : null,
       utm: [l.utm.source, l.utm.medium, l.utm.campaign].filter(Boolean).join(" / "),
       stage: l.stage, score: l.score, factors: [...l.scoreFactors].sort((x, y) => Math.abs(y.points) - Math.abs(x.points)),
@@ -85,10 +87,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const districts = [...new Set(visible.map((l) => acc.get(l.accountId)?.district).filter(Boolean) as string[])].sort();
   const channels = [...new Set(visible.map((l) => l.channel))] as Channel[];
   const filters = [
-    { key: "stage", label: "Stage", options: LEAD_STAGES.map((s: LeadStage) => ({ value: s, label: LEAD_STAGE_LABEL[s] })) },
+    { key: "stage", label: "Stage", options: LEAD_STAGES.map((s: LeadStage) => ({ value: s, label: vc.leadStage[s] })) },
     { key: "status", label: "Status", options: (["new", "contacted", "qualified", "nurturing", "disqualified", "converted"] as const).map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })) },
     { key: "source", label: "Source", options: channels.map((c) => ({ value: c, label: CHANNEL_LABEL[c] })) },
-    { key: "district", label: "District", options: districts.map((d) => ({ value: d, label: d })) },
+    { key: "district", label: t.district, options: districts.map((d) => ({ value: d, label: d })) },
     ...(role === "sales_rep" ? [] : [{ key: "owner", label: "Owner", options: owners.map((o) => ({ value: o.id, label: o.name })) }]),
     { key: "band", label: "Score", options: (["hot", "warm", "cool"] as Band[]).map((b) => ({ value: b, label: BAND_LABEL[b] })) },
   ];
@@ -106,33 +108,33 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     assign: can("assignLeads", { role, support }), exportCsv: can("exportCsv", { role, support }),
     importCsv: can("importCsv", { role, support }), work: can("workLeads", { role, support }),
   };
-  const viewLabel = VIEWS.find((v) => v.key === view)!.label;
+  const viewLabel = vc.views[view];
   const emptyMsg =
-    view === "mine" ? { t: "No open leads assigned to you.", h: counts.unassigned ? `Claim from Unassigned (${counts.unassigned} in your territory).` : "Your manager assigns leads from this page; new web leads in your districts are routed to you automatically." }
-    : view === "unassigned" ? { t: "No unassigned leads.", h: "Territory routing (Chennai, Kongu & Salem, South TN) assigned every new lead. Check SLA breached for leads waiting on a first touch." }
-    : view === "today" ? { t: "No leads created today yet.", h: "Web forms and Meta lead ads usually arrive after 11:00 IST. Open All to work older leads." }
-    : view === "sla" ? { t: "No first-response SLA breaches.", h: "Every lead in this view was touched within 2 business hours." }
-    : { t: "No leads match these filters.", h: "Clear a filter or search by phone number instead of name." };
+    view === "mine" ? { t: t.emptyMine, h: t.emptyMineHint(counts.unassigned) }
+    : view === "unassigned" ? { t: t.emptyUnassigned, h: t.emptyUnassignedHint }
+    : view === "today" ? { t: t.emptyToday, h: t.emptyTodayHint }
+    : view === "sla" ? { t: t.emptySla, h: t.emptySlaHint }
+    : { t: t.emptyFilter, h: t.emptyFilterHint };
 
   return (
     <>
-      <PageHeader eyebrow={role === "sales_rep" ? "Your leads and unassigned leads in your territory" : masked ? `Read-only for ${ROLE_LABEL[role]}: names masked, no contact details` : `${num(visible.length)} leads in this workspace`}
-        title="Leads"
-        sub={`${viewLabel}: ${num(filtered.length)} lead${filtered.length === 1 ? "" : "s"}${filtered.length > PAGE ? `, showing ${(page - 1) * PAGE + 1}–${Math.min(page * PAGE, filtered.length)}` : ""}.`}
+      <PageHeader eyebrow={role === "sales_rep" ? t.eyebrowRep : masked ? t.eyebrowMasked(vc.role[role]) : t.eyebrowAll(num(visible.length))}
+        title={t.title}
+        sub={t.sub(viewLabel, num(filtered.length), filtered.length, filtered.length > PAGE ? `, showing ${(page - 1) * PAGE + 1}–${Math.min(page * PAGE, filtered.length)}` : "")}
         actions={<ImportDialog />} />
 
       <nav aria-label="Saved views" className="scrollbar-thin -mx-4 mb-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
         {VIEWS.filter((v) => !(v.key === "mine" && role !== "sales_rep" && role !== "sales_manager")).map((v) => (
           <Link key={v.key} href={viewHref(v.key)} aria-current={v.key === view ? "page" : undefined}
             className={cn("relative inline-flex h-10 shrink-0 items-center gap-1.5 px-3 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", v.key === view ? "text-ink after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent" : "text-ink-3 hover:text-ink")}>
-            {v.label}<span className={cn("num text-[11px]", v.key === "sla" && counts.sla ? "text-danger" : "text-ink-3")}>{counts[v.key]}</span>
+            {vc.views[v.key]}<span className={cn("num text-[11px]", v.key === "sla" && counts.sla ? "text-danger" : "text-ink-3")}>{counts[v.key]}</span>
           </Link>
         ))}
       </nav>
 
       <Card>
         <div className="flex flex-col gap-3 p-3 sm:p-4">
-          <FilterBar search={masked ? "Search firm, city or district" : "Search name, firm, phone or city"} filters={filters} />
+          <FilterBar search={masked ? t.searchMasked : t.search} filters={filters} />
         </div>
         <LeadsTable rows={rows} owners={owners.map((o) => ({ id: o.id, name: o.name }))} perms={perms} masked={masked} sort={sort}
           allIds={filtered.map((l) => l.id)} empty={emptyMsg} />
@@ -146,7 +148,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </nav>
         )}
       </Card>
-      {masked && <p className="mt-3 text-[12px] text-ink-3"><Badge tone="outline">Masked</Badge> Viewer access shows initials, firm, district, stage and score only. Phone, email and timelines stay hidden.</p>}
+      {masked && <p className="mt-3 text-[12px] text-ink-3"><Badge tone="outline">Masked</Badge> {t.maskedNote}</p>}
     </>
   );
 }

@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { assignLeads, exportLeads } from "../actions";
 import { field } from "../_lib/sales";
+import { useVocab } from "@/components/shell/providers";
 
 export type LeadRow = {
   id: string; name: string; title: string; firm: string; firmId: string | null; district: string; city: string;
@@ -55,6 +56,7 @@ function download(name: string, csv: string) {
 export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }: {
   rows: LeadRow[]; owners: { id: string; name: string }[]; perms: Perms; masked: boolean; sort: string; allIds: string[]; empty: { t: string; h: string };
 }) {
+  const t = useVocab().ls;
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [owner, setOwner] = useState(owners[0]?.id ?? "");
   const [maskExport, setMaskExport] = useState(true);
@@ -107,17 +109,17 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }:
 
       {/* Desktop and tablet */}
       <div className="scrollbar-thin relative hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse" style={{ minWidth: 1060 }} aria-label="Leads" aria-rowcount={allIds.length}>
+        <table className="w-full border-collapse" style={{ minWidth: 1060 }} aria-label={t.tableAria} aria-rowcount={allIds.length}>
           <thead>
             <tr className="border-y border-line bg-paper/60">
               {selectable && (
                 <th scope="col" className="w-10 px-3">
-                  <input type="checkbox" aria-label="Select all leads on this page" checked={allOnPage}
+                  <input type="checkbox" aria-label={t.selectAll} checked={allOnPage}
                     onChange={() => setSel((s) => { const n = new Set(s); pageIds.forEach((id) => (allOnPage ? n.delete(id) : n.add(id))); return n; })} className="size-4 accent-[var(--accent)]" />
                 </th>
               )}
-              <th scope="col" className={th}>Lead</th>
-              <th scope="col" className={th}>Firm · district</th>
+              <th scope="col" className={th}>{t.colLead}</th>
+              <th scope="col" className={th}>{t.colFirm}</th>
               <th scope="col" className={th}>Source</th>
               <th scope="col" className={th}>Stage</th>
               <SortTh k="score" right>Score</SortTh>
@@ -164,7 +166,7 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }:
       </div>
 
       {/* Mobile: title, two facts, one primary action */}
-      <ul className="divide-y divide-line border-t border-line md:hidden" aria-label="Leads">
+      <ul className="divide-y divide-line border-t border-line md:hidden" aria-label={t.tableAria}>
         {rows.map((r) => (
           <li key={r.id} className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">

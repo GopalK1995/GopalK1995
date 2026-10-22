@@ -19,19 +19,19 @@ const reached = (l: Lead, s: LeadStage) => {
 export const isDemo = (l: Lead) => reached(l, "demo_booked"); // M10
 
 /** M1–M6 funnel. Top steps come from consented GA4 users, so they under-count vs GA4 (stated on screen). */
-export function funnel(leads: Lead[], ga4: Ga4Day[], days = 90) {
+export function funnel(leads: Lead[], ga4: Ga4Day[], days = 90, labels?: Record<string, string>) {
   const g = ga4.slice(-days);
   const visitors = Math.round(g.reduce((a, d) => a + d.users, 0) * CONSENT_RATE);
   const cta = Math.round(visitors * 0.118), start = Math.round(cta * 0.41);
   const steps = [
-    { key: "visit", label: "Visitors (consented)", n: visitors },
-    { key: "cta", label: "CTA click", n: cta },
-    { key: "form", label: "Form start", n: start },
-    { key: "lead", label: "Lead", n: leads.length },
-    { key: "qualified", label: "Qualified", n: leads.filter((l) => reached(l, "qualified")).length },
-    { key: "demo", label: "Demo booked", n: leads.filter((l) => reached(l, "demo_booked")).length },
-    { key: "demo_done", label: "Demo done", n: leads.filter((l) => reached(l, "demo_done")).length },
-    { key: "won", label: "Won", n: leads.filter((l) => l.stage === "won").length },
+    { key: "visit", label: labels?.visit ?? "Visitors (consented)", n: visitors },
+    { key: "cta", label: labels?.cta ?? "CTA click", n: cta },
+    { key: "form", label: labels?.form ?? "Form start", n: start },
+    { key: "lead", label: labels?.lead ?? "Lead", n: leads.length },
+    { key: "qualified", label: labels?.qualified ?? "Qualified", n: leads.filter((l) => reached(l, "qualified")).length },
+    { key: "demo", label: labels?.demo ?? "Demo booked", n: leads.filter((l) => reached(l, "demo_booked")).length },
+    { key: "demo_done", label: labels?.demo_done ?? "Demo done", n: leads.filter((l) => reached(l, "demo_done")).length },
+    { key: "won", label: labels?.won ?? "Won", n: leads.filter((l) => l.stage === "won").length },
   ];
   return steps.map((s, i) => ({ ...s, step: i ? ratio(s.n, steps[i - 1].n) : 1, cum: ratio(s.n, steps[0].n) }));
 }
@@ -107,9 +107,10 @@ export function weekly<T extends { date: string }>(rows: T[], val: (r: T) => num
 
 /** Channel families so a donut never has "Other" as its biggest slice: Paid social, Search, WhatsApp, Email, Other. */
 export const CHANNEL_FAMILY: Record<Channel, string> = { linkedin: "Paid social", meta: "Paid social", google_ads: "Search", organic: "Search", whatsapp: "WhatsApp", email: "Email", referral: "Referrals & events", event: "Referrals & events" };
-export function channelMix(leads: Lead[], max = 4) {
+export function channelMix(leads: Lead[], max = 4, rename?: Record<string, string>) {
   const m = new Map<string, number>();
-  leads.forEach((l) => m.set(CHANNEL_FAMILY[l.channel], (m.get(CHANNEL_FAMILY[l.channel]) ?? 0) + 1));
+  const fam = (c: Channel) => rename?.[CHANNEL_FAMILY[c]] ?? CHANNEL_FAMILY[c];
+  leads.forEach((l) => m.set(fam(l.channel), (m.get(fam(l.channel)) ?? 0) + 1));
   const rows = [...m.entries()].map(([fam, n]) => ({ key: fam, label: fam, n })).sort((a, b) => b.n - a.n);
   const top = rows.slice(0, max), rest = rows.slice(max);
   return rest.length ? [...top, { key: "other", label: rest.length === 1 ? rest[0].label : "Other", n: rest.reduce((a, r) => a + r.n, 0) }] : top;

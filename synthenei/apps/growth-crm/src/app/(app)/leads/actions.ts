@@ -4,7 +4,8 @@
 import { pageCtx } from "@/lib/data/context";
 import { can, ROLE_LABEL, type Action } from "@/lib/auth/roles";
 import type { Lead } from "@/lib/data/types";
-import { CALL_OUTCOMES, WA_TEMPLATES, ownsOrManages, type Result } from "./_lib/sales";
+import { vocabFor } from "@/lib/vertical";
+import { CALL_OUTCOMES, ownsOrManages, type Result } from "./_lib/sales";
 
 const DEMO_SUB = "Demo workspace: nothing was saved or sent.";
 const deny = (msg: string): Result => ({ ok: false, message: msg });
@@ -21,8 +22,9 @@ async function guardLead(action: Action, leadId: string): Promise<{ error: Resul
   const { ctx, allowed, why } = await guard(action);
   if (!allowed) return { error: deny(why) };
   const lead = await ctx.ds.lead(leadId);
-  if (!lead) return { error: deny("Lead not found in this workspace.") };
-  if (!ownsOrManages(ctx.role, ctx.session.uid, lead.ownerId)) return { error: deny("You can act only on leads assigned to you.") };
+  const t = vocabFor(ctx.active.tenant).ls.a;
+  if (!lead) return { error: deny(t.notFound) };
+  if (!ownsOrManages(ctx.role, ctx.session.uid, lead.ownerId)) return { error: deny(t.onlyOwn) };
   return { lead, ctx };
 }
 
@@ -31,11 +33,12 @@ export async function assignLeads(ids: string[], ownerId: string): Promise<Resul
   if (!allowed) return deny(why);
   const [team, leads] = await Promise.all([ctx.ds.team(), ctx.ds.leads()]);
   const owner = team.find((t) => t.id === ownerId && (t.role === "sales_rep" || t.role === "sales_manager"));
-  if (!owner) return deny("Pick a sales rep or manager in this workspace.");
+  const t = vocabFor(ctx.active.tenant).ls.a;
+  if (!owner) return deny(t.pickOwner);
   const found = leads.filter((l) => ids.includes(l.id));
-  if (!found.length) return deny("None of the selected leads are in this workspace.");
+  if (!found.length) return deny(t.noneFound);
   const moved = found.filter((l) => l.ownerId !== ownerId).length;
-  return { ok: true, message: `${found.length} lead${found.length > 1 ? "s" : ""} assigned to ${owner.name}`, sub: `${moved} changed owner; each change goes to the audit log. ${DEMO_SUB}` };
+  return { ok: true, message: t.assigned(found.length, owner.name), sub: `${moved} changed owner; each change goes to the audit log. ${DEMO_SUB}` };
 }
 
 const csvCell = (v: string | number | null | undefined) => {
@@ -54,7 +57,7 @@ export async function exportLeads(ids: string[], maskPersonal: boolean): Promise
     return [l.id, maskPersonal ? l.name.split(" ").map((p) => p[0] + ".").join(" ") : l.name, l.title, a?.name, a?.district, l.stage, l.score, team.find((t) => t.id === l.ownerId)?.name, l.channel, l.utm.source, l.utm.medium, l.utm.campaign, mask(l.phone), mask(l.email), l.createdAt, l.lastTouchAt].map(csvCell).join(",");
   });
   const stamp = ctx.now.slice(0, 10);
-  return { ok: true, message: `Exported ${rows.length} leads${maskPersonal ? " (phone and email masked)" : ""}`, sub: "Export is written to the audit log with your name and the filter used.", csv: [head.join(","), ...body].join("\n"), filename: `leads-${ctx.active.ws.id}-${stamp}.csv` };
+  return { ok: true, message: vocabFor(ctx.active.tenant).ls.a.exported(rows.length, maskPersonal), sub: "Export is written to the audit log with your name and the filter used.", csv: [head.join(","), ...body].join("\n"), filename: `leads-${ctx.active.ws.id}-${stamp}.csv` };
 }
 
 /** CSV import, step 2: dedupe preview against this workspace's live leads (same phone or same email). */
@@ -62,7 +65,7 @@ export async function previewImport(csv: string): Promise<Result & { preview?: {
   const { ctx, allowed, why } = await guard("importCsv");
   if (!allowed) return deny(why);
   const lines = csv.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return deny("The file needs a header row and at least one lead.");
+  if (lines.length < 2) return deny(vocabFor(ctx.active.tenant).ls.a.needRows);
   if (lines.length > 5001) return deny("Import up to 5,000 rows at a time.");
   const columns = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
   const ci = (re: RegExp) => columns.findIndex((c) => re.test(c.toLowerCase()));
@@ -81,9 +84,9 @@ export async function previewImport(csv: string): Promise<Result & { preview?: {
   return { ok: true, message: "Preview ready", preview: { rows: lines.length - 1, fresh, duplicates, invalid, columns } };
 }
 export async function confirmImport(fresh: number, duplicates: number, mode: "merge" | "skip"): Promise<Result> {
-  const { allowed, why } = await guard("importCsv");
+  const { ctx, allowed, why } = await guard("importCsv");
   if (!allowed) return deny(why);
-  return { ok: true, message: `Import queued: ${fresh} new leads, ${duplicates} duplicates ${mode === "merge" ? "merged" : "skipped"}`, sub: `A sync run (integration = csv) records the result. ${DEMO_SUB}` };
+  return { ok: true, message: vocabFor(ctx.active.tenant).ls.a.queued(fresh, duplicates, mode === "merge"), sub: `A sync run (integration = csv) records the result. ${DEMO_SUB}` };
 }
 
 export async function logCall(leadId: string, input: { outcome: string; minutes: number; notes: string; nextDate: string }): Promise<Result> {
@@ -100,7 +103,7 @@ export async function sendWhatsApp(leadId: string, templateId: string): Promise<
   const g = await guardLead("workLeads", leadId);
   if ("error" in g) return g.error;
   if (!g.lead.consent.whatsapp) return deny("No WhatsApp consent on record. Record consent before sending templates.");
-  const tpl = WA_TEMPLATES.find((t) => t.id === templateId);
+  const tpl = vocabFor(g.ctx.active.tenant).wa.find((t) => t.id === templateId);
   if (!tpl) return deny("Pick an approved template.");
   return { ok: true, message: `Template ${tpl.id} logged as simulated`, sub: "Showcase: a messages row with status 'simulated' is written; nothing reaches WhatsApp." };
 }
@@ -115,14 +118,14 @@ export async function scheduleDemo(leadId: string, input: { date: string; time: 
   const g = await guardLead("workLeads", leadId);
   if ("error" in g) return g.error;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !/^\d{2}:\d{2}$/.test(input.time)) return deny("Pick a date and time.");
-  if (`${input.date}T${input.time}` < g.ctx.now.slice(0, 16)) return deny("The demo time is in the past.");
+  if (`${input.date}T${input.time}` < g.ctx.now.slice(0, 16)) return deny(vocabFor(g.ctx.active.tenant).ls.a.demoPast);
   const [h] = input.time.split(":").map(Number);
   if (h < 8 || h >= 20) return deny("Pick a time between 08:00 and 20:00 IST.");
-  return { ok: true, message: `Demo scheduled for ${input.date}, ${input.time} IST (${input.minutes} min, ${input.mode})`, sub: `Meeting activity and prep task created; deal moves to Demo scheduled. ${DEMO_SUB}` };
+  return { ok: true, message: vocabFor(g.ctx.active.tenant).ls.a.demoSched(input.date, input.time, input.minutes, input.mode), sub: `${vocabFor(g.ctx.active.tenant).ls.a.demoSub} ${DEMO_SUB}` };
 }
 
 const STATUS = ["new", "contacted", "qualified", "nurturing", "disqualified", "converted"] as const;
-const DQ = ["student", "not_a_firm", "outside_tn", "duplicate", "no_budget", "competitor"] as const;
+const DQ = ["student", "not_a_firm", "outside_tn", "duplicate", "no_budget", "competitor", "spam", "travel_agent_cold", "outside_area", "budget"] as const;
 export async function changeStatus(leadId: string, status: string, reason?: string): Promise<Result> {
   const g = await guardLead("workLeads", leadId);
   if ("error" in g) return g.error;

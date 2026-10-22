@@ -11,13 +11,12 @@ import { ScoreChip } from "@/components/ui/misc";
 import { ChannelMark } from "@/components/ui/domain";
 import { Avatar } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/toast";
-import { WA_TEMPLATES } from "@/components/quick-actions";
+import { useVocab } from "@/components/shell/providers";
 import { fmtDate, fmtTime, inrCompact, relTime, dayKey } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
 import { assignConversation, closeConversation, linkConversation, sendMessage } from "../actions";
-import { EMAIL_TEMPLATES } from "./drafts-ta";
 
 type Ch = "whatsapp" | "email" | "linkedin";
 type Msg = { id: string; from: "lead" | "us" | "note"; at: string; body: string; status?: "read" | "delivered" | "sent" | "simulated"; author: string; template?: string };
@@ -36,6 +35,7 @@ const field = "w-full rounded-sm border border-line-strong bg-surface px-2.5 tex
 export function InboxApp({ items, now, linkable, reps, uid, assign, readOnlyRole }: {
   items: InboxConv[]; now: string; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; uid: string; assign: Verdict; readOnlyRole: boolean;
 }) {
+  const vv = useVocab();
   const [filter, setFilter] = useState<"all" | "unread" | "mine">("all");
   const [chs, setChs] = useState<Ch[]>([]);
   const [sel, setSel] = useState<string | null>(items[0]?.id ?? null);
@@ -63,7 +63,7 @@ export function InboxApp({ items, now, linkable, reps, uid, assign, readOnlyRole
             ))}
           </div>
           <div className="flex flex-wrap gap-1.5" aria-label="Channels">
-            {(["whatsapp", "email", "linkedin"] as Ch[]).map((ch) => {
+            {(vv.ib.channels as Ch[]).map((ch) => {
               const on = chs.includes(ch);
               return (
                 <button key={ch} aria-pressed={on} onClick={() => setChs((x) => (on ? x.filter((y) => y !== ch) : [...x, ch]))}
@@ -143,6 +143,7 @@ function Ticks({ s }: { s?: Msg["status"] }) {
 function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }: {
   c: InboxConv; now: string; extra: Msg[]; closed: boolean; readOnlyRole: boolean; onBack: () => void; onSent: (m: Msg) => void; context: React.ReactNode;
 }) {
+  const ib = useVocab().ib;
   const msgs = [...c.messages, ...extra];
   const end = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -203,7 +204,7 @@ function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }
       </div>
 
       {readOnlyRole ? (
-        <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />Marketing can read conversations to see campaign replies. Replies are sent by the owning rep.</p>
+        <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{ib.readOnly}</p>
       ) : closed ? (
         <p className="border-t border-line px-4 py-3 text-[12px] text-ink-3">Conversation closed. It reopens on the next inbound message.</p>
       ) : (
@@ -214,17 +215,18 @@ function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }
 }
 
 function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed: boolean; onSent: (m: Msg) => void; now: string }) {
+  const vv = useVocab(), ib = vv.ib;
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [text, setText] = useState("");
   const [fromDraft, setFromDraft] = useState<null | { lang: "en" | "ta"; original: string }>(null);
   const [checked, setChecked] = useState(false);
   const [lang, setLang] = useState<"en" | "ta">("en");
   const [showDraft, setShowDraft] = useState(true);
-  const templates = c.channel === "whatsapp" ? WA_TEMPLATES : c.channel === "email" ? EMAIL_TEMPLATES : [];
+  const templates = c.channel === "whatsapp" ? (vv.waQuick.length ? vv.waQuick : vv.wa) : c.channel === "email" ? ib.emailTpl : [];
   const [tpl, setTpl] = useState(templates[0]?.id ?? "");
   const [pending, start] = useTransition();
   const reduce = useReducedMotion();
-  const tplBody = (id: string) => (templates.find((t) => t.id === id)?.body ?? "").replace("{{1}}", c.lead.first).replace("{{2}}", c.firm?.name ?? "your firm");
+  const tplBody = (id: string) => (templates.find((t) => t.id === id)?.body ?? "").replace("{{1}}", c.lead.first).replace("{{2}}", c.firm?.name ?? ib.yourFirm);
   const draftText = lang === "ta" && c.draft.ta ? c.draft.ta : c.draft.en;
   const templateOnly = windowClosed && mode === "reply";
   const needsCheck = !!fromDraft && mode === "reply";
@@ -255,7 +257,7 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
                 </div>
               </div>
               {windowClosed ? (
-                <p className="mt-2 text-[13px] text-ink-2">The 24-hour window has closed, so free text cannot be sent. Suggested template: <strong className="font-medium text-ink">{c.lead.stage.startsWith("Demo") ? "demo_reminder_en" : "ecourts_intro_ta"}</strong>.</p>
+                <p className="mt-2 text-[13px] text-ink-2">The 24-hour window has closed, so free text cannot be sent. Suggested template: <strong className="font-medium text-ink">{ib.suggestTpl(c.lead.stage)}</strong>.</p>
               ) : (
                 <>
                   <p lang={lang === "ta" ? "ta" : "en"} className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-[13px] leading-5 text-ink">{draftText}</p>
@@ -263,7 +265,7 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
                   <details className="mt-2 text-[12px] text-ink-2">
                     <summary className="cursor-pointer select-none text-ink-3 hover:text-ink">Why this draft · {c.draft.basedOn}</summary>
                     <ul className="mt-1.5 list-disc space-y-0.5 pl-5">{c.draft.rationale.map((r) => <li key={r}>{r}</li>)}</ul>
-                    <p className="mt-1.5 text-ink-3">Sent to the model: first name, role, firm, district and this thread with phone and email removed.</p>
+                    <p className="mt-1.5 text-ink-3">{ib.modelNote}</p>
                   </details>
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     <Button size="sm" variant="primary" onClick={() => { setText(draftText); setFromDraft({ lang, original: draftText }); setChecked(false); }}>Use draft in reply</Button>
@@ -293,7 +295,7 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
             {needsCheck && (
               <label className="flex items-start gap-2 text-[12px] text-ink-2">
                 <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]" />
-                I have read this draft{fromDraft?.lang === "ta" ? ", checked the Tamil," : ""} and it makes no promise outside our price list or legal advice.
+                {ib.ack(fromDraft?.lang === "ta")}
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">
@@ -333,28 +335,29 @@ function TemplateRow({ templates, tpl, setTpl, preview, pending, onSend, note, c
 }
 
 function ContextPanel({ c, linkable, reps, assign, onClosed }: { c: InboxConv; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; assign: Verdict; onClosed: () => void }) {
+  const ib = useVocab().ib;
   const [pending, start] = useTransition();
   const [link, setLink] = useState(c.lead.id);
   const [who, setWho] = useState(c.lead.ownerId);
   const run = (p: Promise<{ ok: boolean; message: string; sub?: string }>, after?: () => void) => start(async () => { const r = await p; toast(r.message, r.sub); if (r.ok) after?.(); });
   const opts = useMemo(() => (linkable.some((l) => l.id === c.lead.id) ? linkable : [{ id: c.lead.id, label: c.lead.name }, ...linkable]), [linkable, c.lead]);
-  const consent = [["Demo follow-up", c.lead.consent.followup], ["WhatsApp", c.lead.consent.whatsapp], ["Marketing email", c.lead.consent.marketing]] as const;
+  const consent = [[ib.followUp, c.lead.consent.followup], ["WhatsApp", c.lead.consent.whatsapp], ["Marketing email", c.lead.consent.marketing]] as const;
   return (
     <div className="divide-y divide-line text-[13px]">
       <div className="p-4">
-        <div className="eyebrow mb-2">Lead</div>
+        <div className="eyebrow mb-2">{ib.leadEyebrow}</div>
         <Link href={`/leads/${c.lead.id}`} className="font-semibold text-ink hover:text-accent">{c.lead.name}</Link>
         <div className="text-[12px] text-ink-3">{c.lead.title}</div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5"><Badge tone="neutral">{c.lead.stage}</Badge><ScoreChip score={c.lead.score} /></div>
-        {c.firm && <div className="mt-2 text-[12px] text-ink-2"><Link href={`/accounts/${c.firm.id}`} className="font-medium hover:text-accent">{c.firm.name}</Link> · {c.firm.district} · {c.firm.lawyers} lawyers</div>}
+        {c.firm && <div className="mt-2 text-[12px] text-ink-2"><Link href={`/accounts/${c.firm.id}`} className="font-medium hover:text-accent">{c.firm.name}</Link>{ib.firmMeta(c.firm.district, c.firm.lawyers)}</div>}
         <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
           <a href={`tel:${c.lead.phone.replace(/[^\d+]/g, "")}`} className="text-accent hover:underline num">{c.lead.phone}</a>
         </div>
       </div>
       <div className="p-4">
-        <div className="eyebrow mb-2">Open deal</div>
-        {c.deal ? <div><div className="font-medium">{c.deal.plan} · {c.deal.seats} seats</div><div className="text-[12px] text-ink-3 num">{c.deal.stage} · {inrCompact(c.deal.value)}</div></div>
-          : <p className="text-[12px] text-ink-3">No open deal. Open one from the firm page once a demo is agreed.</p>}
+        <div className="eyebrow mb-2">{ib.dealEyebrow}</div>
+        {c.deal ? <div><div className="font-medium">{ib.dealLine(c.deal.plan, c.deal.seats)}</div><div className="text-[12px] text-ink-3 num">{c.deal.stage} · {inrCompact(c.deal.value)}</div></div>
+          : <p className="text-[12px] text-ink-3">{ib.noDeal}</p>}
       </div>
       <div className="p-4">
         <div className="eyebrow mb-2">Consent</div>
@@ -365,7 +368,7 @@ function ContextPanel({ c, linkable, reps, assign, onClosed }: { c: InboxConv; l
       <div className="space-y-3 p-4">
         <div className="eyebrow">Actions</div>
         <div>
-          <label className="mb-1 flex items-center gap-1 text-[12px] font-medium text-ink-2" htmlFor={`link-${c.id}`}><Link2 className="size-3.5" aria-hidden />Linked lead</label>
+          <label className="mb-1 flex items-center gap-1 text-[12px] font-medium text-ink-2" htmlFor={`link-${c.id}`}><Link2 className="size-3.5" aria-hidden />{ib.linked}</label>
           <div className="flex gap-2">
             <select id={`link-${c.id}`} value={link} onChange={(e) => setLink(e.target.value)} className={cn(field, "h-9 min-w-0 flex-1 text-[12px]")}>
               {opts.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}

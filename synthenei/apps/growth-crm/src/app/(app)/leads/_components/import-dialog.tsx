@@ -7,10 +7,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { confirmImport, previewImport } from "../actions";
 import { Gate } from "@/components/ui/gate";
+import { useVocab } from "@/components/shell/providers";
 
 type Preview = { rows: number; fresh: number; duplicates: number; invalid: number; columns: string[] };
 
 export function ImportDialog() {
+  const t = useVocab().ls;
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -22,7 +24,7 @@ export function ImportDialog() {
   const onFile = async (f: File | undefined) => {
     reset();
     if (!f) return;
-    if (f.size > 2_000_000) { setErr("Files up to 2 MB. Split larger exports by district."); return; }
+    if (f.size > 2_000_000) { setErr(t.importTooBig); return; }
     setFile(f.name);
     const text = await f.text();
     start(async () => {
@@ -43,7 +45,7 @@ export function ImportDialog() {
         <Button size="sm" onClick={() => setOpen(true)}><FileUp />Import CSV</Button>
       </Gate>
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-        <DialogContent title="Import leads from CSV" description="Columns we read: name, phone, email, firm, city, role, source. Duplicates match on phone or email.">
+        <DialogContent title={t.importTitle} description={t.importDesc}>
           <div className="space-y-4">
             <label className="block">
               <span className="mb-1 block text-[12px] font-medium text-ink-2">CSV file</span>
@@ -66,14 +68,14 @@ export function ImportDialog() {
                   <fieldset className="flex flex-wrap gap-4 text-[13px]">
                     <legend className="mb-1 text-[12px] font-medium text-ink-2">Duplicates</legend>
                     <label className="inline-flex items-center gap-1.5"><input type="radio" name="dup" checked={mode === "skip"} onChange={() => setMode("skip")} className="accent-[var(--accent)]" />Skip them</label>
-                    <label className="inline-flex items-center gap-1.5"><input type="radio" name="dup" checked={mode === "merge"} onChange={() => setMode("merge")} className="accent-[var(--accent)]" />Merge into existing lead</label>
+                    <label className="inline-flex items-center gap-1.5"><input type="radio" name="dup" checked={mode === "merge"} onChange={() => setMode("merge")} className="accent-[var(--accent)]" />{t.importMerge}</label>
                   </fieldset>
                 )}
               </div>
             )}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button variant="primary" disabled={!preview || pending || preview.fresh + preview.duplicates === 0} onClick={onConfirm}>Import {preview ? preview.fresh + (mode === "merge" ? preview.duplicates : 0) : ""} leads</Button>
+              <Button variant="primary" disabled={!preview || pending || preview.fresh + preview.duplicates === 0} onClick={onConfirm}>Import {preview ? preview.fresh + (mode === "merge" ? preview.duplicates : 0) : ""} {t.importConfirm}</Button>
             </div>
           </div>
         </DialogContent>

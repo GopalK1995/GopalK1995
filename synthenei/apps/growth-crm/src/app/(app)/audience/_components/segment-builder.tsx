@@ -8,30 +8,30 @@ import { cn } from "@/lib/utils";
 import type { SegLead } from "../../campaigns/_lib/marketing";
 import { exportSegment, saveSegment, sendSegmentToCampaign } from "../../campaigns/_actions";
 import { MktGate, notify } from "../../campaigns/_components/action";
+import { useVocab } from "@/components/shell/providers";
 
 type FieldKey = "district" | "size" | "title" | "practice" | "court" | "channel";
 type Rule = { field: FieldKey; values: string[] };
-const FIELDS: { key: FieldKey; label: string }[] = [
-  { key: "district", label: "District" }, { key: "size", label: "Firm size" }, { key: "title", label: "Role" },
-  { key: "practice", label: "Practice area" }, { key: "court", label: "Court focus" }, { key: "channel", label: "Source channel" },
-];
-const valueOf = (l: SegLead, f: FieldKey) => (f === "court" ? (l.highCourt ? "Madras High Court / Madurai Bench" : "District courts only") : f === "channel" ? l.channel : l[f]);
+const FIELD_KEYS: FieldKey[] = ["district", "size", "title", "practice", "court", "channel"];
+const valueOf = (l: SegLead, f: FieldKey, hosp: boolean, courtOpts: string[]) => (f === "court" ? (hosp ? l.room : l.highCourt ? courtOpts[0] : courtOpts[1]) : f === "channel" ? l.channel : l[f]);
 
 /** Rule builder: AND across rules, OR within a rule's values. Counts recompute as you click (aggregates only). */
 export function SegmentBuilder({ leads, options, campaigns, channelLabel }: {
   leads: SegLead[]; options: Record<FieldKey, string[]>; campaigns: { id: string; name: string; channel: string }[]; channelLabel: Record<string, string>;
 }) {
-  const [name, setName] = useState("Madurai Bench senior advocates");
-  const [rules, setRules] = useState<Rule[]>([{ field: "district", values: ["Madurai", "Tirunelveli"] }, { field: "court", values: ["Madras High Court / Madurai Bench"] }]);
+  const v = useVocab(), a = v.au, hosp = v.id === "hospitality";
+  const FIELDS = FIELD_KEYS.map((key) => ({ key, label: a.fields[key] }));
+  const [name, setName] = useState(a.initName);
+  const [rules, setRules] = useState<Rule[]>(a.initRules as Rule[]);
   const [adding, setAdding] = useState<FieldKey | "">("");
   const [target, setTarget] = useState(campaigns[0]?.id ?? "");
   const [pending, start] = useTransition();
 
-  const match = useMemo(() => leads.filter((l) => rules.every((r) => !r.values.length || r.values.includes(valueOf(l, r.field)))), [leads, rules]);
+  const match = useMemo(() => leads.filter((l) => rules.every((r) => !r.values.length || r.values.includes(valueOf(l, r.field, hosp, a.courtOpts)))), [leads, rules]);
   const demos = match.filter((l) => l.demo).length, closed = match.filter((l) => l.closed).length, won = match.filter((l) => l.won).length;
   const consented = match.filter((l) => l.marketingConsent).length;
   const toggle = (i: number, v: string) => setRules((rs) => rs.map((r, j) => (j === i ? { ...r, values: r.values.includes(v) ? r.values.filter((x) => x !== v) : [...r.values, v] } : r)));
-  const label = (f: FieldKey, v: string) => (f === "channel" ? channelLabel[v] ?? v : v);
+  const label = (f: FieldKey, x: string) => (f === "channel" ? channelLabel[x] ?? x : f === "size" && x !== "Unknown" ? v.partySize[x as keyof typeof v.partySize] ?? x : x);
   const free = FIELDS.filter((f) => !rules.some((r) => r.field === f.key));
 
   return (
@@ -74,10 +74,10 @@ export function SegmentBuilder({ leads, options, campaigns, channelLabel }: {
       </div>
 
       <aside className="rounded-md border border-line bg-paper p-4" aria-live="polite">
-        <div className="text-[12px] text-ink-3">Matching leads</div>
+        <div className="text-[12px] text-ink-3">{a.matching}</div>
         <div className="text-[28px] font-semibold leading-9 text-ink num">{num(match.length)}<span className="ml-1 text-[13px] font-normal text-ink-3">of {num(leads.length)}</span></div>
         <dl className="mt-3 space-y-1.5 text-[12px]">
-          <div className="flex justify-between"><dt className="text-ink-3">Lead → demo</dt><dd className="font-medium text-ink num">{pct(match.length ? demos / match.length : NaN, 0)}{match.length < 20 && <span className="ml-1 text-[10px] font-normal text-ink-3">low n</span>}</dd></div>
+          <div className="flex justify-between"><dt className="text-ink-3">{a.convRow}</dt><dd className="font-medium text-ink num">{pct(match.length ? demos / match.length : NaN, 0)}{match.length < 20 && <span className="ml-1 text-[10px] font-normal text-ink-3">low n</span>}</dd></div>
           <div className="flex justify-between"><dt className="text-ink-3">Win rate (closed)</dt><dd className="font-medium text-ink num">{closed ? pct(won / closed, 0) : "–"}{closed > 0 && closed < 20 && <span className="ml-1 text-[10px] font-normal text-ink-3">low n</span>}</dd></div>
           <div className="flex justify-between"><dt className="text-ink-3">Marketing consent</dt><dd className="font-medium text-ink num">{consented} <span className="font-normal text-ink-3">exportable</span></dd></div>
         </dl>

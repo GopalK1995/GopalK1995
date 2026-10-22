@@ -12,8 +12,9 @@ import { ChannelMark } from "@/components/ui/domain";
 import { HBar } from "@/components/charts/hbar";
 import { Donut } from "@/components/charts/donut";
 import { cn } from "@/lib/utils";
+import { vocabFor } from "@/lib/vertical";
 import type { CampaignStats } from "@/lib/data/metrics";
-import { CAMPAIGN_CHANNELS, CHANNEL_CHIP, allStats, kpiSeries, radarScores, shortName, sourceState } from "./_lib/marketing";
+import { CHANNEL_CHIP, campaignChannels, allStats, kpiSeries, radarScores, shortName, sourceState } from "./_lib/marketing";
 import { RadarPicker, type RadarCampaign } from "./_components/radar-compare";
 import { ImportCsvDialog, NewCampaignDialog } from "./_components/dialogs";
 
@@ -23,24 +24,27 @@ const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const
 const money = (n: number) => (Number.isFinite(n) ? inr(n) : "–");
 
 export default async function Campaigns() {
-  const { ds, now } = await pageCtx();
+  const { ds, now, active } = await pageCtx();
+  const v = vocabFor(active.tenant), m = v.mk, hosp = v.id === "hospitality";
+  const CHANNELS = campaignChannels(hosp);
   const [campaigns, days, leads, deals, integrations, syncRuns, accounts, acts] = await Promise.all([
     ds.campaigns(), ds.campaignDays(), ds.leads(), ds.deals(), ds.integrations(), ds.syncRuns(), ds.accounts(), ds.activities(),
   ]);
-  const stats = allStats(campaigns, days, leads, deals);
-  const src = sourceState(integrations);
-  const k = kpiSeries(days, leads, acts, now);
+  // Hospitality counts a booking (won deal) where legal counts a demo; the rest of the page reads s.demos unchanged.
+  const stats = allStats(campaigns, days, leads, deals).map((s) => (hosp ? { ...s, demos: s.won, costPerDemo: ratio(s.spend, s.won), leadToDemo: ratio(s.won, s.leads) } : s));
+  const src = sourceState(integrations, CHANNELS);
+  const k = kpiSeries(days, leads, acts, now, hosp ? deals : undefined);
   const tot = stats.reduce((a, s) => ({ spend: a.spend + s.spend, leads: a.leads + s.leads, demos: a.demos + s.demos }), { spend: 0, leads: 0, demos: 0 });
   const ranked = [...stats].sort((a, b) => b.leads - a.leads);
 
   // CPL comparison (hbar, cheapest first). Email has tool cost only, so it is labelled rather than hidden.
   // Mailchimp carries tool cost only (no media spend); it is included and marked, not hidden.
-  const cplRows = stats.filter((s) => s.leads > 0 && s.spend > 0).map((s) => ({ label: s.channel === "email" ? `${shortName(s.name)} *` : shortName(s.name), value: Math.round(s.cpl), note: `${s.leads} leads · ${CHANNEL_LABEL[s.channel]}${s.channel === "email" ? " · tool cost only" : ""}` })).sort((a, b) => a.value - b.value);
+  const cplRows = stats.filter((s) => s.leads > 0 && s.spend > 0).map((s) => ({ label: s.channel === "email" ? `${shortName(s.name)} *` : shortName(s.name), value: Math.round(s.cpl), note: m.cplNote(s.leads, CHANNEL_LABEL[s.channel], s.channel === "email") })).sort((a, b) => a.value - b.value);
   const best = [...stats].filter((s) => s.demos >= 3 && s.spend > 0 && s.channel !== "email").sort((a, b) => a.costPerDemo - b.costPerDemo)[0];
   const email = stats.find((s) => s.channel === "email" && s.demos > 0);
 
   // Spend share by channel (5 campaign channels = 5 slices, no fold needed).
-  const byCh = CAMPAIGN_CHANNELS.map((ch) => {
+  const byCh = CHANNELS.map((ch) => {
     const xs = stats.filter((s) => s.channel === ch);
     const spend = xs.reduce((a, s) => a + s.spend, 0), l = xs.reduce((a, s) => a + s.leads, 0), d = xs.reduce((a, s) => a + s.demos, 0);
     return { ch, spend, leads: l, demos: d, n: xs.length, live: xs.filter((s) => s.status === "live").length, cpl: ratio(spend, l), cpd: ratio(spend, d) };
@@ -52,7 +56,7 @@ export default async function Campaigns() {
   const scores = radarScores(stats);
   const radarCampaigns: RadarCampaign[] = ranked.map((s) => ({
     id: s.id, label: shortName(s.name), scores: scores.get(s.id)!,
-    raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : `${inrCompact(s.cpl)} CPL`],
+    raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : `${inrCompact(s.cpl)} ${m.radarCpl}`],
   }));
 
   // Radar default: the three campaigns with the fullest profile (mean score), one per channel, so shapes are readable.
@@ -60,7 +64,7 @@ export default async function Campaigns() {
   const radarInit = [...stats].sort((a, b) => meanScore(b.id) - meanScore(a.id)).filter((s, i, xs) => xs.findIndex((x) => x.channel === s.channel) === i).slice(0, 3).map((s) => s.id);
   // Import stats from the sync log (CSV bridge is the live inbound path in MVP).
   const nowMs = new Date(now).getTime();
-  const imports = CAMPAIGN_CHANNELS.map((ch) => {
+  const imports = CHANNELS.map((ch) => {
     const runs = syncRuns.filter((r) => r.integrationId === src[ch].id).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const week = runs.filter((r) => nowMs - new Date(r.startedAt).getTime() < 7 * 86400e3);
     return { ch, ...src[ch], last: runs[0], rows: week.reduce((a, r) => a + r.rowsIn, 0), rejected: week.reduce((a, r) => a + r.rowsRejected, 0), failed: week.filter((r) => r.status === "failed").length };
@@ -81,9 +85,9 @@ export default async function Campaigns() {
     { key: "reach", header: "Reach", align: "right", cell: (s) => numCompact(s.reach) },
     { key: "ctr", header: <span title="Clicks / impressions. WhatsApp and email: clicks / delivered.">CTR<sup className="ml-0.5 text-ink-3">†</sup></span>, align: "right", cell: (s) => pct(s.ctr, 2) },
     { key: "cpl", header: "CPL", align: "right", cell: (s) => (s.spend === 0 ? <span className="text-ink-3" title="Tool cost only">₹0</span> : money(s.cpl)) },
-    { key: "leads", header: "Leads", align: "right", mobile: "fact", className: "font-medium", cell: (s) => <span>{s.leads}<span className="md:hidden"> leads · {s.demos} demos</span></span> },
-    { key: "demos", header: "Demos", align: "right", cell: (s) => s.demos },
-    { key: "conv", header: "Lead → demo", align: "right", cell: (s) => <span className={cn(s.leads < 20 && "text-ink-2")}>{pct(s.leadToDemo, 0)}{s.leads < 20 && <span className="ml-1 text-[10px] text-ink-3">low n</span>}</span> },
+    { key: "leads", header: m.th.leads, align: "right", mobile: "fact", className: "font-medium", cell: (s) => <span>{s.leads}<span className="md:hidden"> {m.mobileFact(s.leads, s.demos).replace(`${s.leads} `, "")}</span></span> },
+    { key: "demos", header: m.th.demos, align: "right", cell: (s) => s.demos },
+    { key: "conv", header: m.th.conv, align: "right", cell: (s) => <span className={cn(s.leads < 20 && "text-ink-2")}>{pct(s.leadToDemo, 0)}{s.leads < 20 && <span className="ml-1 text-[10px] text-ink-3">low n</span>}</span> },
     { key: "gap", header: <span title="Platform leads minus CRM leads (M13)">Gap</span>, align: "right", cell: (s) => <span className={cn(s.gap !== 0 && "text-warn-ink")} title="Platform-reported leads minus leads found in the CRM">{s.gap > 0 ? `+${s.gap}` : s.gap}</span> },
     { key: "open", header: <span className="sr-only">Open</span>, mobile: "action", className: "md:hidden", cell: (s) => <Link href={`/campaigns/${s.id}`} className="font-medium text-accent">Open</Link> },
   ];
@@ -91,24 +95,24 @@ export default async function Campaigns() {
   return (
     <>
       <PageHeader eyebrow="Marketing · 30-day tiles · 90-day charts and tables" title="Campaigns"
-        sub="Which campaigns turn rupees into demos. Spend and reach come from platform exports; leads and demos are counted in the CRM, so the Gap column shows where they disagree."
+        sub={m.sub}
         actions={<><ImportCsvDialog campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, channel: c.channel }))} /><NewCampaignDialog districts={districts} yyyymm={yyyymm} /></>} />
 
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-5 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
           <Kpi label="Spend · 30 days" metric="M8" value={k.cur.spend} format="inrCompact" spark={k.spendW} foot={<>{Number.isFinite(k.d.spend) ? `${k.d.spend >= 0 ? "+" : "−"}${Math.abs(k.d.spend * 100).toFixed(1)}% vs prior 30d` : "no prior period"} · {inrCompact(tot.spend)} in 90d</>} />
-          <Kpi label="Leads · 30 days" metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d</>} />
-          <Kpi label="Cost per lead · 30 days" metric="M9" value={k.cur.cpl} format="inr" spark={k.cplW} delta={k.d.cpl} deltaLabel="" goodWhen="down" foot={<>vs prior 30d · first touch</>} />
-          <Kpi label="Demos booked · 30 days" metric="M10" value={k.cur.demos} spark={k.demosW} delta={k.d.demos} deltaLabel="" foot={<>vs prior 30d · by booking date</>} />
-          <Kpi label="Cost per demo · 30 days" metric="M11" value={k.cur.cpd} format="inr" spark={k.cpdW} delta={k.d.cpd} deltaLabel="" goodWhen="down" className="col-span-2 lg:col-span-1" foot={<>vs prior 30d · {inrCompact(ratio(tot.spend, tot.demos))} over 90d</>} />
+          <Kpi label={m.kLeads} metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d</>} />
+          <Kpi label={m.kCpl} metric="M9" value={k.cur.cpl} format="inr" spark={k.cplW} delta={k.d.cpl} deltaLabel="" goodWhen="down" foot={<>vs prior 30d · first touch</>} />
+          <Kpi label={m.kDemos} metric="M10" value={k.cur.demos} spark={k.demosW} delta={k.d.demos} deltaLabel="" foot={<>{m.kDemosFoot}</>} />
+          <Kpi label={m.kCpd} metric="M11" value={k.cur.cpd} format="inr" spark={k.cpdW} delta={k.d.cpd} deltaLabel="" goodWhen="down" className="col-span-2 lg:col-span-1" foot={<>vs prior 30d · {inrCompact(ratio(tot.spend, tot.demos))} over 90d</>} />
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
-            <CardHeader title="Which campaigns bring leads cheapest?" sub="Cost per CRM lead over 90 days, lowest first. * Mailchimp counts tool cost only, no media spend." action={<span className="font-mono text-[10px] text-ink-3">M9</span>} />
+            <CardHeader title={m.cheapest} sub={m.cheapestSub} action={<span className="font-mono text-[10px] text-ink-3">M9</span>} />
             <CardBody>
-              <HBar label={`Cost per lead by campaign, lowest first. ${cplRows.map((r) => `${r.label} ${inr(r.value)}`).join(", ")}`} data={cplRows} format="inr" highlight={cplRows[0]?.label} labelWidth={176} valueLabel="Cost per lead" />
-              {best && <p className="mt-3 rounded-sm bg-accent-soft px-3 py-2 text-[12px] leading-5 text-ink-2"><Link href={`/campaigns/${best.id}`} className="font-medium text-ink hover:text-accent">{best.name}</Link> books demos at {inr(best.costPerDemo)} each, the lowest of any paid-media campaign with 3 or more demos.{email && <> Email re-engagement ({shortName(email.name)}) costs {inr(email.costPerDemo)} per demo, but only reaches people already in the list.</>}</p>}
+              <HBar label={`${m.cplAria}, lowest first. ${cplRows.map((r) => `${r.label} ${inr(r.value)}`).join(", ")}`} data={cplRows} format="inr" highlight={cplRows[0]?.label} labelWidth={176} valueLabel={m.cplValue} />
+              {best && <p className="mt-3 rounded-sm bg-accent-soft px-3 py-2 text-[12px] leading-5 text-ink-2"><Link href={`/campaigns/${best.id}`} className="font-medium text-ink hover:text-accent">{best.name}</Link>{m.best(inr(best.costPerDemo))}{email && <>{m.email(shortName(email.name), inr(email.costPerDemo))}</>}</p>}
             </CardBody>
           </Card>
         </StaggerItem>
@@ -123,7 +127,7 @@ export default async function Campaigns() {
                     <span className="flex min-w-0 items-center gap-2"><ChannelMark channel={c.ch} withLabel />
                       {!src[c.ch].connected && <Link href={`/integrations/${src[c.ch].id}`} title={`${src[c.ch].name} is not connected: sample data. Open integration.`}><StatusChip status="showcase" /></Link>}
                     </span>
-                    <span className="shrink-0 text-ink-3 num">{c.leads} leads · {Number.isFinite(c.cpd) ? `${inrCompact(c.cpd)}/demo` : "no demos"}</span>
+                    <span className="shrink-0 text-ink-3 num">{m.donutLeads(c.leads)} · {Number.isFinite(c.cpd) ? m.perUnit(inrCompact(c.cpd)) : m.noUnit}</span>
                   </li>
                 ))}
               </ul>
@@ -134,7 +138,7 @@ export default async function Campaigns() {
         <StaggerItem className="lg:col-span-12">
           <Card>
             <CardHeader title="All campaigns" sub={`${campaigns.filter((c) => c.status === "live").length} live of ${campaigns.length}. Sorted by CRM leads.`} />
-            <DataTable rows={ranked} columns={cols} rowKey={(s) => s.id} minWidth={1060} caption="All campaigns with spend, reach, CTR, CPL, leads, demos and conversion" />
+            <DataTable rows={ranked} columns={cols} rowKey={(s) => s.id} minWidth={1060} caption={m.tableCaption} />
           </Card>
         </StaggerItem>
 
@@ -171,7 +175,7 @@ export default async function Campaigns() {
           </Card>
         </StaggerItem>
       </Stagger>
-      <p className="mt-6 text-[11px] text-ink-3"><StatusChip status="sample" className="mr-1.5" />Synthetic data shaped like LinkedIn, Meta, Google Ads, WhatsApp and Mailchimp exports · {num(days.length)} campaign-day rows. † CTR is clicks / impressions; for WhatsApp and email it is clicks / delivered.</p>
+      <p className="mt-6 text-[11px] text-ink-3"><StatusChip status="sample" className="mr-1.5" />{m.foot} · {num(days.length)} campaign-day rows. † CTR is clicks / impressions; for WhatsApp and email it is clicks / delivered.</p>
     </>
   );
 }

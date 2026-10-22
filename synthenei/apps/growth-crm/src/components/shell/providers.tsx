@@ -3,11 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Role } from "@/lib/data/types";
 import { TipProvider } from "@/components/ui/tooltip";
 import { MotionConfig } from "motion/react";
+import { vocabFor, type Vertical, type Vocab } from "@/lib/vertical";
 
 /** What client components know about the viewer: identity, active workspace and the role held there. */
 export interface ShellCtx {
   uid: string; name: string; email: string; demo: boolean; platformAdmin: boolean; role: Role;
-  ws: { id: string; name: string; region: string }; tenant: { id: string; name: string; product: string; hue: number; monogram: string; workspaceCount: number; isPrimaryOwner: boolean };
+  ws: { id: string; name: string; region: string }; tenant: { id: string; name: string; product: string; hue: number; monogram: string; vertical: Vertical; workspaceCount: number; isPrimaryOwner: boolean };
   workspaces: { id: string; name: string; tenantId: string; tenantName: string; monogram: string; role: Role }[];
   support: { mode: "read_only" | "read_write"; reason: string; admin: string; endsAt: number } | null;
 }
@@ -17,6 +18,9 @@ export const useSession = () => {
   if (!s) throw new Error("useSession outside provider");
   return s;
 };
+
+/** Industry vocabulary for the active tenant (client components). */
+export const useVocab = (): Vocab => vocabFor(useSession().tenant);
 
 /** White-label branding. Stored per browser for the demo (a real tenant stores it in `tenants.brand_*`). */
 export type Brand = { name: string; product: string; hue: number };

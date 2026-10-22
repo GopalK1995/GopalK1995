@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { acceptSuggestion, dismissSuggestion } from "../../actions";
 import { usePerm } from "../../_components/perm";
+import { useVocab } from "@/components/shell/providers";
 
 export type Suggestion = { action: string; reason: string; due: string; factors: string[] } | null;
 
@@ -15,6 +16,7 @@ export function AiPanel({ leadId, summary, suggestion, basedOn }: { leadId: stri
   const [asking, setAsking] = useState(false);
   const [pending, start] = useTransition();
   const work = usePerm("workLeads");
+  const reasons = useVocab().ld.dismissReasons;
   const accept = () => start(async () => {
     if (!suggestion) return;
     const r = await acceptSuggestion(leadId, suggestion.action, suggestion.due);
@@ -51,7 +53,7 @@ export function AiPanel({ leadId, summary, suggestion, basedOn }: { leadId: stri
               <fieldset className="mt-3">
                 <legend className="mb-1.5 text-[12px] text-ink-2">Why dismiss?</legend>
                 <div className="flex flex-wrap gap-1.5">
-                  {["Already done", "Wrong timing", "Partner unavailable", "Not relevant"].map((r) => (
+                  {reasons.map((r) => (
                     <Button key={r} size="sm" disabled={pending} onClick={() => dismiss(r)}>{r}</Button>
                   ))}
                 </div>

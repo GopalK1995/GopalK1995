@@ -1,7 +1,9 @@
-// Small domain-specific display atoms (server-safe).
+"use client";
+// Small domain-specific display atoms. Client component so stage labels follow the active tenant vocabulary.
 import { Globe, Mail, MessageCircle, Search, UserRoundPlus, CalendarDays } from "lucide-react";
 import type { Channel, DealStage, LeadStage } from "@/lib/data/types";
-import { CHANNEL_LABEL, DEAL_STAGE_LABEL, LEAD_STAGE_LABEL } from "@/lib/data/metrics";
+import { CHANNEL_LABEL } from "@/lib/data/metrics";
+import { useVocab } from "@/components/shell/providers";
 import { cn } from "@/lib/utils";
 import { Badge } from "./badge";
 
@@ -22,8 +24,8 @@ export function ChannelMark({ channel, withLabel = false, className }: { channel
 const LEAD_TONE: Record<LeadStage, "neutral" | "accent" | "success" | "danger" | "warn" | "outline"> = {
   new: "outline", contacted: "neutral", qualified: "neutral", demo_booked: "accent", demo_done: "accent", proposal: "warn", won: "success", lost: "danger",
 };
-export const LeadStageBadge = ({ stage }: { stage: LeadStage }) => <Badge tone={LEAD_TONE[stage]}>{LEAD_STAGE_LABEL[stage]}</Badge>;
+export const LeadStageBadge = ({ stage }: { stage: LeadStage }) => <Badge tone={LEAD_TONE[stage]}>{useVocab().leadStage[stage]}</Badge>;
 const DEAL_TONE: Record<DealStage, "neutral" | "accent" | "success" | "danger" | "warn" | "outline"> = {
   discovery: "outline", demo_scheduled: "neutral", demo_done: "accent", proposal: "accent", negotiation: "warn", won: "success", lost: "danger",
 };
-export const DealStageBadge = ({ stage }: { stage: DealStage }) => <Badge tone={DEAL_TONE[stage]}>{DEAL_STAGE_LABEL[stage]}</Badge>;
+export const DealStageBadge = ({ stage }: { stage: DealStage }) => <Badge tone={DEAL_TONE[stage]}>{useVocab().dealStage[stage]}</Badge>;

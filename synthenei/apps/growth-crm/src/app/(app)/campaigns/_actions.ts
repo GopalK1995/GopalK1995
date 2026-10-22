@@ -5,17 +5,18 @@ import { requireActive } from "@/lib/auth/server";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { canMkt, type MktAction } from "./_lib/perm";
 import { getDataSource } from "@/lib/data/source";
+import { vocabFor } from "@/lib/vertical";
 
 export type ActionResult = { ok: boolean; message: string; detail?: string };
 
-async function guard(action: MktAction): Promise<{ ok: true; ws: string; demo: boolean; ds: ReturnType<typeof getDataSource> } | { ok: false; res: ActionResult }> {
+async function guard(action: MktAction): Promise<{ ok: true; ws: string; demo: boolean; ds: ReturnType<typeof getDataSource>; v: ReturnType<typeof vocabFor> } | { ok: false; res: ActionResult }> {
   const { session, active } = await requireActive();
   const support = active.support ? { mode: active.support.mode } : null;
   if (!canMkt(action, { role: active.role, support })) {
     const why = support ? "Not available in a support session." : `Your role (${ROLE_LABEL[active.role]}) cannot do this.`;
     return { ok: false, res: { ok: false, message: "Not allowed", detail: why } };
   }
-  return { ok: true, ws: active.ws.name, demo: session.demo, ds: getDataSource(active.ws, { demo: session.demo }) };
+  return { ok: true, ws: active.ws.name, demo: session.demo, ds: getDataSource(active.ws, { demo: session.demo }), v: vocabFor(active.tenant) };
 }
 const demoNote = "Demo: nothing was saved, sent or audit-logged.";
 
@@ -68,7 +69,7 @@ export async function exportCampaignLeads(campaignId: string): Promise<ActionRes
   if (!g.ok) return g.res;
   const leads = (await g.ds.leads()).filter((l) => l.campaignId === campaignId);
   const ok = leads.filter((l) => l.consent.marketing).length;
-  return { ok: true, message: `CSV of ${leads.length} leads would download`, detail: `${leads.length - ok} without marketing consent excluded from platform uploads. Export is audit-logged. ${demoNote}` };
+  return { ok: true, message: g.v.cd.exportMsg(leads.length), detail: `${g.v.cd.exportDetail(leads.length - ok)} Export is audit-logged. ${demoNote}` };
 }
 
 export async function sendSegmentToCampaign(segment: string, size: number, campaignId: string): Promise<ActionResult> {
@@ -76,7 +77,7 @@ export async function sendSegmentToCampaign(segment: string, size: number, campa
   if (!g.ok) return g.res;
   const c = await g.ds.campaign(campaignId);
   if (!c) return { ok: false, message: "Campaign not found in this workspace" };
-  return { ok: true, message: `Segment "${segment}" (${size} leads) would be attached to "${c.name}"`, detail: `Showcase: no audience is pushed to the ad platform until its source is connected. ${demoNote}` };
+  return { ok: true, message: g.v.cd.segMsg(segment, size, c.name), detail: `Showcase: no audience is pushed to the ad platform until its source is connected. ${demoNote}` };
 }
 
 export async function saveSegment(segment: string, rules: number): Promise<ActionResult> {

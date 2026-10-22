@@ -8,17 +8,19 @@ export const DAY_MS = 86400e3;
 
 /** Campaign channel -> integration route id (spec 14: key with _ -> -). Email campaigns come from Mailchimp. */
 export const CHANNEL_SOURCE: Record<Campaign["channel"], string> = {
-  linkedin: "linkedin", meta: "meta-ads", google_ads: "google-ads", whatsapp: "whatsapp", email: "mailchimp",
+  linkedin: "linkedin", meta: "meta-ads", google_ads: "google-ads", whatsapp: "whatsapp", email: "mailchimp", referral: "booking-com",
 };
 export const CAMPAIGN_CHANNELS: Campaign["channel"][] = ["linkedin", "whatsapp", "email", "meta", "google_ads"];
-export const CHANNEL_CHIP: Record<Campaign["channel"], string> = { linkedin: "LinkedIn", whatsapp: "WhatsApp", email: "Mailchimp", meta: "Meta", google_ads: "Google" };
+/** Channels a workspace can run campaigns on (hospitality: no LinkedIn; adds partner / OTA referrals). */
+export const campaignChannels = (hosp: boolean): Campaign["channel"][] => (hosp ? ["meta", "whatsapp", "google_ads", "referral", "email"] : CAMPAIGN_CHANNELS);
+export const CHANNEL_CHIP: Record<Campaign["channel"], string> = { linkedin: "LinkedIn", whatsapp: "WhatsApp", email: "Mailchimp", meta: "Meta", google_ads: "Google", referral: "Partner / OTA" };
 
 export const shortName = (name: string) => name.split(" — ")[0];
 
 /** Source state per campaign channel: anything not connected wears a Showcase chip and links to its integration page. */
-export function sourceState(integrations: Integration[]) {
+export function sourceState(integrations: Integration[], channels: Campaign["channel"][] = CAMPAIGN_CHANNELS) {
   const out = {} as Record<Campaign["channel"], { id: string; name: string; connected: boolean; lastSyncAt: string | null }>;
-  for (const ch of CAMPAIGN_CHANNELS) {
+  for (const ch of channels) {
     const i = integrations.find((x) => x.id === CHANNEL_SOURCE[ch]);
     out[ch] = { id: CHANNEL_SOURCE[ch], name: i?.name ?? CHANNEL_CHIP[ch], connected: i?.status === "connected", lastSyncAt: i?.lastSyncAt ?? null };
   }
@@ -45,12 +47,15 @@ export function allStats(campaigns: Campaign[], days: CampaignDay[], leads: Lead
 /** KPI series for the last 30 days vs the prior 30, plus 12 weekly buckets for sparklines.
  *  Same windows and definitions as the Command Center: spend by campaign-day (IST), leads by created time,
  *  demos by the date the demo was BOOKED (demo_booked activity) for campaign-sourced leads (M10/M11). */
-export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], nowIso: string) {
+export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], nowIso: string, bookingDeals?: Deal[]) {
   const nowMs = new Date(nowIso).getTime();
   const weeks = weekBuckets(nowIso, 12);
   const cLeads = leads.filter((l) => l.campaignId);
   const paid = new Set(cLeads.map((l) => l.id));
-  const booked = acts.filter((a) => a.kind === "demo_booked" && paid.has(a.leadId));
+  // Hospitality passes deals: a "booking" is a won deal, dated by wonAt.
+  const booked = bookingDeals
+    ? bookingDeals.filter((d) => d.stage === "won" && d.wonAt && paid.has(d.leadId)).map((d) => ({ leadId: d.leadId, at: d.wonAt! }))
+    : acts.filter((a) => a.kind === "demo_booked" && paid.has(a.leadId));
   const ageSpend = (d: CampaignDay) => nowMs - new Date(d.date + "T12:00:00+05:30").getTime();
   const age = (iso: string) => nowMs - new Date(iso).getTime();
   const win = (from: number, to: number) => {
@@ -134,16 +139,21 @@ export function attribution(leads: Lead[], model: "first" | "last") {
 /** Lead enriched with its account (for audience segmentation). Personal data stripped: counts only leave the server. */
 export type SegLead = {
   district: string; size: Account["size"] | "Unknown"; title: string; practice: string; highCourt: boolean;
-  channel: Channel; demo: boolean; won: boolean; closed: boolean; marketingConsent: boolean; recent: boolean; workEmail: boolean;
+  channel: Channel; room: string; demo: boolean; won: boolean; closed: boolean; marketingConsent: boolean; recent: boolean; workEmail: boolean;
 };
-export function segLeads(leads: Lead[], accounts: Account[], nowIso: string): SegLead[] {
+/** Hospitality: title = guest origin, practice = trip type, room = room interest, demo = booked (won). */
+const ORIGIN = { new: "New guest", repeat: "Repeat guest", referral: "Referral" } as const;
+export function segLeads(leads: Lead[], accounts: Account[], nowIso: string, hosp = false): SegLead[] {
   const acc = new Map(accounts.map((a) => [a.id, a]));
   const now = new Date(nowIso).getTime();
   return leads.map((l) => {
     const a = acc.get(l.accountId);
     return {
-      district: a?.district ?? "Unknown", size: a?.size ?? "Unknown", title: l.title, practice: a?.practiceAreas[0] ?? "Unknown",
-      highCourt: !!a?.courts.some((c) => c.includes("High Court")), channel: l.channel, demo: isDemo(l), won: l.stage === "won",
+      district: a?.district ?? "Unknown", size: a?.size ?? "Unknown",
+      title: hosp ? ORIGIN[l.stay?.origin ?? "new"] : l.title,
+      practice: hosp ? String(l.stay?.tripType ?? a?.interests?.[0] ?? "Unknown") : a?.practiceAreas[0] ?? "Unknown",
+      highCourt: !!a?.courts.some((c) => c.includes("High Court")), channel: l.channel, room: hosp ? l.stay?.room ?? a?.roomsOfInterest?.[0] ?? "Unknown" : "",
+      demo: hosp ? l.stage === "won" : isDemo(l), won: l.stage === "won",
       closed: l.stage === "won" || l.stage === "lost", marketingConsent: l.consent.marketing, recent: now - new Date(l.createdAt).getTime() < 30 * DAY_MS,
       workEmail: !l.email.endsWith("@mail.example"),
     };

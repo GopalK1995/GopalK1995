@@ -1,7 +1,7 @@
 import { pageCtx } from "@/lib/data/context";
 import { StatusChip } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/misc";
-import { DEAL_STAGE_LABEL, LEAD_STAGE_LABEL } from "@/lib/data/metrics";
+import { vocabFor } from "@/lib/vertical";
 import { verdict } from "../accounts/_components/perms";
 import { TAMIL_DRAFTS } from "./_components/drafts-ta";
 import { InboxApp, type InboxConv } from "./_components/inbox-app";
@@ -9,7 +9,8 @@ import { InboxApp, type InboxConv } from "./_components/inbox-app";
 export const metadata = { title: "Inbox" };
 
 export default async function Inbox() {
-  const { ds, now, role, support, session, scope } = await pageCtx();
+  const { ds, now, role, support, session, scope, active } = await pageCtx();
+  const v = vocabFor(active.tenant);
   const [convs, leads, accounts, deals, team] = await Promise.all([ds.conversations(), ds.leads(), ds.accounts(), ds.deals(), ds.team()]);
   const mine = scope.conversations(convs, leads);
   const nowMs = new Date(now).getTime();
@@ -26,9 +27,9 @@ export default async function Inbox() {
       id: c.id, channel: c.channel, subject: c.subject, unread: c.unread, lastAt: c.lastAt,
       messages: c.messages.map((m) => ({ id: m.id, from: m.from, at: m.at, body: m.body, status: m.status, author: m.from === "us" ? nameOf(m.authorId).split(" ")[0] : first })),
       draft: { en: c.aiDraft.body.replace(/I've blocked (\d+) minutes and will send/, "I can block $1 minutes and send").replace(/I'll load them/, "I can load them"), ta: TAMIL_DRAFTS[c.id]?.replaceAll("{first}", first) ?? null, rationale: c.aiDraft.rationale, basedOn: c.aiDraft.basedOn.replace(/\b(Arun|Divya|Karthik)'s calendar/, `${nameOf(l.ownerId).split(" ")[0]}'s calendar`), needsReview: c.aiDraft.needsReview ?? null },
-      lead: { id: l.id, name: l.name, first, title: l.title, stage: LEAD_STAGE_LABEL[l.stage], score: l.score, ownerId: l.ownerId, ownerName: nameOf(l.ownerId), consent: l.consent, phone: l.phone, email: l.email },
+      lead: { id: l.id, name: l.name, first, title: l.title, stage: v.leadStage[l.stage], score: l.score, ownerId: l.ownerId, ownerName: nameOf(l.ownerId), consent: l.consent, phone: l.phone, email: l.email },
       firm: a ? { id: a.id, name: a.name, district: a.district, lawyers: a.lawyers } : null,
-      deal: d ? { id: d.id, stage: DEAL_STAGE_LABEL[d.stage], value: d.value, plan: d.plan, seats: d.seats } : null,
+      deal: d ? { id: d.id, stage: v.dealStage[d.stage], value: d.value, plan: d.plan, seats: d.seats } : null,
       windowLeftH: left, mine: l.ownerId === session.uid,
       reply: verdict("replyInbox", { role, support, uid: session.uid, ownerId: l.ownerId }),
     };
@@ -41,7 +42,7 @@ export default async function Inbox() {
   return (
     <>
       <PageHeader eyebrow="Conversations" title={<span className="inline-flex flex-wrap items-center gap-2">Inbox <StatusChip status="showcase" /></span>}
-        sub={`${items.length} conversations across WhatsApp, email and LinkedIn, ${unread} unread. Showcase: no messages are sent. Data is sample.`} />
+        sub={v.ib.sub(items.length, unread)} />
       <InboxApp items={items} now={now} linkable={linkable} reps={reps} uid={session.uid}
         assign={verdict("assignConversation", { role, support })} readOnlyRole={role === "marketing"} />
     </>
