@@ -74,6 +74,10 @@ export const PERSONAS: { key: string; userId: string; label: string; detail: str
   { key: "super", userId: "u-vikram", label: "Super admin · Synthan", detail: "Platform operator: tenants, workspaces, users, audit. No business data without a support session." },
   { key: "data-lawsome", userId: "u-sanjay", label: "Data · TN", detail: "Imports, integrations, backups.", secondary: true, tenantId: "lawsome" },
   { key: "viewer-lawsome", userId: "u-rahul", label: "Viewer · TN", detail: "Read-only, masked personal data.", secondary: true, tenantId: "lawsome" },
+  { key: "owner-shola", userId: "u-kavitha", label: "Owner · Shola Mist", detail: "Bookings, revenue, campaign payback and brand for the guesthouse.", tenantId: "shola-mist" },
+  { key: "rep-shola", userId: "u-bala", label: "Reservations · Shola Mist", detail: "Replies on WhatsApp and phone, sends quotes, confirms advances.", tenantId: "shola-mist" },
+  { key: "mkt-shola", userId: "u-sneha", label: "Marketing · Shola Mist", detail: "Instagram and Meta, WhatsApp broadcasts, Google profile, travel-agent partners.", tenantId: "shola-mist" },
+  { key: "viewer-shola", userId: "u-rameshi", label: "Viewer · Shola Mist", detail: "Read-only view of enquiries and bookings, guest details masked.", secondary: true, tenantId: "shola-mist" },
 ];
 
 /** Accepts the slug id or the DB uuid (real sessions get uuids from my_workspaces()). */
