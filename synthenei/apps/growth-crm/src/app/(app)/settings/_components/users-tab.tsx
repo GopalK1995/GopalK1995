@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import { th, td } from "@/components/ui/misc";
-import { useSession } from "@/components/shell/providers";
+import { useSession, useVocab } from "@/components/shell/providers";
 import { ROLES, ROLE_LABEL, can } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/data/types";
@@ -26,6 +26,7 @@ function Blocked({ reason, children }: { reason: string; children: ReactElement<
 const selectCls = "h-8 rounded-sm border border-line-strong bg-surface pl-2 pr-7 text-[12px] text-ink outline-none focus:border-ring disabled:opacity-50";
 
 export function UsersTab({ rows, wsName, tenantName }: { rows: MemberRow[]; wsName: string; tenantName: string }) {
+  const vl = useVocab().role as Record<Role, string>;
   const { role, support, uid } = useSession();
   const manage = can("manageUsers", { role, support });
   const assignable = role === "owner" ? ROLES : MANAGER_SCOPE;
@@ -42,7 +43,7 @@ export function UsersTab({ rows, wsName, tenantName }: { rows: MemberRow[]; wsNa
   const roleControl = (r: MemberRow) => {
     const sel = (
       <select aria-label={`Role for ${r.name}`} value={roles[r.userId]} onChange={(e) => onRole(r, e.target.value as Role)} className={selectCls}>
-        {(canTouch(r) ? assignable : [r.role]).map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
+        {(canTouch(r) ? assignable : [r.role]).map((x) => <option key={x} value={x}>{vl[x]}</option>)}
       </select>
     );
     return canTouch(r) ? sel : <Blocked reason={why(r)}>{sel}</Blocked>;
@@ -100,6 +101,7 @@ export function UsersTab({ rows, wsName, tenantName }: { rows: MemberRow[]; wsNa
 }
 
 function InviteDialog({ assignable, wsName }: { assignable: Role[]; wsName: string }) {
+  const vl = useVocab().role as Record<Role, string>;
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>(assignable.includes("sales_rep") ? "sales_rep" : assignable[0]);
@@ -111,11 +113,11 @@ function InviteDialog({ assignable, wsName }: { assignable: Role[]; wsName: stri
       <DialogContent title={`Invite to ${wsName}`} description="An existing user gets the membership at once; a new user gets an email invite valid for 7 days.">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await inviteMember(email, role); if (r.ok) { setOpen(false); setEmail(""); toast(r.message, r.detail); } else setErr(r.message); }); }}>
           <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">Email
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@firm.example" className="h-9 rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring" />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={useVocab().st.emailPh} className="h-9 rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring" />
           </label>
           <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">Role in this workspace
             <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={cn(selectCls, "h-9 text-[13px]")}>
-              {assignable.map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
+              {assignable.map((x) => <option key={x} value={x}>{vl[x]}</option>)}
             </select>
             {assignable.length < ROLES.length && <span className="font-normal text-ink-3">As Sales Manager you can invite Sales Reps and Viewers.</span>}
           </label>

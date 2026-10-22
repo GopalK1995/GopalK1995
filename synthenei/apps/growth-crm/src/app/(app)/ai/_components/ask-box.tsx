@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { askCrm } from "../actions";
 import type { Answer, QId } from "./ask-engine";
+import { useVocab } from "@/components/shell/providers";
 
 export function AskBox({ questions, initial }: { questions: { id: QId; q: string; metric: string }[]; initial: Answer | null }) {
+  const ai = useVocab().ai;
   const [text, setText] = useState("");
   const [answers, setAnswers] = useState<Answer[]>(initial ? [initial] : []);
   const [pending, start] = useTransition();
@@ -19,7 +21,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
     <div>
       <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) run(text, null); }} className="flex gap-2">
         <label htmlFor="ask" className="sr-only">Ask a question about your CRM numbers</label>
-        <input id="ask" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="e.g. How many follow-ups are overdue?"
+        <input id="ask" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={ai.askPh}
           className="h-10 min-w-0 flex-1 rounded-sm border border-line-strong bg-surface px-3 text-[13px] outline-none placeholder:text-ink-3 focus:border-ring" />
         <Button variant="primary" size="lg" disabled={pending || !text.trim()}><CornerDownLeft />Ask</Button>
       </form>
@@ -27,7 +29,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
         {questions.map((q) => (
           <button key={q.id} onClick={() => run("", q.id)} disabled={pending}
             className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 py-1 text-left text-[12px] text-ink-2 transition-colors duration-150 hover:border-accent hover:text-ink disabled:opacity-60">
-            {q.q}<span className="font-mono text-[10px] text-ink-3">{q.metric}</span>
+            {q.q}{q.metric && <span className="font-mono text-[10px] text-ink-3">{q.metric}</span>}
           </button>
         ))}
       </div>
@@ -45,6 +47,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
               ) : (
                 <>
                   <p className="mt-1.5 text-[14px] font-medium leading-5 text-ink">{a.headline}</p>
+                  {a.bullets && a.bullets.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-5 text-ink-2 marker:text-ink-3">{a.bullets.map((b) => <li key={b}>{b}</li>)}</ul>}
                   {a.table && a.table.rows.length > 0 && (
                     <div className="scrollbar-thin mt-3 overflow-x-auto">
                       <table className="w-full min-w-[320px] border-collapse text-[12px]">
@@ -63,7 +66,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
             </motion.article>
           ))}
         </AnimatePresence>
-        {!answers.length && <p className="text-[12px] text-ink-3">Pick a question above. Each answer shows the metric it used, so you can check it on the matching dashboard.</p>}
+        {!answers.length && <p className="text-[12px] text-ink-3">{ai.askHelp}</p>}
       </div>
     </div>
   );

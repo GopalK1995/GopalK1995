@@ -10,7 +10,10 @@ import { PageHeader, ScoreChip } from "@/components/ui/misc";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { Columns } from "@/components/charts/columns";
 import { verdict } from "../accounts/_components/perms";
-import { QUESTIONS, ask } from "./_components/ask-engine";
+import { QUESTIONS, ask, type QId } from "./_components/ask-engine";
+import { vocabFor } from "@/lib/vertical";
+import { datasetFor } from "@/lib/data/mock/generate-index";
+import { hospitalityCopilot } from "@/lib/data/mock/hospitality-copilot";
 import { AskBox } from "./_components/ask-box";
 import { FeatureCards, type Feature } from "./_components/features";
 import { WeightsEditor, type FactorRow } from "./_components/weights";
@@ -19,7 +22,8 @@ export const metadata = { title: "Copilot" };
 const DAY = 86400e3;
 
 export default async function Copilot() {
-  const { ds, now, role, support, session, scope } = await pageCtx();
+  const { ds, now, role, support, session, scope, active } = await pageCtx();
+  const v = vocabFor(active.tenant), a_ = v.ai, hosp = v.id === "hospitality";
   const [allLeads, allDeals, allTasks, accounts, team, campaigns, days, convs] = await Promise.all([
     ds.leads(), ds.deals(), ds.tasks(), ds.accounts(), ds.team(), ds.campaigns(), ds.campaignDays(), ds.conversations(),
   ]);
@@ -64,49 +68,54 @@ export default async function Copilot() {
     .map((m) => ({ ...m, d: m.x.ctr / m.prev.ctr - 1 })).sort((a, b) => a.d - b.d);
   const drop = ctrMoves[0], rise = ctrMoves[ctrMoves.length - 1];
   const dry = tw.filter((x) => x.spend > 2000 && x.leads === 0);
-  const stats90 = campaigns.map((c) => campaignStats(c, days, allLeads, allDeals)).filter((s) => s.demos > 0 && s.spend > 0).sort((a, b) => a.costPerDemo - b.costPerDemo);
+  const stats90 = campaigns.map((c) => campaignStats(c, days, allLeads, allDeals)).map((x) => (hosp ? { ...x, demos: x.won, costPerDemo: ratio(x.spend, x.won) } : x)).filter((s) => s.demos > 0 && s.spend > 0).sort((a, b) => a.costPerDemo - b.costPerDemo);
   const delta = (a: number, b: number) => (b > 0 ? `${a >= b ? "up" : "down"} ${pct(Math.abs(a / b - 1), 0)}` : "new this week");
   const weekLabel = `${fmtDate(new Date(endMs - 6 * DAY).toISOString())}–${fmtDate(new Date(endMs).toISOString())}`;
   const digest: { text: React.ReactNode; m: string; href: string }[] = [
-    { text: <>Spend was <b className="num">{inrCompact(spendT)}</b> ({delta(spendT, spendL)} on the week before) for <b className="num">{leadsT}</b> CRM leads ({delta(leadsT, leadsL)}).</>, m: "M9", href: "/campaigns" },
-    ...(bestCpl ? [{ text: <>Cheapest leads came from <b>{bestCpl.c.name.split(" — ")[0]}</b> at <b className="num">{inr(bestCpl.cpl)}</b> per lead ({bestCpl.leads} leads).</>, m: "M9", href: `/campaigns/${bestCpl.c.id}` }] : []),
+    { text: <>{a_.digestText.spend(inrCompact(spendT), delta(spendT, spendL), leadsT, delta(leadsT, leadsL))}</>, m: "M9", href: "/campaigns" },
+    ...(bestCpl ? [{ text: <>{a_.digestText.cheapest(bestCpl.c.name.split(" — ")[0], inr(bestCpl.cpl), bestCpl.leads)}</>, m: "M9", href: `/campaigns/${bestCpl.c.id}` }] : []),
     ...(drop && drop.d < -0.05 ? [{ text: <>Click-through on <b>{drop.x.c.name.split(" — ")[0]}</b> fell {pct(-drop.d, 0)} ({pct(drop.prev.ctr, 2)} to {pct(drop.x.ctr, 2)}).</>, m: "M7", href: `/campaigns/${drop.x.c.id}` }] : []),
     ...(rise && rise.d > 0.05 ? [{ text: <>Click-through on <b>{rise.x.c.name.split(" — ")[0]}</b> rose {pct(rise.d, 0)} to {pct(rise.x.ctr, 2)}.</>, m: "M7", href: `/campaigns/${rise.x.c.id}` }] : []),
-    ...(dry.length ? [{ text: <><b>{dry[0].c.name.split(" — ")[0]}</b> spent <b className="num">{inrCompact(dry[0].spend)}</b> with no CRM lead this week: check the form tagging.</>, m: "M13", href: `/campaigns/${dry[0].c.id}` }] : []),
-    ...(stats90[0] ? [{ text: <>Over 90 days, <b>{stats90[0].name.split(" — ")[0]}</b> still books demos cheapest at <b className="num">{inr(stats90[0].costPerDemo)}</b> per demo.</>, m: "M11", href: `/campaigns/${stats90[0].id}` }] : []),
+    ...(dry.length ? [{ text: <>{a_.digestText.dry(dry[0].c.name.split(" — ")[0], inrCompact(dry[0].spend))}</>, m: "M13", href: `/campaigns/${dry[0].c.id}` }] : []),
+    ...(stats90[0] ? [{ text: <>{a_.digestText.over90(stats90[0].name.split(" — ")[0], inr(stats90[0].costPerDemo))}</>, m: "M11", href: `/campaigns/${stats90[0].id}` }] : []),
   ].slice(0, 5);
 
-  const features: Feature[] = [
-    { key: "scoring", name: "Lead scoring", status: "on", does: "Scores each lead 0–100 from fixed rules and lists the factors behind the number.", sends: "Nothing leaves the CRM (rules run in the database).", where: "Score chips, lead page, Hot leads on My day", lastRun: `Nightly · ${fmtDate(now)}, 02:00`, acceptance: "Not applicable", note: "Rule-based: no model is called." },
-    { key: "summary", name: "Lead and conversation summary", status: "showcase", does: "Three lines: situation, interest or objection, and the open question, plus the last promised follow-up.", sends: "First name, role, firm, district, timeline text with phone and email removed.", where: "Lead page, inbox side panel", lastRun: "Never (off)", acceptance: "No data yet" },
-    { key: "nba", name: "Next-best action", status: "showcase", does: "One action from a fixed list (call, WhatsApp template, email, demo, proposal, nurture) with the reason and a due date.", sends: "Stage, days in stage, last touches, open tasks, score factors.", where: "My day, lead page", lastRun: "Never (off)", acceptance: "No data yet" },
-    { key: "drafts", name: "Reply drafts", status: "showcase", does: "Drafts a WhatsApp or email reply in English or Tamil. A person reads, edits and sends it.", sends: "The thread with phone and email removed, approved templates, tone settings.", where: "Inbox composer", lastRun: `Sample · ${convs.length} drafts in Inbox`, acceptance: "No data yet" },
-    { key: "digest", name: "Weekly campaign digest", status: "off", does: "Five lines on last week's campaigns. Every number comes from a metric query, not the model.", sends: "Campaign aggregates only. No personal data.", where: "Campaigns, Monday email (later)", lastRun: "Never (off)", acceptance: "No data yet" },
-    { key: "ask", name: "Ask the CRM", status: "showcase", does: "Answers questions by picking an approved metric and filter. Never writes its own query.", sends: "Your question and the metric catalogue.", where: "This page", lastRun: "Sample answers below", acceptance: "Not applicable" },
-  ];
+  const runInfo: Record<string, { status: Feature["status"]; lastRun: string; acceptance: string; note?: string }> = {
+    scoring: { status: "on", lastRun: `Nightly · ${fmtDate(now)}, 02:00`, acceptance: "Not applicable", note: "Rule-based: no model is called." },
+    summary: { status: "showcase", lastRun: "Never (off)", acceptance: "No data yet" },
+    nba: { status: "showcase", lastRun: "Never (off)", acceptance: "No data yet" },
+    drafts: { status: "showcase", lastRun: `Sample · ${convs.length} drafts in Inbox`, acceptance: "No data yet" },
+    digest: { status: "off", lastRun: "Never (off)", acceptance: "No data yet" },
+    ask: { status: "showcase", lastRun: "Sample answers below", acceptance: "Not applicable" },
+  };
+  const features: Feature[] = a_.features.map((f) => ({ ...f, ...runInfo[f.key] }));
   const guard = [
     { I: Gauge, t: "Off by default", d: "Each feature stays off until the Owner ticks the data checks for this workspace." },
     { I: UserCheck, t: "A person approves every output", d: "Nothing is sent, moved or assigned by itself. Every draft is accepted, edited or dismissed." },
     { I: EyeOff, t: "Phone and email are never sent", d: "Notes are redacted for phone, email, Aadhaar-like and PAN patterns before any call." },
-    { I: Scale, t: "No legal advice", d: "A draft that answers a legal question is replaced with a hand-off line and flagged." },
+    { I: Scale, t: a_.guardLegal[0], d: a_.guardLegal[1] },
     { I: ShieldCheck, t: "Numbers come from metric queries", d: "The model writes words around numbers the CRM passes in, with sources shown." },
     { I: Ban, t: "Monthly cap: 2,000 calls", d: "0 used this month. Showcase outputs are sample text; no model is called." },
   ];
   const log = convs.slice(0, 6).map((c) => {
     const l = allLeads.find((x) => x.id === c.leadId); const lastIn = [...c.messages].reverse().find((m) => m.from === "lead");
-    return { at: lastIn?.at ?? c.lastAt, feature: "Reply draft", object: `${c.id} · ${l?.name ?? ""}`, for: team.find((t) => t.id === l?.ownerId)?.name ?? "—", outcome: c.aiDraft.needsReview ? "Held: needs Owner review" : "Shown, awaiting review", basedOn: c.aiDraft.basedOn };
+    return { at: lastIn?.at ?? c.lastAt, feature: "Reply draft", object: `${c.id} · ${l?.name ?? ""}`, for: team.find((t) => t.id === l?.ownerId)?.name ?? "—", outcome: c.aiDraft.needsReview ? a_.logHeld : "Shown, awaiting review", basedOn: c.aiDraft.basedOn };
   });
-  const initial = ask("", "demos_week", { role, uid: session.uid, now, leads, deals, tasks, accounts, team, campaigns, days });
+  const copilot = hosp ? hospitalityCopilot(datasetFor(active.ws.dataset)) : [];
+  const questions = hosp ? copilot.map((c) => ({ id: c.id as QId, q: c.question, metric: "" })) : QUESTIONS;
+  const initial = hosp
+    ? copilot[0] ? { question: copilot[0].question, qid: copilot[0].id as QId, headline: copilot[0].answer, bullets: copilot[0].bullets, filters: ["this workspace", "sample dataset, last 90 days"], sources: ["leads", "deals", "campaign_daily_metrics"], scopeNote: "Workspace-wide figures; they match the Command Center and Campaigns pages." } : null
+    : ask("", "demos_week", { role, uid: session.uid, now, leads, deals, tasks, accounts, team, campaigns, days });
 
   return (
     <>
       <PageHeader eyebrow="Assist" title="Copilot"
-        sub={`What each assistive feature does, what data it sends, and who approves its output. ${rep ? "Answers use your own leads, deals and tasks." : "Features are off until the Owner turns them on."}`} />
+        sub={a_.sub(rep)} />
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="lg:col-span-8">
           <Card className="h-full">
             <CardHeader title="Ask the CRM" sub="Questions map to approved metrics only. Each answer shows the metric ID, filters and source tables." action={<Badge tone="showcase">Showcase</Badge>} />
-            <CardBody><AskBox questions={QUESTIONS} initial={initial} /></CardBody>
+            <CardBody><AskBox questions={questions} initial={initial} /></CardBody>
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-4">
@@ -133,7 +142,7 @@ export default async function Copilot() {
 
         <StaggerItem className="lg:col-span-12">
           <Card>
-            <CardHeader title="How the lead score is built" sub={`${leads.length} ${rep ? "of your " : ""}leads · rule-based factors with points, stored with each lead so the number can always be explained`} action={<span className="font-mono text-[10px] text-ink-3">M32 · M51</span>} />
+            <CardHeader title={a_.scoreTitle} sub={a_.scoreSub(leads.length, rep)} action={<span className="font-mono text-[10px] text-ink-3">M32 · M51</span>} />
             <CardBody className="space-y-6">
               <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
                 {hot ? (
@@ -152,15 +161,15 @@ export default async function Copilot() {
                       ))}
                     </ul>
                   </div>
-                ) : <div className="rounded-md border border-dashed border-line-strong p-6 text-center text-[13px] text-ink-3">No open leads to explain yet. Scores appear once a lead is created.</div>}
+                ) : <div className="rounded-md border border-dashed border-line-strong p-6 text-center text-[13px] text-ink-3">{a_.noLeads}</div>}
                 <div className="rounded-md border border-line p-4">
                   <h3 className="text-[13px] font-semibold text-ink">Do high scores actually win?</h3>
-                  <p className="text-[12px] text-ink-3">Win rate (%) by score band, leads with a closed outcome</p>
+                  <p className="text-[12px] text-ink-3">{a_.winBand}</p>
                   <div className="mt-3"><Columns data={bands.map((b) => ({ band: b.band, rate: Math.round(b.rate * 100) }))} series={[{ key: "rate", label: "Win rate %", color: "var(--chart-1)" }]} xKey="band" label="Win rate by score band, percent" format="num" height={180} /></div>
                   <ul className="mt-2 space-y-1 text-[12px]">
                     {bands.map((b) => <li key={b.band} className="flex justify-between"><span className="text-ink-2">Score {b.band}</span><span className="num text-ink-3">n = {b.n}{b.n < 30 && <Badge tone="warn" className="ml-1.5">low n</Badge>}</span></li>)}
                   </ul>
-                  <p className="mt-2 text-[11px] text-ink-3">Needs 30+ closed leads per band before weights are trusted.</p>
+                  <p className="mt-2 text-[11px] text-ink-3">{a_.needs30}</p>
                 </div>
               </div>
               <WeightsEditor factors={order.map((j) => factors[j])} points={points.map((p) => order.map((j) => p[j]))} scores={leads.map((l) => l.score)} edit={verdict("editScoreWeights", ctx)} />
@@ -181,7 +190,7 @@ export default async function Copilot() {
                     </li>
                   ))}
                 </ol>
-                <p className="mt-4 border-t border-line pt-2 text-[11px] text-ink-3">Based on: campaign_daily_metrics and CRM lead counts for {campaigns.length} campaigns, {weekLabel} vs the week before. Numbers are computed by the CRM; no personal data was used.</p>
+                <p className="mt-4 border-t border-line pt-2 text-[11px] text-ink-3">{a_.digestBased(campaigns.length, weekLabel)}</p>
               </CardBody>
             </Card>
           </StaggerItem>

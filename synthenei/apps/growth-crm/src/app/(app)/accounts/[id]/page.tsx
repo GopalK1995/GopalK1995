@@ -10,26 +10,27 @@ import { DealStageBadge, LeadStageBadge } from "@/components/ui/domain";
 import { Avatar } from "@/components/ui/avatar";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
 import type { Activity, ActivityKind } from "@/lib/data/types";
-import { STATUS_LABEL, STATUS_TONE, clerksFor, courtFocus, currentTools, firmSites, fitNotes, hearingsPerMonth, planFor, seatPrices, shortCity } from "../_components/firm";
+import { STATUS_TONE, clerksFor, courtFocus, currentTools, firmSites, fitNotes, hearingsPerMonth, planFor, seatPrices, shortCity } from "../_components/firm";
 import { verdict } from "../_components/perms";
 import { DetailActions } from "../_components/account-actions";
 import { cn } from "@/lib/utils";
+import { vocabFor } from "@/lib/vertical";
 
 const ICON: Partial<Record<ActivityKind, typeof Phone>> = {
   call: Phone, whatsapp_in: MessageCircle, whatsapp_out: MessageCircle, email_sent: Mail, email_open: Mail, email_click: Mail,
   demo_booked: CalendarCheck2, demo_done: Video, proposal_sent: FileText, stage_change: Repeat2, note: NotebookPen, page_view: Globe, form_submit: Globe,
 };
-const DECISION = ["Managing Partner", "Senior Advocate", "Partner", "Founding Advocate"];
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { ds } = await pageCtx();
+  const { ds, active } = await pageCtx();
   const a = await ds.account((await params).id);
-  return { title: a?.name ?? "Law firm" };
+  return { title: a?.name ?? vocabFor(active.tenant).ac.metaTitle };
 }
 
 export default async function AccountDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { ds, now, role, support, session, scope, masked } = await pageCtx();
+  const { ds, now, role, support, session, scope, masked, active } = await pageCtx();
+  const v = vocabFor(active.tenant), ac = v.ac, d_ = ac.d, hosp = v.id === "hospitality", STATUS_LABEL = ac.status, DECISION = ac.decision;
   const acc = await ds.account(id);
   if (!acc) notFound();
   const [allLeads, allDeals, team, acts] = await Promise.all([ds.leads(), ds.deals(), ds.team(), ds.activities()]);
@@ -41,9 +42,18 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
   const timeline = acts.filter((a) => ids.has(a.leadId)).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 18);
   const nameOf = (uid?: string) => team.find((t) => t.id === uid)?.name;
   const owner = nameOf(acc.ownerId) ?? "Unassigned";
-  const sites = firmSites(acc), focus = courtFocus(acc.courts);
+  const sites = firmSites(acc), focus = hosp ? acc.roomsOfInterest ?? [] : courtFocus(acc.courts);
   const prices = seatPrices(allDeals);
-  const plan = planFor(acc.lawyers), estimate = acc.lawyers * prices[plan];
+  const wonAll = allDeals.filter((d) => d.accountId === acc.id && d.stage === "won");
+  const plan = hosp ? wonAll[0]?.stay?.room ?? acc.roomsOfInterest?.[0] ?? v.pl.plans[0] : planFor(acc.lawyers);
+  const nightly = (() => { const n = allDeals.filter((d) => d.stage === "won" && d.seats > 0); return n.length ? Math.round(n.reduce((a, d) => a + d.value / d.seats, 0) / n.length) : 0; })();
+  const estimate = hosp ? (wonAll.length ? Math.round(wonAll.reduce((a, d) => a + d.value, 0) / wonAll.length) : nightly * 2) : acc.lawyers * prices[planFor(acc.lawyers)];
+  const hospNotes = [
+    `${acc.stays ?? 0} previous ${acc.stays === 1 ? "stay" : "stays"}; ${acc.repeatGuest ? "a repeat guest, so offer the direct-booking rate" : "not yet a repeat guest, so share the welcome note after the first stay"}.`,
+    ...(acc.interests?.length ? [`Usually travels for ${acc.interests.join(", ").toLowerCase()}.`] : []),
+    ...(acc.roomsOfInterest?.length ? [`Prefers ${acc.roomsOfInterest.join(" or ")}.`] : []),
+    acc.guestKind === "travel_agent" ? "Travel partner: send the net rate card before the season opens." : acc.guestKind === "corporate" ? "Corporate group: quote a package with meals and a meeting space." : acc.guestKind === "wedding_planner" ? "Wedding planner: share events-lawn and dorm loft availability early." : "Family guest: a WhatsApp reply in the evening works best.",
+  ];
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const won = allDeals.filter((d) => d.accountId === acc.id && d.stage === "won").sort((a, b) => (b.wonAt ?? "").localeCompare(a.wonAt ?? ""))[0];
   const ctx = { role, support, uid: session.uid, ownerId: acc.ownerId };
@@ -51,23 +61,29 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
 
   return (
     <>
-      <Link href="/accounts" className="mb-3 inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />Law firms</Link>
-      <PageHeader eyebrow={`${acc.district} district · ICP tier ${acc.icpTier}`} title={acc.name}
-        sub={`${acc.locality}, ${shortCity(acc.city)} · ${acc.lawyers} lawyer${acc.lawyers === 1 ? "" : "s"}, ${clerksFor(acc)} clerk${clerksFor(acc) === 1 ? "" : "s"} · owner ${owner}`}
-        actions={<DetailActions accountId={acc.id} firm={acc.name} seats={acc.lawyers} plan={plan}
+      <Link href="/accounts" className="mb-3 inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />{ac.back}</Link>
+      <PageHeader eyebrow={d_.eyebrow(acc.district, acc.icpTier, acc.guestKind ? ac.kinds[acc.guestKind] ?? "" : "")} title={acc.name}
+        sub={d_.sub(`${acc.locality}, ${shortCity(acc.city)}`, acc.lawyers, clerksFor(acc), owner, acc.stays ?? 0)}
+        actions={<DetailActions accountId={acc.id} firm={acc.name} seats={hosp ? 2 : acc.lawyers} plan={plan}
           addContact={verdict("addContact", ctx)} createDeal={verdict("createDeal", ctx)} logActivity={verdict("logActivity", ctx)} />}>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Badge tone={STATUS_TONE[acc.status]}>{STATUS_LABEL[acc.status]}</Badge>
-          {focus.map((c) => <Badge key={c} tone={c.includes("HC") || c === "Madurai Bench" ? "accent" : "neutral"}>{c}</Badge>)}
+          {focus.map((c) => <Badge key={c} tone={!hosp && (c.includes("HC") || c === "Madurai Bench") ? "accent" : "neutral"}>{c}</Badge>)}
         </div>
       </PageHeader>
 
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid content-start gap-4 lg:col-span-8">
           <Card>
-            <CardHeader title="Firm profile" sub={`Founded ${acc.founded} · ${acc.website}`} />
+            <CardHeader title={d_.profile} sub={d_.profileSub(acc.founded, acc.website, acc.stays ?? 0)} />
             <CardBody>
-              <Dl items={[
+              <Dl items={hosp ? [
+                ["Rooms of interest", (acc.roomsOfInterest ?? []).join(" · ") || "Any"],
+                ["Trip types", (acc.interests ?? []).join(", ") || "Not recorded"],
+                ["Party size", `${v.partySize[acc.size]}${acc.lawyers ? ` (usually ${acc.lawyers} guests)` : ""}`],
+                ["Stays", <span key="st" className="num">{acc.stays ?? 0}</span>],
+                ["Last activity", `${relTime(acc.lastActivityAt, now)} (${fmtDateY(acc.lastActivityAt)})`],
+              ] : [
                 ["Courts", acc.courts.join(" · ")],
                 ["Practice areas", acc.practiceAreas.join(", ")],
                 ["Size", `${acc.size} (${acc.lawyers} lawyer${acc.lawyers === 1 ? "" : "s"}, ${clerksFor(acc)} clerk${clerksFor(acc) === 1 ? "" : "s"})`],
@@ -79,9 +95,9 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader title="Contacts" sub={masked ? "Hidden for your role: Viewer sees firm-level data only." : `${contacts.length} people at this firm${hiddenContacts > 0 ? `; ${hiddenContacts} owned by other reps are not shown` : ""}`} />
-            {masked ? <div className="px-4 pb-4 sm:px-5"><Empty title={`${firmLeads.length} contacts on file`}>Names, phone numbers and timelines are not shown to Viewers. Ask your Owner if you need them.</Empty></div>
-              : contacts.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title="No contacts you can see at this firm yet.">Add the managing partner or office manager first; they decide on software.</Empty></div> : (
+            <CardHeader title={d_.contacts} sub={masked ? d_.contactsMasked : d_.contactsSub(contacts.length, hiddenContacts)} />
+            {masked ? <div className="px-4 pb-4 sm:px-5"><Empty title={d_.maskedEmpty(firmLeads.length)}>Names, phone numbers and timelines are not shown to Viewers. Ask your Owner if you need them.</Empty></div>
+              : contacts.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title={d_.noContacts}>{d_.noContactsHint}</Empty></div> : (
               <>
                 <Table minWidth={600} className="hidden md:block">
                   <thead><tr className="border-y border-line bg-paper/60"><th className={th}>Name</th><th className={th}>Role</th><th className={th}>Consent</th><th className={th}>Stage</th><th className={thNum}>Score</th></tr></thead>
@@ -110,12 +126,12 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader title="Deals" sub={role === "sales_rep" ? "Your deals with this firm" : `${open.length} open, ${deals.length - open.length} closed`} action={<span className="text-[12px] text-ink-3 num">{inrCompact(open.reduce((s, d) => s + d.value, 0))} open</span>} />
-            {deals.length === 0 ? <div className="px-4 pb-4 sm:px-5">{acc.status === "customer" ? <Empty title="Signed before this 90-day window.">The renewal is tracked in the Customer panel; open a deal for added seats or a plan upgrade.</Empty> : <Empty title="No deals with this firm yet.">Open a deal once the partners agree to a demo.</Empty>}</div> : (
+            <CardHeader title={d_.deals} sub={d_.dealsSub(role === "sales_rep", open.length, deals.length - open.length)} action={<span className="text-[12px] text-ink-3 num">{inrCompact(open.reduce((s, d) => s + d.value, 0))} open</span>} />
+            {deals.length === 0 ? <div className="px-4 pb-4 sm:px-5">{acc.status === "customer" ? <Empty title={d_.signedBefore}>{d_.signedBeforeHint}</Empty> : <Empty title={d_.noDeals}>{d_.noDealsHint}</Empty>}</div> : (
               <ul className="divide-y divide-line border-t border-line">{deals.map((d) => (
                 <li key={d.id} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:px-5">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><span className="truncate text-[13px] font-medium">{d.plan} · {d.seats} seats</span><DealStageBadge stage={d.stage} /></div>
+                    <div className="flex flex-wrap items-center gap-2"><span className="truncate text-[13px] font-medium">{d_.dealLine(d.plan, d.seats, d.stay?.room ?? null)}</span><DealStageBadge stage={d.stage} /></div>
                     <div className="mt-0.5 text-[12px] text-ink-3 num">{d.id} · {nameOf(d.ownerId)} · {d.stage === "won" ? `won ${fmtDate(d.wonAt ?? d.stageEnteredAt)}` : d.stage === "lost" ? d.lostReason ?? "lost" : `expected close ${fmtDate(d.expectedClose)}`}</div>
                   </div>
                   <div className="text-right"><div className="text-[13px] font-semibold num">{inr(d.value)}</div><div className="text-[11px] text-ink-3 num">{Math.round(d.probability * 100)}% likely</div></div>
@@ -126,7 +142,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
 
           <Card>
             <CardHeader title="Activity across all contacts" sub={masked ? "Timelines are not shown to Viewers." : "Latest 18 events, newest first"} />
-            {masked ? null : timeline.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title="Nothing logged yet.">Log the first call or meeting so the next person knows where this firm stands.</Empty></div> : (
+            {masked ? null : timeline.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title="Nothing logged yet.">{d_.logEmpty}</Empty></div> : (
               <ol className="border-t border-line px-4 py-3 sm:px-5">
                 {Object.entries(byDay).map(([day, items]) => (
                   <li key={day} className="mb-3 last:mb-0">
@@ -150,22 +166,22 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
 
         <StaggerItem className="order-first grid content-start gap-4 lg:order-none lg:col-span-4">
           <NavyPanel className="p-5">
-            <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-navy-ink-3">LAWSOME plan fit</div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-navy-ink-3">{hosp ? d_.fitTitle : `${active.tenant.name} plan fit`}</div>
             <div className="mt-2 flex items-end justify-between gap-3">
-              <div><div className="text-[22px] font-semibold leading-7">{plan}</div><div className="text-[12px] text-navy-ink-2 num">{acc.lawyers} advocate seats · clerks free</div></div>
-              <div className="text-right"><div className="text-[18px] font-semibold num">{inrCompact(estimate)}</div><div className="text-[11px] text-navy-ink-3">per year, est.</div></div>
+              <div><div className="text-[22px] font-semibold leading-7">{plan}</div><div className="text-[12px] text-navy-ink-2 num">{d_.fitSub(acc.lawyers)}</div></div>
+              <div className="text-right"><div className="text-[18px] font-semibold num">{inrCompact(estimate)}</div><div className="text-[11px] text-navy-ink-3">{d_.fitPer}</div></div>
             </div>
             <ul className="mt-4 space-y-2 border-t border-navy-line pt-3 text-[13px] leading-5 text-navy-ink-2">
-              {fitNotes(acc).map((n) => <li key={n} className="flex gap-2"><span aria-hidden className="mt-2 size-1 shrink-0 rounded-full bg-accent-on-navy" />{n}</li>)}
+              {(hosp ? hospNotes : fitNotes(acc)).map((n) => <li key={n} className="flex gap-2"><span aria-hidden className="mt-2 size-1 shrink-0 rounded-full bg-accent-on-navy" />{n}</li>)}
             </ul>
-            <p className="mt-3 text-[11px] text-navy-ink-3 num">Estimate uses {inr(prices[plan])} per seat per year from this workspace&apos;s {plan} deals (placeholder pricing).</p>
+            <p className="mt-3 text-[11px] text-navy-ink-3 num">{hosp ? d_.fitFoot(inr(nightly), plan) : d_.fitFoot(inr(prices[planFor(acc.lawyers)]), planFor(acc.lawyers))}</p>
           </NavyPanel>
 
           <Card>
             <CardHeader title="At a glance" />
             <CardBody>
               <Dl items={[
-                ["Hearings / month", <span key="h" className="num">~{num(hearingsPerMonth(acc))}</span>],
+                [d_.glance, <span key="h" className="num">{hosp ? num(acc.stays ?? 0) : `~${num(hearingsPerMonth(acc))}`}</span>],
                 ["Contacts", <span key="c" className="num">{firmLeads.length}</span>],
                 ["Best score", masked ? "—" : contacts[0] ? <ScoreChip key="s" score={contacts[0].score} /> : "—"],
                 ["Owner", <span key="o" className="inline-flex items-center gap-1.5"><Avatar name={owner} size={20} />{owner}</span>],
@@ -175,22 +191,17 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
 
           {acc.status === "customer" || won ? (
             <Card>
-              <CardHeader title="Customer" sub="After Won: plan, seats and payments" action={<StatusChip status="showcase" label="Razorpay: Showcase" />} />
+              <CardHeader title={d_.custTitle} sub={d_.custSub} action={<StatusChip status="showcase" label="Razorpay: Showcase" />} />
               <CardBody>
-                <Dl items={[
-                  ["Plan", won ? `${won.plan}, ${won.seats} seats` : "Renewal base (signed before this window)"],
-                  ["ARR", <span key="a" className="num">{inr(acc.arr || won?.value || 0)}</span>],
-                  ["Go-live", won?.wonAt ? fmtDateY(new Date(new Date(won.wonAt).getTime() + 14 * 86400e3).toISOString()) : "Live"],
-                  ["Payments", "Sample: annual invoice paid by NEFT"],
-                ]} />
+                <Dl items={d_.custRows(won ? (hosp ? won.stay?.room ?? "Stay" : `${won.plan}, ${won.seats} seats`) : d_.custNoWon, inr(acc.arr || won?.value || 0), won?.wonAt ? fmtDateY(hosp && won.stay ? won.stay.checkIn + "T06:00:00Z" : new Date(new Date(won.wonAt).getTime() + 14 * 86400e3).toISOString()) : "Live")} />
               </CardBody>
             </Card>
           ) : (
             <Card>
-              <CardHeader title="Next step" />
+              <CardHeader title={d_.nextTitle} />
               <CardBody className="text-[13px] leading-5 text-ink-2">
                 {open.length ? <>Open deal in <strong className="font-medium text-ink">{open[0].stage.replace("_", " ")}</strong>, expected close {fmtDate(open[0].expectedClose)}.</>
-                  : contacts.some((c) => DECISION.includes(c.title)) ? "A decision maker is on file. Offer a 20-minute demo on their own case numbers, after court hours." : "No decision maker on file yet. Add the managing partner before opening a deal."}
+                  : (hosp ? contacts.length > 0 : contacts.some((c) => DECISION.includes(c.title))) ? d_.nextDecision : d_.nextNone}
               </CardBody>
             </Card>
           )}

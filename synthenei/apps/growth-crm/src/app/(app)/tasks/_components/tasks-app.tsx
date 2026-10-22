@@ -16,7 +16,8 @@ import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { completeTasks, createTask, reassignTask, rescheduleTask } from "../actions";
 import { field } from "../../leads/_lib/sales";
-import { KIND_ICON, KIND_LABEL, istIso, snoozeTargets, useTaskPerm, type TaskRow } from "./shared";
+import { useVocab } from "@/components/shell/providers";
+import { KIND_ICON, istIso, snoozeTargets, useTaskPerm, type TaskRow } from "./shared";
 import { WeekCalendar, type Holiday } from "./week-calendar";
 
 const DAY = 86400e3;
@@ -31,6 +32,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
   rows: TaskRow[]; now: string; team: { id: string; name: string }[]; leads: { id: string; label: string }[];
   weekOffset: number; holidays: Holiday[]; defaultTab: "list" | "calendar"; emptyHint: string;
 }) {
+  const tk = useVocab().tk, KIND_LABEL = tk.kind;
   const [rows, setRows] = useState(initial);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -84,7 +86,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
             {r.priority === "high" && r.kind !== "demo" && <Badge tone="warn">High</Badge>}{r.priority === "low" && <span className="text-[11px] text-ink-3">Low</span>}
           </div>
           <div className="truncate text-[12px] text-ink-3">
-            {r.lead ? <Link href={`/leads/${r.lead.id}`} className="hover:text-accent">{r.lead.name}, {r.lead.firm}</Link> : "No lead"}
+            {r.lead ? <Link href={`/leads/${r.lead.id}`} className="hover:text-accent">{r.lead.name}, {r.lead.firm}</Link> : tk.noLead}
             <span className="hidden sm:inline"> · {r.owner}</span>
           </div>
         </div>
@@ -167,7 +169,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
       </Dialog>
 
       <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent title="New task" description="Times in IST. Tasks with a lead show on that lead's page.">
+        <DialogContent title="New task" description={tk.newDesc}>
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault(); const f = new FormData(e.currentTarget);
             const input = { title: String(f.get("title")), kind: String(f.get("kind")), due: istIso(String(f.get("date")), String(f.get("time"))), leadId: String(f.get("lead") ?? ""), priority: String(f.get("priority")) };
@@ -177,15 +179,15 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
               toast(r.message, r.sub); setCreating(false);
             });
           }}>
-            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Title</span><input name="title" required minLength={3} maxLength={120} className={field} placeholder="e.g. Call partner after court: confirm Saturday demo" /></label>
+            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Title</span><input name="title" required minLength={3} maxLength={120} className={field} placeholder={tk.titlePh} /></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Type</span><select name="kind" className={field} defaultValue="call">{(Object.keys(KIND_LABEL) as (keyof typeof KIND_LABEL)[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}</select></label>
               <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Priority</span><select name="priority" className={field} defaultValue="normal"><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select></label>
               <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Date</span><input name="date" type="date" required min={today} defaultValue={dayKey(new Date(nowMs + DAY).toISOString())} className={field} /></label>
               <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Time (IST)</span><input name="time" type="time" required defaultValue="17:30" className={field} /></label>
             </div>
-            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Lead (optional)</span>
-              <select name="lead" className={field} defaultValue=""><option value="">No lead</option>{leads.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select></label>
+            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{tk.leadOpt}</span>
+              <select name="lead" className={field} defaultValue=""><option value="">{tk.noLead}</option>{leads.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select></label>
             {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
             <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setCreating(false)}>Cancel</Button><Button variant="primary" disabled={pending}>Create task</Button></div>
           </form>

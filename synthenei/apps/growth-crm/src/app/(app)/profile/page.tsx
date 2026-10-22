@@ -1,7 +1,7 @@
 import { LogOut, ShieldCheck } from "lucide-react";
 import { requireActive } from "@/lib/auth/server";
 import { logout } from "@/lib/auth/actions";
-import { ROLE_LABEL } from "@/lib/auth/roles";
+import { vocabFor } from "@/lib/vertical";
 import { TENANTS, workspaceById } from "@/lib/tenancy";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -30,7 +30,7 @@ export default async function Profile() {
                 <li key={r.ws} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                   <Avatar name={r.t.name} size={28} />
                   <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{r.t.name} · {r.w.name}</div><div className="truncate text-[12px] text-ink-3">{r.w.region}</div></div>
-                  <Badge tone={r.ws === active.ws.id ? "accent" : "neutral"}>{ROLE_LABEL[r.role]}</Badge>
+                  <Badge tone={r.ws === active.ws.id ? "accent" : "neutral"}>{vocabFor(active.tenant).role[r.role]}</Badge>
                 </li>
               ))}
             </ul>

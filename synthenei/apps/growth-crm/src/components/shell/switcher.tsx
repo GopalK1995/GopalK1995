@@ -2,8 +2,8 @@
 import * as M from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { useSession } from "./providers";
-import { ROLE_LABEL, can } from "@/lib/auth/roles";
+import { useSession, useVocab } from "./providers";
+import { can } from "@/lib/auth/roles";
 import { switchWorkspace } from "@/lib/auth/actions";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
@@ -15,6 +15,7 @@ function Monogram({ letter, size = 28, onNavy = true }: { letter: string; size?:
 /** Workspace switcher: tenant monogram + workspace + my role. Grouped by tenant, searchable past 5. */
 export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: boolean; onNavy?: boolean }) {
   const s = useSession();
+  const vv = useVocab();
   const [q, setQ] = useState("");
   const [pending, start] = useTransition();
   const groups = useMemo(() => {
@@ -33,7 +34,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
               <span className={cn("block truncate text-[13px] font-semibold", onNavy ? "text-navy-ink" : "text-ink")}>{s.tenant.name}</span>
               <span className={cn("flex items-center gap-1.5 truncate text-[11px]", onNavy ? "text-navy-ink-3" : "text-ink-3")}>
                 <span className="truncate">{s.ws.name}</span>
-                <span className={cn("shrink-0 rounded-[3px] px-1 text-[10px]", onNavy ? "bg-navy-800 text-navy-ink-2" : "bg-paper-2 text-ink-2")}>{ROLE_LABEL[s.role]}</span>
+                <span className={cn("shrink-0 rounded-[3px] px-1 text-[10px]", onNavy ? "bg-navy-800 text-navy-ink-2" : "bg-paper-2 text-ink-2")}>{vv.role[s.role]}</span>
               </span>
             </span>
             {!s.support && <ChevronsUpDown className={cn("size-4 shrink-0", onNavy ? "text-navy-ink-3" : "text-ink-3")} aria-hidden />}
@@ -55,7 +56,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
                 <M.Item key={w.id} data-ws={w.id} onSelect={() => { if (w.id !== s.ws.id) start(() => switchWorkspace(w.id)); }}
                   className="flex h-10 cursor-default items-center gap-2.5 rounded-sm px-2 text-[13px] outline-none data-[highlighted]:bg-paper-2">
                   <Monogram letter={w.monogram} size={22} onNavy={false} />
-                  <span className="min-w-0 flex-1"><span className="block truncate font-medium text-ink">{w.name}</span><span className="block text-[11px] text-ink-3">{ROLE_LABEL[w.role]}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate font-medium text-ink">{w.name}</span><span className="block text-[11px] text-ink-3">{vv.role[w.role]}</span></span>
                   {w.id === s.ws.id && <Check className="size-4 text-accent" aria-label="Current" />}
                 </M.Item>
               ))}

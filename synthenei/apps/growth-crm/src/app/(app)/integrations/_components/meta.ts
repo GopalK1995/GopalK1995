@@ -2,6 +2,7 @@
 // (direction, auth, our tables, real-world blockers, what we never store). Static product facts, not workspace data.
 // Requested from BACKEND as columns on `integrations` / a provider catalogue; until then they live here.
 import type { Integration } from "@/lib/data/types";
+import { localize, type Vocab } from "@/lib/vertical";
 
 export type Direction = "in" | "out" | "both";
 export type Blocker = { label: string; who: "Client" | "Vendor" | "Us"; detail: string };
@@ -191,7 +192,14 @@ const FALLBACK: ConnectorMeta = {
   direction: "in", value: "", trigger: { kind: "Webhook", detail: "" }, auth: "Not documented yet", tables: [], blockers: [], neverStore: [],
   flow: { source: "Provider", ingest: "Edge Function" },
 };
-export const metaFor = (i: Integration): ConnectorMeta => META[i.id] ?? { ...FALLBACK, value: i.summary, flow: { source: i.name, ingest: "Edge Function" } };
+const baseMeta = (i: Integration): ConnectorMeta => META[i.id] ?? { ...FALLBACK, value: i.summary, flow: { source: i.name, ingest: "Edge Function" } };
+/** Connector facts, worded for the active vertical (legal unchanged). */
+export const metaFor = (i: Integration, v?: Vocab): ConnectorMeta => {
+  const m = baseMeta(i);
+  if (!v || !v.rw.length) return m;
+  const L = (x: string) => localize(v, x);
+  return { ...m, value: L(m.value), trigger: { ...m.trigger, detail: L(m.trigger.detail) }, blockers: m.blockers.map((b) => ({ ...b, detail: L(b.detail), label: L(b.label) })), neverStore: m.neverStore.map(L) };
+};
 
 export const CATEGORIES = ["CRM", "Messaging", "Email", "Ads", "Analytics", "Scheduling", "Payments", "Automation"] as const;
 

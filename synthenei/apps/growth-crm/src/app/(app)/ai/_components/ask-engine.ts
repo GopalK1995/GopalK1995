@@ -18,7 +18,7 @@ export const QUESTIONS: { id: QId; q: string; metric: string }[] = [
 
 export type Answer = {
   question: string; qid?: QId; refused?: string; metric?: string; headline?: string;
-  table?: { cols: string[]; rows: (string | number)[][]; numeric: boolean[] };
+  table?: { cols: string[]; rows: (string | number)[][]; numeric: boolean[] }; bullets?: string[];
   filters?: string[]; sources?: string[]; scopeNote?: string;
 };
 export type AskData = { role: Role; uid: string; now: string; leads: Lead[]; deals: Deal[]; tasks: Task[]; accounts: Account[]; team: TeamMember[]; campaigns: Campaign[]; days: CampaignDay[] };

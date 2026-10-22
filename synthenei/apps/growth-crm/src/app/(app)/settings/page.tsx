@@ -3,7 +3,7 @@ import { pageCtx } from "@/lib/data/context";
 import { SETTINGS_TABS } from "@/lib/auth/roles";
 import { MEMBERSHIPS, USERS, WORKSPACES, userById } from "@/lib/tenancy";
 import { supportEvents } from "@/lib/support-log";
-import { DEAL_STAGE_LABEL } from "@/lib/data/metrics";
+import { vocabFor } from "@/lib/vertical";
 import { fmtDateTime, fmtDateY, relTime } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             )}
             {tab === "pipeline" && (
               <PipelineTab wsName={active.ws.name}
-                initial={DEFAULT_STAGES.map(([key, probability, maxDays]): Stage => ({ key, label: DEAL_STAGE_LABEL[key], probability, maxDays, terminal: key === "won" ? "won" : key === "lost" ? "lost" : undefined }))} />
+                initial={DEFAULT_STAGES.map(([key, probability, maxDays]): Stage => ({ key, label: vocabFor(active.tenant).dealStage[key], probability, maxDays, terminal: key === "won" ? "won" : key === "lost" ? "lost" : undefined }))} />
             )}
             {tab === "privacy" && <Privacy q={sp.q} />}
             {tab === "audit" && <Audit actor={sp.actor} kind={sp.kind} owner={role === "owner"} />}
@@ -61,7 +61,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
 
   async function Privacy({ q }: { q?: string }) {
     const [requests, consent, leads] = await Promise.all([ds.privacyRequests(), ds.consent(), ds.leads()]);
-    const nameOf = (id: string) => leads.find((l) => l.id === id)?.name ?? "Erased lead";
+    const nameOf = (id: string) => leads.find((l) => l.id === id)?.name ?? vocabFor(active.tenant).st.erasedLead;
     const query = (q ?? "").trim().toLowerCase();
     const log = consent.filter((c) => !query || nameOf(c.leadId).toLowerCase().includes(query) || c.leadId.toLowerCase().includes(query)).slice(0, 25);
     const withdrawn30 = consent.filter((c) => c.action === "withdrawn" && new Date(now).getTime() - new Date(c.at).getTime() < 30 * 864e5).length;
@@ -85,7 +85,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </Card>
         <Card className="lg:col-span-8">
           <CardHeader title="Consent log" sub={`Append-only. ${consent.length} entries; ${withdrawn30} withdrawals in the last 30 days.`} />
-          <div className="px-4 pb-3 sm:px-5"><FilterBar search="Search subject or lead id" /></div>
+          <div className="px-4 pb-3 sm:px-5"><FilterBar search={vocabFor(active.tenant).st.privacySearch} /></div>
           <DataTable rows={log} rowKey={(r) => r.id} minWidth={720} caption="Consent log" empty="No consent entries match." emptyHint="Clear the search to see all entries."
             columns={[
               { key: "s", header: "Subject", mobile: "title", cell: (r) => nameOf(r.leadId) },
@@ -100,7 +100,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <CardHeader title="Retention" />
           <CardBody>
             <dl className="flex flex-col gap-3 text-[13px]">
-              <div><dt className="text-ink-3">Disqualified leads</dt><dd className="text-ink">Purged after 12 months</dd></div>
+              <div><dt className="text-ink-3">{vocabFor(active.tenant).st.dqRetention}</dt><dd className="text-ink">Purged after 12 months</dd></div>
               <div><dt className="text-ink-3">Privacy notice</dt><dd className="text-ink">Version v1.3, Tamil and English</dd></div>
               <div><dt className="text-ink-3">Withdrawal</dt><dd className="text-ink">Stops the purpose at once; unsubscribe and WhatsApp STOP write here automatically</dd></div>
             </dl>

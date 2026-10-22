@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { CATEGORIES, STATUS_ORDER, metaFor, statusLabel } from "./_components/meta";
 import { IntegrationGrid, type GridItem } from "./_components/integration-grid";
 import type { SyncRun } from "@/lib/data/types";
+import { vocabFor } from "@/lib/vertical";
 
 export const metadata = { title: "Integrations" };
 /** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
@@ -17,13 +18,14 @@ const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed
 const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
 
 export default async function Integrations() {
-  const { ds, now, role, support } = await pageCtx();
+  const { ds, now, role, support, active } = await pageCtx();
+  const v = vocabFor(active.tenant);
   const [integrations, runs] = await Promise.all([ds.integrations(), ds.syncRuns()]);
   const dayAgo = new Date(now).getTime() - 24 * 3600e3;
   const items: GridItem[] = [...integrations]
-    .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || Number(!!metaFor(b).featured) - Number(!!metaFor(a).featured))
+    .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || Number(!!metaFor(b, v).featured) - Number(!!metaFor(a, v).featured))
     .map((i) => {
-      const m = metaFor(i), s = statusLabel(i);
+      const m = metaFor(i, v), s = statusLabel(i);
       const recent = runs.filter((r) => r.integrationId === i.id && new Date(r.startedAt).getTime() >= dayAgo);
       return {
         id: i.id, name: i.name, vendor: i.vendor, category: i.category, monogram: i.monogram, featured: !!m.featured, direction: m.direction,

@@ -8,6 +8,7 @@ import { Badge, StatusChip } from "@/components/ui/badge";
 import { Dl, PageHeader } from "@/components/ui/misc";
 import { DataTable } from "@/components/ui/data-table";
 import { metaFor, statusLabel } from "../_components/meta";
+import { vocabFor } from "@/lib/vertical";
 import { DirectionTag, Monogram } from "../_components/bits";
 import { FlowDiagram } from "../_components/flow-diagram";
 import { ConnectButton, RunSyncButton } from "../_components/client-actions";
@@ -28,11 +29,11 @@ const CLIENT_STEP = /^(verify|approve|authorise|grant|register|request|connect|i
 
 export default async function IntegrationDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { ds, now, masked } = await pageCtx();
+  const { ds, now, masked, active } = await pageCtx();
   const it = await ds.integration(id);
   if (!it) notFound();
   const [runs, leads, accounts, deals, campaigns] = await Promise.all([ds.syncRuns(), ds.leads(), ds.accounts(), ds.deals(), ds.campaigns()]);
-  const m = metaFor(it), s = statusLabel(it);
+  const m = metaFor(it, vocabFor(active.tenant)), s = statusLabel(it);
   const myRuns = runs.filter((r) => r.integrationId === it.id).slice(0, 50);
 
   // Sample value per mapped column, taken from this workspace's sample rows (masked for Viewer).

@@ -8,13 +8,10 @@ import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
 import { toggleFeature } from "../actions";
+import { useVocab } from "@/components/shell/providers";
 
 export type Feature = { key: string; name: string; does: string; sends: string; where: string; status: "on" | "off" | "showcase"; lastRun: string; acceptance: string; note?: string };
-const TERMS = [
-  "I checked the model provider's data-retention terms for this workspace.",
-  "Our privacy notice (DPDP) tells leads that AI helps draft replies and summaries.",
-  "This CRM holds no client-matter data: no pleadings, case files or client documents.",
-];
+
 
 function Switch({ on, label, onClick, disabled }: { on: boolean; label: string; onClick?: () => void; disabled?: boolean }) {
   return (
@@ -26,6 +23,7 @@ function Switch({ on, label, onClick, disabled }: { on: boolean; label: string; 
 }
 
 export function FeatureCards({ features, toggle }: { features: Feature[]; toggle: Verdict }) {
+  const TERMS = useVocab().ai.terms;
   const [state, setState] = useState<Record<string, boolean>>(() => Object.fromEntries(features.map((f) => [f.key, f.status === "on"])));
   const [asking, setAsking] = useState<Feature | null>(null);
   const [ticks, setTicks] = useState<boolean[]>([false, false, false]);

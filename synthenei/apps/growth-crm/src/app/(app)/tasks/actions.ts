@@ -5,6 +5,7 @@ import { pageCtx } from "@/lib/data/context";
 import { accessFor, can, canEdit, ROLE_LABEL } from "@/lib/auth/roles";
 import type { Task } from "@/lib/data/types";
 import type { Result } from "../leads/_lib/sales";
+import { vocabFor } from "@/lib/vertical";
 
 const DEMO_SUB = "Demo workspace: nothing was saved.";
 const KINDS: Task["kind"][] = ["call", "whatsapp", "email", "demo", "follow_up", "proposal"];
@@ -62,8 +63,8 @@ export async function createTask(input: { title: string; kind: string; due: stri
   if (!["high", "normal", "low"].includes(input.priority)) return { ok: false, message: "Pick a priority." };
   if (input.leadId) {
     const lead = await g.ctx.ds.lead(input.leadId);
-    if (!lead) return { ok: false, message: "Lead not found in this workspace." };
-    if (g.ctx.role === "sales_rep" && lead.ownerId !== g.ctx.session.uid) return { ok: false, message: "You can add tasks only to your own leads." };
+    if (!lead) return { ok: false, message: vocabFor(g.ctx.active.tenant).tk.leadNotFound };
+    if (g.ctx.role === "sales_rep" && lead.ownerId !== g.ctx.session.uid) return { ok: false, message: vocabFor(g.ctx.active.tenant).tk.ownLeads };
   }
   return { ok: true, message: `Task created: ${title}`, sub: DEMO_SUB };
 }

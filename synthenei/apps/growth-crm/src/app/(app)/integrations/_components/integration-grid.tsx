@@ -1,6 +1,7 @@
 "use client";
 // Category filter + card grid. Featured connectors (the ones the demo story depends on) get wider cards;
 // the rest are compact rows. Filter state lives in the URL (?cat=) so a filtered view can be shared.
+import { useVocab } from "@/components/shell/providers";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -68,7 +69,7 @@ export function IntegrationGrid({ items, categories }: { items: GridItem[]; cate
             {cat === "All" && (
               <li className="-mb-px -mr-px min-w-0 border-b border-r border-line bg-paper/60 p-4">
                 <h3 className="text-[13px] font-semibold text-ink">Need another platform?</h3>
-                <p className="mt-1 text-[12px] leading-[18px] text-ink-2">CSV import works for any export today. For tools we have not built, Zapier or Make can post to the signed create-lead endpoint.</p>
+                <p className="mt-1 text-[12px] leading-[18px] text-ink-2">CSV import works for any export today. For tools we have not built, Zapier or Make can post to the signed {useVocab().id === "hospitality" ? "create-enquiry" : "create-lead"} endpoint.</p>
               </li>
             )}
           </ul>

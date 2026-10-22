@@ -9,17 +9,17 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EASE } from "@/components/ui/motion";
 import { toast } from "@/components/ui/toast";
-import { useSession } from "@/components/shell/providers";
+import { useSession, useVocab } from "@/components/shell/providers";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { savePipeline } from "./actions";
 
 export type Stage = { key: string; label: string; probability: number; maxDays: number | null; terminal?: "won" | "lost" };
-const LOST_REASONS = ["Price", "Competitor", "No decision", "Timing", "Not a fit", "Staying on Excel"];
 const inputCls = "h-8 rounded-sm border border-line-strong bg-surface px-2 text-[13px] text-ink outline-none focus:border-ring disabled:border-line disabled:bg-paper-2 disabled:text-ink-2";
 
 export function PipelineTab({ initial, wsName }: { initial: Stage[]; wsName: string }) {
   const { role, support } = useSession();
+  const st = useVocab().st, LOST_REASONS = st.lostList;
   const reduce = useReducedMotion();
   const editable = (role === "owner" || role === "sales_manager") && support?.mode !== "read_only";
   const [stages, setStages] = useState(initial);
@@ -76,7 +76,7 @@ export function PipelineTab({ initial, wsName }: { initial: Stage[]; wsName: str
       <Card className="lg:col-span-4">
         <CardHeader title="Won and lost rules" sub="Keep the forecast honest" />
         <CardBody className="flex flex-col gap-4">
-          {([["wonNeedsValue", "Won needs seats and value (₹)", "A deal cannot move to Won without both."], ["lostNeedsReason", "Lost needs a reason", "Pick one of the lost reasons below."]] as const).map(([k, l, d]) => (
+          {([["wonNeedsValue", st.wonRule[0], st.wonRule[1]], ["lostNeedsReason", "Lost needs a reason", "Pick one of the lost reasons below."]] as const).map(([k, l, d]) => (
             <label key={k} className="flex items-start gap-2.5">
               <input type="checkbox" checked={rules[k]} disabled={!editable} onChange={(e) => { setRules((r) => ({ ...r, [k]: e.target.checked })); toast(`${l}: ${e.target.checked ? "on" : "off"}`); }} className="mt-0.5 size-4 accent-[var(--accent)]" />
               <span><span className="block text-[13px] font-medium text-ink">{l}</span><span className="text-[12px] text-ink-3">{d}</span></span>

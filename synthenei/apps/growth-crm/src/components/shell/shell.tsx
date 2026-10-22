@@ -14,7 +14,6 @@ import { useSession, useVocab } from "./providers";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
 import { Tip } from "@/components/ui/tooltip";
-import { ROLE_LABEL } from "@/lib/auth/roles";
 import { logout } from "@/lib/auth/actions";
 import { Toaster } from "@/components/ui/toast";
 
@@ -82,6 +81,7 @@ function DemoChip({ collapsed }: { collapsed?: boolean }) {
 
 function UserMenu() {
   const s = useSession();
+  const v = useVocab();
   const router = useRouter();
   return (
     <Menu>
@@ -89,13 +89,13 @@ function UserMenu() {
         <Avatar name={s.name} size={28} />
         <span className="hidden text-left leading-tight md:block">
           <span className="block text-[12px] font-medium text-ink">{s.name}</span>
-          <span className="block text-[11px] text-ink-3">{ROLE_LABEL[s.role]}</span>
+          <span className="block text-[11px] text-ink-3">{v.role[s.role]}</span>
         </span>
         <ChevronDown className="hidden size-3.5 text-ink-3 md:block" aria-hidden />
       </MenuTrigger>
       <MenuContent>
         <MenuLabel>Signed in as</MenuLabel>
-        <div className="px-2 pb-2 text-[12px]"><div className="font-medium text-ink">{s.name}</div><div className="text-ink-3">{s.email} · {ROLE_LABEL[s.role]}</div></div>
+        <div className="px-2 pb-2 text-[12px]"><div className="font-medium text-ink">{s.name}</div><div className="text-ink-3">{s.email} · {v.role[s.role]}</div></div>
         <MenuSep />
         <MenuItem onSelect={() => router.push("/profile")}><UserRound />Profile</MenuItem>
         {s.demo && <MenuItem onSelect={() => { void logout(); }}><Repeat />Switch persona</MenuItem>}

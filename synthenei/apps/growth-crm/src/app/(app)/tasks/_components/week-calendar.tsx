@@ -8,7 +8,8 @@ import { useRef, useState, type PointerEvent as RPE } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { dayKey, fmtDate, fmtTime, fmtWeekday } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { KIND_ICON, KIND_LABEL, istIso, type TaskRow } from "./shared";
+import { KIND_ICON, istIso, type TaskRow } from "./shared";
+import { useVocab } from "@/components/shell/providers";
 
 export type { Holiday } from "@/lib/data/types";
 import type { Holiday } from "@/lib/data/types";
@@ -42,6 +43,7 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
   rows: TaskRow[]; now: string; weekOffset: number; holidays: Holiday[]; canEdit: boolean;
   onMove: (id: string, iso: string) => void; onOpen: (r: TaskRow) => void;
 }) {
+  const KIND_LABEL = useVocab().tk.kind;
   const sp = useSearchParams(), path = usePathname();
   const today = dayKey(now);
   const dow = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7;

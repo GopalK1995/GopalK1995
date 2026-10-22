@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
-import { useBrand, useSession } from "@/components/shell/providers";
+import { useBrand, useSession, useVocab } from "@/components/shell/providers";
 import { can } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import { saveBranding } from "./actions";
@@ -23,6 +23,7 @@ const previewVars = (h: number) => ({
 
 export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defaultHue }: { tenantName: string; workspaceCount: number; primaryOwnerName: string; defaultHue: number }) {
   const { role, support, tenant } = useSession();
+  const st = useVocab().st;
   const { brand, setBrand } = useBrand();
   const editable = !support && can("branding", { role, support }) && tenant.isPrimaryOwner;
   const [name, setName] = useState(brand.name);
@@ -149,6 +150,7 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
 
 /** Mini shell, shared look with /admin/tenants/[id] Branding (agreed with ADMIN). */
 function BrandPreview({ hue, name, product }: { hue: number; name: string; product: string }) {
+  const vv = useVocab(), st = vv.st;
   return (
     <div style={previewVars(hue)} className="grid h-[200px] w-full grid-cols-[30%_1fr] overflow-hidden rounded-md border border-line" aria-label={`Preview of ${name} with hue ${hue}`} role="img">
       <div className="flex min-w-0 flex-col gap-3 bg-navy-900 p-3">
@@ -166,8 +168,8 @@ function BrandPreview({ hue, name, product }: { hue: number; name: string; produ
       </div>
       <div className="flex min-w-0 flex-col justify-between bg-paper p-4">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-[12px] font-semibold text-ink">Leads this week</span>
-          <span className="inline-flex h-7 shrink-0 items-center rounded-sm bg-accent px-3 text-[11px] font-medium text-accent-ink">New lead</span>
+          <span className="truncate text-[12px] font-semibold text-ink">{vv.n.lead.many.charAt(0).toUpperCase() + vv.n.lead.many.slice(1)} this week</span>
+          <span className="inline-flex h-7 shrink-0 items-center rounded-sm bg-accent px-3 text-[11px] font-medium text-accent-ink">{st.newBtn}</span>
         </div>
         <div className="flex h-[96px] items-end gap-3 border-b border-line">
           {[40, 65, 50, 85].map((v, i) => <span key={i} className="flex-1 rounded-t-[3px] bg-chart-1" style={{ height: `${v}%`, opacity: i === 3 ? 1 : 0.55 }} />)}

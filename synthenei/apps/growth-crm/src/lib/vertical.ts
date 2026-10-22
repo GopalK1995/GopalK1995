@@ -235,6 +235,74 @@ const LEGAL = {
     wonErr: "Fill plan, seats, annual value and start date.", wonBtn: "Mark Won", plans: ["Practice", "Chambers", "Enterprise"], lostTitle: (f: string) => `Mark ${f} as Lost`, lostDesc: "Pick the main reason. It feeds the win/loss review on the Command Center.", compPh: "e.g. a Delhi-based case management vendor",
     a: { wonNeedsPlan: "Won needs a plan.", seatsMax: "Won needs seats (1 to 500).", needValue: "Won needs an annual value in rupees.", wonMsg: (name: string, val: string, seats: number, plan: string) => `${name} marked Won: ${val}, ${seats} seats, ${plan}`, notFound: "Deal not found in this workspace.", ownOnly: "You can move only your own deals.", roleCant: (role: string) => `Your role (${role}) cannot move deals.` },
   },
+  ac: {
+    metaTitle: "Law firms", eyebrow: "Accounts", title: "Law firms",
+    sub: (n: number, districts: number, customers: number, trials: number, rep: boolean, masked: boolean) => `${n} firms across ${districts} districts. ${customers} customers, ${trials} on trial.${rep ? " Deal values show your own deals." : ""}${masked ? " Contacts are hidden for your role." : ""}`,
+    status: { prospect: "Prospect", trial: "Trial", customer: "Customer", churned: "Churned" } as Record<string, string>,
+    colName: "Firm", colDistrict: "District", colCourt: "Court focus", colAreas: "Practice", colSize: "Size", colLawyers: "Lawyers", colSites: "Sites", colOpen: (rep: boolean): string => (rep ? "My open deals" : "Open deals"),
+    openTitle: (n: number) => `${n} open deal${n > 1 ? "s" : ""}`,
+    kAll: "Firms in workspace", kAllFoot: (n: number) => `${n} with open deals`, kOpenFoot: (n: number) => `${n} open deals`, kMulti: "Multi-site firms", kMultiFoot: (a: number, b: number) => `${a} of ${b} firms have 2+ offices`, kArr: "Customer ARR", kArrFoot: (n: number) => `${n} customer firm${n === 1 ? "" : "s"}`,
+    search: "Search firm, city or locality", fCourt: "Court", fSize: "Size", sortLawyers: "Lawyers", showing: (a: number, b: number, sorted: boolean) => `Showing ${a} of ${b} firms${sorted ? "" : ", largest open pipeline first"}`,
+    caption: "Law firms", empty: "No firms match these filters.", emptyHint: "Clear a filter, or search by city (for example Madurai).",
+    chartA: "Which districts carry the open pipeline?", chartASub: (rep: boolean) => `Open deal value by firm district${rep ? ", your deals" : ""}`, chartANote: (n: number) => `${n} firms with open deals`, chartAria: "Open pipeline by district", chartAEmpty: "No open deals yet. Open a deal from a firm's page to see it here.",
+    chartB: "Where are the leads coming from?", chartBSub: (rep: boolean) => `Leads by firm district${rep ? ", your leads" : ""}`, chartBAria: "Leads by district", chartBFoot: (p: string) => `${p} of firms work from more than one office; they need one shared calendar.`,
+    back: "Law firms", kinds: {} as Record<string, string>, decision: ["Managing Partner", "Senior Advocate", "Partner", "Founding Advocate"],
+    d: {
+      eyebrow: (district: string, tier: string, kind: string) => `${district} district · ICP tier ${tier}`, sub: (loc: string, lawyers: number, clerks: number, owner: string, stays: number) => `${loc} · ${lawyers} lawyer${lawyers === 1 ? "" : "s"}, ${clerks} clerk${clerks === 1 ? "" : "s"} · owner ${owner}`,
+      profile: "Firm profile", profileSub: (founded: number, site: string, stays: number) => `Founded ${founded} · ${site}`,
+      contacts: "Contacts", contactsMasked: "Hidden for your role: Viewer sees firm-level data only.", contactsSub: (n: number, hidden: number) => `${n} people at this firm${hidden > 0 ? `; ${hidden} owned by other reps are not shown` : ""}`,
+      maskedEmpty: (n: number) => `${n} contacts on file`, noContacts: "No contacts you can see at this firm yet.", noContactsHint: "Add the managing partner or office manager first; they decide on software.",
+      deals: "Deals", dealsSub: (rep: boolean, open: number, closed: number) => (rep ? "Your deals with this firm" : `${open} open, ${closed} closed`), signedBefore: "Signed before this 90-day window.", signedBeforeHint: "The renewal is tracked in the Customer panel; open a deal for added seats or a plan upgrade.", noDeals: "No deals with this firm yet.", noDealsHint: "Open a deal once the partners agree to a demo.",
+      dealLine: (plan: string, seats: number, room: string | null) => `${plan} · ${seats} seats`, logEmpty: "Log the first call or meeting so the next person knows where this firm stands.",
+      fitTitle: "LAWSOME plan fit", fitSub: (lawyers: number) => `${lawyers} advocate seats · clerks free`, fitPer: "per year, est.", fitFoot: (price: string, plan: string) => `Estimate uses ${price} per seat per year from this workspace's ${plan} deals (placeholder pricing).`,
+      glance: "Hearings / month", custTitle: "Customer", custSub: "After Won: plan, seats and payments", custRows: (plan: string, arr: string, golive: string) => [["Plan", plan], ["ARR", arr], ["Go-live", golive], ["Payments", "Sample: annual invoice paid by NEFT"]] as [string, string][], custNoWon: "Renewal base (signed before this window)",
+      nextTitle: "Next step", nextDecision: "A decision maker is on file. Offer a 20-minute demo on their own case numbers, after court hours.", nextNone: "No decision maker on file yet. Add the managing partner before opening a deal.",
+    },
+    dlg: {
+      addTitle: "Add a law firm", addDesc: "Creates a prospect. We check for duplicates on firm name + district.", addBtn: "Add firm", lName: "Firm name", namePh: "e.g. Vaigai Advocates", lDistrict: "District", lSize: "Lawyers", lMain: "Main court",
+      mains: ["Madras High Court", "Madras High Court, Madurai Bench", "City Civil Court, Chennai", "Principal District Court"], logTypes: ["Call", "Meeting at firm", "Note", "WhatsApp (outside CRM)"], logNote: "Met office manager; partners meet on Saturday to decide.",
+      addContactDesc: (f: string) => `${f} · phone and email are visible only to roles that can see personal data`, roleLabel: "Role at firm", roles: ["Managing Partner", "Senior Advocate", "Partner", "Associate", "Office Manager", "Clerk"], namePh2: "Adv. K. Senthil", decisionLbl: "Decision maker",
+      dealTitle: "Open a deal", dealDesc: (f: string) => `${f} · starts in Discovery`, dealBtn: "Open deal", plan: "Plan", plans: ["Practice", "Chambers", "Enterprise"], seats: "Seats (advocates)", closeLbl: "Expected close",
+    },
+    a: { notIn: "That firm is not in this workspace.", fallback: "the firm", dealMsg: (firm: string, plan: string, seats: string) => `Deal opened: ${firm}, ${plan} (${seats} seats)`, dealStage: "Stage set to Discovery.", profile: (f: string) => `Firm profile updated: ${f}`, needName: "Add the firm name first.", addedProspect: (n: string) => `${n} added as a prospect`, defPlan: "Chambers", defSeats: "8" },
+  },
+  tk: {
+    kind: { call: "Call", whatsapp: "WhatsApp", email: "Email", demo: "Demo", follow_up: "Follow-up", proposal: "Proposal" } as Record<string, string>,
+    title: "Tasks and demo calendar", sub: "Follow-ups and demos in IST. Overdue first; court hours (10:30–17:00) are the hardest time to reach partners.",
+    emptyMkt: `No tasks assigned to you. Tasks you create here (for example "Re-import Coimbatore Bar list") stay visible only to you and your Owner.`, emptyDefault: "No open tasks. Logging a call with a next-step date creates one.",
+    noLead: "No lead", newDesc: "Times in IST. Tasks with a lead show on that lead's page.", titlePh: "e.g. Call partner after court: confirm Saturday demo", leadOpt: "Lead (optional)",
+    leadNotFound: "Lead not found in this workspace.", ownLeads: "You can add tasks only to your own leads.",
+  },
+  ai: {
+    sub: (rep: boolean) => `What each assistive feature does, what data it sends, and who approves its output. ${rep ? "Answers use your own leads, deals and tasks." : "Features are off until the Owner turns them on."}`,
+    features: [
+      { key: "scoring", name: "Lead scoring", does: "Scores each lead 0–100 from fixed rules and lists the factors behind the number.", sends: "Nothing leaves the CRM (rules run in the database).", where: "Score chips, lead page, Hot leads on My day" },
+      { key: "summary", name: "Lead and conversation summary", does: "Three lines: situation, interest or objection, and the open question, plus the last promised follow-up.", sends: "First name, role, firm, district, timeline text with phone and email removed.", where: "Lead page, inbox side panel" },
+      { key: "nba", name: "Next-best action", does: "One action from a fixed list (call, WhatsApp template, email, demo, proposal, nurture) with the reason and a due date.", sends: "Stage, days in stage, last touches, open tasks, score factors.", where: "My day, lead page" },
+      { key: "drafts", name: "Reply drafts", does: "Drafts a WhatsApp or email reply in English or Tamil. A person reads, edits and sends it.", sends: "The thread with phone and email removed, approved templates, tone settings.", where: "Inbox composer" },
+      { key: "digest", name: "Weekly campaign digest", does: "Five lines on last week's campaigns. Every number comes from a metric query, not the model.", sends: "Campaign aggregates only. No personal data.", where: "Campaigns, Monday email (later)" },
+      { key: "ask", name: "Ask the CRM", does: "Answers questions by picking an approved metric and filter. Never writes its own query.", sends: "Your question and the metric catalogue.", where: "This page" },
+    ] as { key: string; name: string; does: string; sends: string; where: string }[],
+    guardLegal: ["No legal advice", "A draft that answers a legal question is replaced with a hand-off line and flagged."] as [string, string],
+    terms: ["I checked the model provider's data-retention terms for this workspace.", "Our privacy notice (DPDP) tells leads that AI helps draft replies and summaries.", "This CRM holds no client-matter data: no pleadings, case files or client documents."],
+    askTitle: "Ask the CRM", scoreTitle: "How the lead score is built", scoreSub: (n: number, rep: boolean) => `${n} ${rep ? "of your " : ""}leads · rule-based factors with points, stored with each lead so the number can always be explained`,
+    noLeads: "No open leads to explain yet. Scores appear once a lead is created.", winBand: "Win rate (%) by score band, leads with a closed outcome", needs30: "Needs 30+ closed leads per band before weights are trusted.",
+    digest: { spend: (sp: string, d: string, n: number, dl: string) => [sp, d, n, dl] as [string, string, number, string], cplWord: "per lead", cplPre: "leads", dem: "demo" },
+    digestText: {
+      spend: (a: string, b: string, n: number, c: string) => `Spend was ${a} (${b} on the week before) for ${n} CRM leads (${c}).`, cheapest: (name: string, cpl: string, n: number) => `Cheapest leads came from ${name} at ${cpl} per lead (${n} leads).`,
+      dry: (name: string, spend: string) => `${name} spent ${spend} with no CRM lead this week: check the form tagging.`, over90: (name: string, cost: string) => `Over 90 days, ${name} still books demos cheapest at ${cost} per demo.`,
+    },
+    askPh: "e.g. How many follow-ups are overdue?", askHelp: "Pick a question above. Each answer shows the metric it used, so you can check it on the matching dashboard.", logFeature: "Reply draft", firstSample: "demos_week", refusedHospital: "",
+    digestBased: (n: number, w: string) => `Based on: campaign_daily_metrics and CRM lead counts for ${n} campaigns, ${w} vs the week before. Numbers are computed by the CRM; no personal data was used.`,
+    logHeld: "Held: needs Owner review",
+  },
+  rw: [] as [string, string][],
+  st: {
+    wonRule: ["Won needs seats and value (₹)", "A deal cannot move to Won without both."] as [string, string], lostList: ["Price", "Competitor", "No decision", "Timing", "Not a fit", "Staying on Excel"],
+    newBtn: "New lead", emailPh: "name@firm.example", erase: (r: string) => `Request ${r}. This permanently deletes the lead, contacts, messages and timeline. The audit log keeps a [pii] placeholder. It cannot be undone.`,
+    dqRetention: "Disqualified leads", erasedLead: "Erased lead", privacySearch: "Search subject or lead id",
+    notify: { sla: "A lead assigned to me is about to breach the 2-hour first-response SLA", demo: "30 minutes before each demo", digest: "Monday 9:00 IST summary of my pipeline" },
+  },
   // @@LEGAL
 };
 export type Vocab = typeof LEGAL;
@@ -458,6 +526,75 @@ const HOSPITALITY: Vocab = {
     wonErr: "Fill room type, nights, booking value and check-in date.", wonBtn: "Confirm booking", plans: ["Valley-view Room", "Garden Cottage", "Family Suite", "Heritage Room", "Dorm loft"], lostTitle: (f: string) => `Mark ${f} as Lost`, lostDesc: "Pick the main reason. It feeds the lost-enquiry review on the Command Center.", compPh: "e.g. a homestay in Ooty, or an OTA listing",
     a: { wonNeedsPlan: "Booking needs a room type.", seatsMax: "Booking needs nights (1 to 500).", needValue: "Booking needs a value in rupees.", wonMsg: (name: string, val: string, seats: number, plan: string) => `${name} confirmed: ${val}, ${seats} ${seats === 1 ? "night" : "nights"}, ${plan}`, notFound: "Booking not found in this workspace.", ownOnly: "You can move only your own bookings.", roleCant: (role: string) => `Your role (${role}) cannot move bookings.` },
   },
+  ac: {
+    metaTitle: "Guests & partners", eyebrow: "Accounts", title: "Guests & partners",
+    sub: (n: number, districts: number, customers: number, trials: number, rep: boolean, masked: boolean) => `${n} guests and partners from ${districts} home towns. ${customers} repeat guests or active partners, ${trials} on a first stay.${rep ? " Booking values show your own bookings." : ""}${masked ? " Contacts are hidden for your role." : ""}`,
+    status: { prospect: "Prospect", trial: "First stay", customer: "Repeat guest", churned: "Lapsed" },
+    colName: "Guest / partner", colDistrict: "Home town", colCourt: "Rooms of interest", colAreas: "Interests", colSize: "Party size", colLawyers: "Usual party", colSites: "Stays", colOpen: (rep: boolean) => (rep ? "My open bookings" : "Open bookings"),
+    openTitle: (n: number) => `${n} open ${n > 1 ? "bookings" : "booking"}`,
+    kAll: "Guests & partners", kAllFoot: (n: number) => `${n} with open bookings`, kOpenFoot: (n: number) => `${n} open bookings`, kMulti: "Repeat guests", kMultiFoot: (a: number, b: number) => `${a} of ${b} have stayed more than once`, kArr: "Booked value to date", kArrFoot: (n: number) => `${n} repeat ${n === 1 ? "guest" : "guests"} and partners`,
+    search: "Search guest, town or locality", fCourt: "Room interest", fSize: "Party size", sortLawyers: "Party size", showing: (a: number, b: number, sorted: boolean) => `Showing ${a} of ${b} guests and partners${sorted ? "" : ", largest open bookings first"}`,
+    caption: "Guests and partners", empty: "No guests or partners match these filters.", emptyHint: "Clear a filter, or search by town (for example Coimbatore).",
+    chartA: "Which home towns carry the open bookings?", chartASub: (rep: boolean) => `Open booking value by home town${rep ? ", your bookings" : ""}`, chartANote: (n: number) => `${n} guests with open bookings`, chartAria: "Open booking value by home town", chartAEmpty: "No open bookings yet. Open a booking from a guest's page to see it here.",
+    chartB: "Where are the enquiries coming from?", chartBSub: (rep: boolean) => `Enquiries by home town${rep ? ", your enquiries" : ""}`, chartBAria: "Enquiries by home town", chartBFoot: (p: string) => `${p} of guests and partners have stayed more than once; thank them before the next season opens.`,
+    back: "Guests & partners", kinds: { family: "Family", travel_agent: "Travel agent", corporate: "Corporate group", wedding_planner: "Wedding planner" }, decision: [],
+    d: {
+      eyebrow: (district: string, tier: string, kind: string) => `From ${district}${kind ? ` · ${kind}` : ""}`, sub: (loc: string, lawyers: number, clerks: number, owner: string, stays: number) => `${loc}${lawyers ? ` · usually ${lawyers} guests` : ""}${stays ? ` · ${stays} ${stays === 1 ? "stay" : "stays"}` : ""} · host ${owner}`,
+      profile: "Guest profile", profileSub: (founded: number, site: string, stays: number) => `${stays} ${stays === 1 ? "stay" : "stays"} so far`,
+      contacts: "Contacts", contactsMasked: "Hidden for your role: Viewer sees guest-level data only.", contactsSub: (n: number, hidden: number) => `${n} ${n === 1 ? "person" : "people"} on this account${hidden > 0 ? `; ${hidden} handled by other hosts are not shown` : ""}`,
+      maskedEmpty: (n: number) => `${n} contacts on file`, noContacts: "No contacts you can see for this guest yet.", noContactsHint: "Add the person who books and pays first; they confirm dates and the advance.",
+      deals: "Bookings", dealsSub: (rep: boolean, open: number, closed: number) => (rep ? "Your bookings with this guest" : `${open} open, ${closed} closed`), signedBefore: "Booked before this 90-day window.", signedBeforeHint: "Earlier stays are tracked in the Guest panel; open a booking for the next visit.", noDeals: "No bookings with this guest yet.", noDealsHint: "Open a booking once dates and rooms are agreed.",
+      dealLine: (plan: string, seats: number, room: string | null) => `${room ?? "Stay"} · ${seats} ${seats === 1 ? "night" : "nights"}`, logEmpty: "Log the first call or message so the next person knows where this guest stands.",
+      fitTitle: "Stay fit", fitSub: (lawyers: number) => (lawyers ? `Usually ${lawyers} guests per stay` : "Party size varies"), fitPer: "avg booking, est.", fitFoot: (price: string, plan: string) => `Estimate uses the average of this guest's earlier bookings, or ${price} per night from this workspace's bookings.`,
+      glance: "Stays", custTitle: "Guest", custSub: "After a booking: room, value and advance", custRows: (plan: string, arr: string, golive: string) => [["Last room", plan], ["Booked value", arr], ["Last check-in", golive], ["Payments", "Sample: advance paid by UPI"]], custNoWon: "Earlier stay (before this window)",
+      nextTitle: "Next step", nextDecision: "The main contact is on file. Offer a call after 6 pm to confirm dates and share the rate card.", nextNone: "No contact on file yet. Add the person who books before opening a booking.",
+    },
+    dlg: {
+      addTitle: "Add a guest or partner", addDesc: "Creates a prospect. We check for duplicates on name + home town.", addBtn: "Add guest", lName: "Guest or partner name", namePh: "e.g. Iyer family, Coimbatore", lDistrict: "Home town", lSize: "Usual party", lMain: "Room of interest",
+      mains: ["Valley-view Room", "Garden Cottage", "Family Suite", "Heritage Room", "Dorm loft"], logTypes: ["Call", "WhatsApp (outside CRM)", "Visit at the property", "Note"], logNote: "Spoke to the organiser; the group decides by Saturday.",
+      addContactDesc: (f: string) => `${f} · phone and email are visible only to roles that can see personal data`, roleLabel: "Role", roles: ["Guest", "Family organiser", "Travel agent", "Event planner", "Corporate coordinator"], namePh2: "K. Senthil", decisionLbl: "Books and pays",
+      dealTitle: "Open a booking", dealDesc: (f: string) => `${f} · starts at Dates confirmed`, dealBtn: "Open booking", plan: "Room type", plans: ["Valley-view Room", "Garden Cottage", "Family Suite", "Heritage Room", "Dorm loft"], seats: "Nights", closeLbl: "Check-in date",
+    },
+    a: { notIn: "That guest is not in this workspace.", fallback: "the guest", dealMsg: (firm: string, plan: string, seats: string) => `Booking opened: ${firm}, ${plan} (${seats} nights)`, dealStage: "Stage set to Dates confirmed.", profile: (f: string) => `Guest profile updated: ${f}`, needName: "Add the guest name first.", addedProspect: (n: string) => `${n} added as a prospect`, defPlan: "Garden Cottage", defSeats: "2" },
+  },
+  tk: {
+    kind: { call: "Call", whatsapp: "WhatsApp", email: "Email", demo: "Visit / call", follow_up: "Follow-up", proposal: "Quote" },
+    title: "Tasks and visit calendar", sub: "Follow-ups, site visits and calls in IST. Overdue first; guests are easiest to reach after 6 pm and on weekend mornings.",
+    emptyMkt: `No tasks assigned to you. Tasks you create here (for example "Send Pongal weekend offer to repeat guests") stay visible only to you and the owner.`, emptyDefault: "No open tasks. Logging a call with a next-step date creates one.",
+    noLead: "No enquiry", newDesc: "Times in IST. Tasks with an enquiry show on that enquiry's page.", titlePh: "e.g. Call after 6 pm: confirm dates and advance for the Family Suite", leadOpt: "Enquiry (optional)",
+    leadNotFound: "Enquiry not found in this workspace.", ownLeads: "You can add tasks only to your own enquiries.",
+  },
+  ai: {
+    sub: (rep: boolean) => `What each assistive feature does, what data it sends, and who approves its output. ${rep ? "Answers use workspace figures; your own queue is on My day." : "Features are off until the owner turns them on."}`,
+    features: [
+      { key: "scoring", name: "Enquiry scoring", does: "Scores each enquiry 0–100 from fixed rules (dates close, party size, repeat guest, reply speed) and lists the factors behind the number.", sends: "Nothing leaves the CRM (rules run in the database).", where: "Score chips, enquiry page, Hot enquiries on My day" },
+      { key: "summary", name: "Enquiry and conversation summary", does: "Three lines: dates and party, what the guest is asking about, and the open question, plus the last promised follow-up.", sends: "First name, trip type, home town, timeline text with phone and email removed.", where: "Enquiry page, inbox side panel" },
+      { key: "nba", name: "Next-best action", does: "One action from a fixed list (reply, WhatsApp template, call, send quote, ask for advance) with the reason and a due date.", sends: "Stage, days in stage, last touches, open tasks, score factors.", where: "My day, enquiry page" },
+      { key: "drafts", name: "Reply drafts", does: "Drafts a WhatsApp or email reply in English or Tamil. A person reads, edits and sends it.", sends: "The thread with phone and email removed, approved templates, tone settings.", where: "Inbox composer" },
+      { key: "digest", name: "Weekly campaign digest", does: "Five lines on last week's campaigns. Every number comes from a metric query, not the model.", sends: "Campaign aggregates only. No personal data.", where: "Campaigns, Monday email (later)" },
+      { key: "ask", name: "Ask the CRM", does: "Answers questions by picking an approved metric and filter. Never writes its own query.", sends: "Your question and the metric catalogue.", where: "This page" },
+    ],
+    guardLegal: ["No invented rates or rooms", "A draft that quotes a rate or promises a room the CRM does not hold is replaced with a hand-off line and flagged."],
+    terms: ["I checked the model provider's data-retention terms for this workspace.", "Our privacy notice (DPDP) tells guests that AI helps draft replies and summaries.", "This CRM holds no card numbers, ID documents or passport scans of guests."],
+    askTitle: "Ask the CRM", scoreTitle: "How the enquiry score is built", scoreSub: (n: number, rep: boolean) => `${n} ${rep ? "of your " : ""}enquiries · rule-based factors with points, stored with each enquiry so the number can always be explained`,
+    noLeads: "No open enquiries to explain yet. Scores appear once an enquiry is created.", winBand: "Booking rate (%) by score band, enquiries with a closed outcome", needs30: "Needs 30+ closed enquiries per band before weights are trusted.",
+    digest: { spend: (sp: string, d: string, n: number, dl: string) => [sp, d, n, dl] as [string, string, number, string], cplWord: "per enquiry", cplPre: "enquiries", dem: "booking" },
+    digestText: {
+      spend: (a: string, b: string, n: number, c: string) => `Spend was ${a} (${b} on the week before) for ${n} CRM enquiries (${c}).`, cheapest: (name: string, cpl: string, n: number) => `Cheapest enquiries came from ${name} at ${cpl} each (${n} enquiries).`,
+      dry: (name: string, spend: string) => `${name} spent ${spend} with no CRM enquiry this week: check the form or WhatsApp tagging.`, over90: (name: string, cost: string) => `Over 90 days, ${name} still brings bookings cheapest at ${cost} per booking.`,
+    },
+    askPh: "e.g. Which source brings the most enquiries?", askHelp: "Pick a question above. Answers are computed from this workspace's enquiries, bookings and campaigns.", logFeature: "Reply draft", firstSample: "", refusedHospital: "That question does not match one of the approved questions, so nothing was run. Pick a suggested question about occupancy, enquiry sources, cost per booking or follow-ups due.",
+    digestBased: (n: number, w: string) => `Based on: campaign_daily_metrics and CRM enquiry counts for ${n} campaigns, ${w} vs the week before. Numbers are computed by the CRM; no personal data was used.`,
+    logHeld: "Held: needs owner review",
+  },
+  /** Word swaps applied by localize() to shared reference copy (connector facts). Order matters. */
+  rw: [["marketing lead", "marketing owner"], ["Demo scheduled", "Quote sent"], ["demo-booked", "visit-booked"], ["Demo bookings", "Visit bookings"], ["demos", "visits"], ["demo", "visit"], ["Demo", "Visit"], ["firm's", "property's"], ["Leads", "Enquiries"], ["leads", "enquiries"], ["Lead", "Enquiry"], ["lead", "enquiry"], ["Deals", "Bookings"], ["deals", "bookings"], ["deal", "booking"], ["firms", "guests"], ["firm", "guest"], ["LAWSOME", "Shola Mist"]] as [string, string][],
+  st: {
+    wonRule: ["Booked needs nights and value (₹)", "A booking cannot move to Booked without both."], lostList: ["Price", "Booked elsewhere", "No decision", "Dates not available", "Not a fit", "Trip cancelled"],
+    newBtn: "New enquiry", emailPh: "name@sholamist.example", erase: (r: string) => `Request ${r}. This permanently deletes the guest record, contacts, messages and timeline. The audit log keeps a [pii] placeholder. It cannot be undone.`,
+    dqRetention: "Closed enquiries", erasedLead: "Erased enquiry", privacySearch: "Search subject or enquiry id",
+    notify: { sla: "An enquiry assigned to me is about to pass the 2-hour first-reply target", demo: "30 minutes before each site visit or call", digest: "Monday 9:00 IST summary of my bookings" },
+  },
   // @@HOSP
 };
 
@@ -543,3 +680,11 @@ export const fontsFor = (t: TenantLike) => effectiveConfig(t).fonts;
 
 /** Public client sign-in links: /g/<slug>. Slug equals the tenant id. */
 export const SIGNIN_SLUGS = ["shola-mist", "lawsome"] as const;
+
+/** Apply the vertical's word swaps to shared reference copy. Legal is a no-op. */
+export function localize(v: Vocab, text: string): string {
+  if (!v.rw.length) return text;
+  let out = text;
+  for (const [a, b] of v.rw) out = out.replace(new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "g"), b);
+  return out;
+}
