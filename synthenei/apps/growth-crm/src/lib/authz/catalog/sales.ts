@@ -1,0 +1,27 @@
+import type { PermissionDef } from "../types";
+const d = (key: string, description: string, o: Partial<PermissionDef> = {}): PermissionDef => { const i = key.lastIndexOf("."), resource = key.slice(0, i), action = key.slice(i + 1); return { key, resource, action, description, ...o }; };
+export const PERMISSIONS: PermissionDef[] = [
+  d("leads.read", "View leads"),
+  d("leads.create", "Create leads"),
+  d("leads.write", "Edit leads"),
+  d("leads.assign", "Assign leads"),
+  d("leads.delete", "Delete leads", { supportBlocked: true }),
+  d("leads.export", "Export leads", { supportBlocked: true }),
+  d("leads.import", "Import leads"),
+  d("contacts.read", "View contacts"),
+  d("contacts.write", "Edit contacts"),
+  d("contacts.delete", "Delete contacts", { supportBlocked: true }),
+  d("accounts.read", "View accounts"),
+  d("accounts.write", "Edit accounts"),
+  d("accounts.merge", "Merge accounts"),
+  d("accounts.delete", "Delete accounts", { supportBlocked: true }),
+  d("deals.read", "View deals"),
+  d("deals.write", "Edit deals"),
+  d("deals.move", "Move deals between stages"),
+  d("deals.delete", "Delete deals", { supportBlocked: true }),
+  d("tasks.read", "View tasks"),
+  d("tasks.write", "Edit tasks"),
+  d("tasks.assign", "Assign tasks"),
+  d("activities.read", "View activities"),
+  d("activities.write", "Log activities"),
+];
