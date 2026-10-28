@@ -20,6 +20,7 @@ const ROLES_TS = join(root, "src/lib/auth/roles.ts");
 const MIGRATION = join(root, "supabase/migrations/0013_authz_core.sql");
 const BEGIN = "-- BEGIN GENERATED: system roles (scripts/gen-authz-seed.mjs). Do not edit by hand.";
 const END = "-- END GENERATED";
+const lf = (t) => t.split(String.fromCharCode(13)).join(""); // tolerate CRLF checkouts
 const mode = process.argv[2] ?? "";
 
 const ROLE_KEYS = ["owner", "sales_manager", "sales_rep", "marketing", "data", "viewer"];
@@ -170,9 +171,7 @@ ${END}`;
 }
 
 function spliceMigration(block) {
-  const sql = readFileSync(MIGRATION, "utf8").replace(/
-/g, "
-");
+  const sql = lf(readFileSync(MIGRATION, "utf8"));
   const a = sql.indexOf(BEGIN), b = sql.indexOf(END);
   if (a < 0 || b < 0) throw new Error("GENERATED markers missing in 0013_authz_core.sql");
   return sql.slice(0, a) + block + sql.slice(b + END.length);
@@ -230,12 +229,8 @@ if (mode === "--freeze") {
   const errs = verify(seed, legacy);
   if (mode === "--check") {
     const want = spliceMigration(renderSql(seed));
-    if (readFileSync(MIGRATION, "utf8").replace(/
-/g, "
-") !== want) errs.push("0013_authz_core.sql GENERATED block is stale (run the generator)");
-    if (readFileSync(SEED_TS, "utf8").replace(/
-/g, "
-") !== renderSeedTs(legacy)) errs.push("system-roles.ts differs from --freeze output (legacy matrix changed or file edited)");
+    if (lf(readFileSync(MIGRATION, "utf8")) !== want) errs.push("0013_authz_core.sql GENERATED block is stale (run the generator)");
+    if (lf(readFileSync(SEED_TS, "utf8")) !== renderSeedTs(legacy)) errs.push("system-roles.ts differs from --freeze output (legacy matrix changed or file edited)");
   }
   if (errs.length) { console.error(errs.join("\n")); console.error(`FAIL: ${errs.length} difference(s)`); process.exit(1); }
   const n = seed.SYSTEM_ROLES.reduce((s, r) => s + Object.keys(r.grants).length, 0);
