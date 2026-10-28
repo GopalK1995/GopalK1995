@@ -170,7 +170,9 @@ ${END}`;
 }
 
 function spliceMigration(block) {
-  const sql = readFileSync(MIGRATION, "utf8");
+  const sql = readFileSync(MIGRATION, "utf8").replace(/
+/g, "
+");
   const a = sql.indexOf(BEGIN), b = sql.indexOf(END);
   if (a < 0 || b < 0) throw new Error("GENERATED markers missing in 0013_authz_core.sql");
   return sql.slice(0, a) + block + sql.slice(b + END.length);
@@ -228,8 +230,12 @@ if (mode === "--freeze") {
   const errs = verify(seed, legacy);
   if (mode === "--check") {
     const want = spliceMigration(renderSql(seed));
-    if (readFileSync(MIGRATION, "utf8") !== want) errs.push("0013_authz_core.sql GENERATED block is stale (run the generator)");
-    if (readFileSync(SEED_TS, "utf8") !== renderSeedTs(legacy)) errs.push("system-roles.ts differs from --freeze output (legacy matrix changed or file edited)");
+    if (readFileSync(MIGRATION, "utf8").replace(/
+/g, "
+") !== want) errs.push("0013_authz_core.sql GENERATED block is stale (run the generator)");
+    if (readFileSync(SEED_TS, "utf8").replace(/
+/g, "
+") !== renderSeedTs(legacy)) errs.push("system-roles.ts differs from --freeze output (legacy matrix changed or file edited)");
   }
   if (errs.length) { console.error(errs.join("\n")); console.error(`FAIL: ${errs.length} difference(s)`); process.exit(1); }
   const n = seed.SYSTEM_ROLES.reduce((s, r) => s + Object.keys(r.grants).length, 0);
