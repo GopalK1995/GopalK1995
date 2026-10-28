@@ -5,7 +5,8 @@
 //   Support sessions: all org-side config writes are refused (the operator uses the admin console instead,
 //   where the change carries a reason). Config is not business data, so no support session is needed there.
 import type { Role } from "../data/types";
-import { can } from "../auth/roles";
+import { decide } from "../authz/engine";
+import { systemPrincipal } from "../authz/principal";
 import { presetConfig, type BrandDefaults } from "./presets";
 import { MODULE_IDS, SECTIONS, type Section, type TenantConfig } from "./types";
 
@@ -30,6 +31,9 @@ export const MATRIX: Record<Section, { org: "edit" | "edit-owner-primary" | "lim
 };
 
 const j = (x: unknown) => JSON.stringify(x);
+/** Org-admin and primary-owner checks go through the authz engine (system grants), not role names. */
+const holds = (a: Extract<Actor, { kind: "org" }>, perm: string) =>
+  decide(systemPrincipal({ uid: a.uid, workspaceId: a.tenantId, role: a.role, tenantId: a.tenantId, support: a.support }), perm).allow;
 /** Which sections differ between two full configs. */
 export function changedSections(a: TenantConfig, b: TenantConfig): Section[] {
   const out: Section[] = [];
@@ -54,10 +58,10 @@ export function authorize(actor: Actor, target: string, before: TenantConfig, af
   if (actor.kind === "platform") return { ok: true, sections };
   if (actor.tenantId !== target) return deny("You can only change your own organisation's configuration.");
   if (actor.support) return deny("Configuration cannot be changed in a support session. The platform operator uses the admin console, with a recorded reason.");
-  if (actor.role !== "owner") return deny("Only the Owner can change configuration.");
+  if (!holds(actor, "org.admin")) return deny("Only the Owner can change configuration.");
   for (const s of sections) {
     if (PLATFORM_ONLY.includes(s)) return deny(`${SECTION_LABEL[s]} can only be changed by the platform operator.`, s);
-    if (s === "branding" && !(can("branding", { role: actor.role, support: actor.support }) && actor.isPrimaryOwner)) return deny("Only the primary owner can change branding and fonts.", s);
+    if (s === "branding" && !(holds(actor, "org.branding") && actor.isPrimaryOwner)) return deny("Only the primary owner can change branding and fonts.", s);
     if (s === "dataSample" && after.data.sampleData) return deny("Sample data can be switched off here; switching it back on is done by the platform operator.", s);
     if (s === "modules") {
       for (const m of MODULE_IDS) {
@@ -76,7 +80,7 @@ export function sectionAccess(actor: Actor, target: string): Record<Section, "ed
   if (actor.kind === "platform") return all("edit");
   if (actor.tenantId !== target) return all({ locked: "This is not your organisation." });
   if (actor.support) return all({ locked: "Not available in a support session. The platform operator changes configuration in the admin console." });
-  if (actor.role !== "owner") return all({ locked: "Only the Owner can change configuration." });
+  if (!holds(actor, "org.admin")) return all({ locked: "Only the Owner can change configuration." });
   const a = all("edit");
   for (const s of PLATFORM_ONLY) a[s] = { locked: "Only the platform operator can change this." };
   if (!actor.isPrimaryOwner) a.branding = { locked: "Only the primary owner can change branding and fonts." };
