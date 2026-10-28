@@ -1,0 +1,40 @@
+name: growth-crm
+on:
+  push:
+    branches: [build/v1, "feat/**"]
+    paths: ["synthenei/apps/growth-crm/**", ".github/workflows/growth-crm.yml"]
+  pull_request:
+    branches: [build/v1]
+    paths: ["synthenei/apps/growth-crm/**", ".github/workflows/growth-crm.yml"]
+concurrency:
+  group: growth-crm-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    working-directory: synthenei/apps/growth-crm
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: synthenei/apps/growth-crm/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: npm run build
+      - name: Cypress component tests
+        run: npm run cy:run:ct
+      - name: Cypress smoke (demo mode, production build)
+        run: npm run ci:smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: synthenei/apps/growth-crm/cypress/screenshots
+          if-no-files-found: ignore
