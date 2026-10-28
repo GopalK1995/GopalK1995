@@ -167,3 +167,25 @@ Next steps for the UI: replace the mock `DataSource` per screen with these reads
 6. `deal_stage_change` keeps a provided `stage_entered_at` on insert (imports/seed), and `deal_stage_history` uses it.
 7. Trigger functions are not executable by any API role. Default privileges stay closed to `anon` for future objects.
 8. Platform admins are a separate identity (trigger), `invite_member` gives admins only an owner-bootstrap path, and branding is editable only by `tenants.primary_owner_id` or a super admin.
+
+## 10. Authorization core (0013, task T001)
+
+| Object | Purpose |
+|---|---|
+| `permissions`, `roles`, `role_permissions` | RBAC. Six system roles (`tenant_id null`, fixed ids `30000000-...-00000000000N`) are generated from `src/lib/authz/catalog/system-roles.ts` by `scripts/gen-authz-seed.mjs` and reproduce `CAN` + `PAGE_ACCESS`. Tenants clone/edit their own roles (`roles.manage` + `org_admin_policies.allow_custom_roles`). |
+| `memberships.role_id / attributes / valid_until` | `role` (enum) stays authoritative for the 0006 policies; a trigger keeps `role` and `role_id` in sync (custom role => `role = base_role`). `attributes.districts` is kept in sync with `territories` by trigger. |
+| `teams`, `team_members`, `relationship_tuples` | ReBAC. Tuples are validated against the object's workspace (no cross-workspace sharing). |
+| `org_admin_policies` | What the platform lets an org's admins do. Written only by `admin_set_org_admin_policy(tenant, policy, reason)` (super_admin). |
+| `authz.*` | `ws_with`, `ws_with_member`, `team_user_ids`, `shared_ids`, `attr`, `cond_ok`, `check`, `explain`, `my_grants`, `valid_conditions`. `public.my_grants(ws)` is the PostgREST-reachable wrapper. |
+
+Regenerate the seed: `npx -y -p node@22 node scripts/gen-authz-seed.mjs`; verify: `... --check` (must print `diff = 0`). 0016 switches table policies to `authz.*`; until then nothing changes for existing screens.
+
+## 11. Event bus, jobs and audit (0014)
+
+`events` (monthly partitions + default), `events.emit()` / `public.emit_event()`, `events.row_change()` triggers on 10 tables (no PII in payloads), 8 pgmq queues + `_dlq`, `job_runs` (+ `v_job_runs_tenant`), `scheduled_jobs`, `private.settings`, pg_cron `gcrm_tick` (every 10 s) and `gcrm_maintenance` (every 5 min). **The tick is a no-op until** `insert into private.settings values ('tick_url','https://<app>/api/jobs/tick')` **and** a Vault secret named `jobs_tick_secret` exist. `audit_log` is append-only for everyone (trigger; FK cascade of a tenant purge is the only exception), has new columns (`actor_kind, source, request_id, ip, user_agent, reason, summary`) and a widened `action` check. `rate_limit_hit(bucket, limit, window_s)` returns true while within the limit. `version` columns + `bump_version()` support optimistic concurrency. Service-only queue wrappers: `queue_send/read/archive/delete`.
+
+## 12. Integrations, webhooks, API keys (0015)
+
+`connector_catalog` (25) and `connector_availability` (platform-controlled; seeded, never overwritten), `integrations` extended into connections (policies now use `authz.*`), `oauth_states`, `sync_cursors`, `external_links`, `webhook_inbox` (service-written; owners see counts via `v_webhook_inbox_stats`), `webhook_endpoints`, `webhook_deliveries` and `api_request_log` (monthly partitions), `api_keys` (`key_hash` column privilege revoked: always select explicit columns, never `*`). Vault wrappers `private.put/get/delete_secret` and `public.vault_*` are `service_role` only. `public.can_contact(lead, purpose)` is the consent gate.
+
+**Testing.** `supabase/tests/0013..0015_*.test.sql` are pgTAP files: `SUPABASE_DB_URL=<branch> node scripts/run-pgtap.mjs supabase/tests/0013_authz_core.test.sql ...`. Run migrations only on a Supabase branch first; apply each twice to prove idempotency.
