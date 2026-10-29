@@ -3,12 +3,15 @@
 // Demo mode never persists: the result describes what would be written and audit-logged.
 import { pageCtx } from "@/lib/data/context";
 import { vocabFor } from "@/lib/vertical";
-import { allowed, deniedReason, type ActionResult, type EngageAction } from "./_components/perms";
+import { allowed, deniedReason, type ActionResult as LegacyResult, type EngageAction } from "./_components/perms";
+import { at } from "./_lib/strings";
 
 type Kind = Extract<EngageAction, "createAccount" | "editAccount" | "addContact" | "createDeal" | "logActivity" | "assignAccount" | "importCsv" | "exportCsv">;
 
-export async function accountAction(kind: Kind, accountId: string | null, form: Record<string, string>): Promise<ActionResult> {
+export async function accountAction(kind: Kind, accountId: string | null, form: Record<string, string>): Promise<LegacyResult> {
   const { ds, role, support, session, active } = await pageCtx();
+  // Real workspaces never get the showcase "Saved" copy: persisted kinds have their own actions below, the rest are not wired.
+  if (!session.demo) return { ok: false, message: at(vocabFor(active.tenant))("realUnavailable"), sub: "Nothing was changed." };
   const t = vocabFor(active.tenant).ac.a;
   const acc = accountId ? await ds.account(accountId) : null;
   if (accountId && !acc) return { ok: false, message: t.notIn, sub: "Nothing was changed." };
