@@ -1,0 +1,43 @@
+{
+  "_review": true,
+  "note": "Machine-drafted Tamil. A fluent reviewer must approve before Tamil UI is enabled (owner blocker B-9).",
+  "keys": {
+    "common": {
+      "save": true,
+      "cancel": true,
+      "delete": true,
+      "edit": true,
+      "search": true,
+      "loading": true,
+      "empty": true,
+      "retry": true,
+      "language": true,
+      "english": true,
+      "tamil": true
+    },
+    "shell": {
+      "skipToContent": true,
+      "openMenu": true,
+      "closeMenu": true,
+      "signOut": true,
+      "profile": true,
+      "notifications": true,
+      "workspace": true
+    },
+    "auth": {
+      "signIn": true,
+      "email": true,
+      "password": true,
+      "forgotPassword": true,
+      "invalidCredentials": true,
+      "sessionExpired": true
+    },
+    "errors": {
+      "generic": true,
+      "notFound": true,
+      "forbidden": true,
+      "conflict": true,
+      "validation": true
+    }
+  }
+}
