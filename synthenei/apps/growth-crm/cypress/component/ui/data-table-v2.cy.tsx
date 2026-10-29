@@ -1,3 +1,4 @@
+import { keys } from "../../support/keyboard";
 import { DataTableV2, type DataTableV2Column } from "@/components/ui/data-table-v2";
 
 type Row = { id: string; name: string; value: number };
@@ -12,7 +13,8 @@ describe("DataTableV2", () => {
   it("renders 36px ledger rows and sorts by header with the keyboard", () => {
     cy.mount(<DataTableV2 {...base} data={rows} />);
     cy.get("tbody tr").first().invoke("outerHeight").should("eq", 36);
-    cy.contains("th button", "Name").focus().type("{enter}");
+    cy.contains("th button", "Name").focus();
+    keys("{Enter}");
     cy.contains("th", "Name").should("have.attr", "aria-sort", "ascending");
     cy.get("tbody tr").first().should("contain", "Alpha");
   });

@@ -1,3 +1,4 @@
+import { keys } from "../../support/keyboard";
 import { useState } from "react";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -15,7 +16,10 @@ function SelectDemo() {
 describe("Select", () => {
   it("opens with the keyboard and selects", () => {
     cy.mount(<SelectDemo />);
-    cy.get("[role=combobox]").focus().type("{enter}{downarrow}{enter}");
+    cy.get("[role=combobox]").focus();
+    keys("{Enter}");
+    cy.get("[role=listbox]").should("be.visible");
+    keys("{ArrowDown}{Enter}");
     cy.get("output").should("have.text", "b");
   });
   it("disabled with reason", () => {
@@ -27,8 +31,12 @@ describe("Select", () => {
 describe("Switch and Checkbox", () => {
   it("toggle with Space and show a focus ring", () => {
     cy.mount(<><Switch aria-label="Sync" /><Checkbox aria-label="Agree" /></>);
-    cy.get("[role=switch]").focus().should("have.css", "outline-style", "solid").type(" ").should("have.attr", "aria-checked", "true");
-    cy.get("[role=checkbox]").focus().type(" ").should("have.attr", "aria-checked", "true");
+    cy.get("[role=switch]").focus().should("have.css", "outline-style", "solid");
+    keys(" ");
+    cy.get("[role=switch]").should("have.attr", "aria-checked", "true");
+    cy.get("[role=checkbox]").focus().should("have.css", "outline-style", "solid");
+    keys(" ");
+    cy.get("[role=checkbox]").should("have.attr", "aria-checked", "true");
   });
   it("disabled with reason is focusable and does not toggle", () => {
     cy.mount(<Switch aria-label="Sync" disabledReason="Admin approval pending" />);

@@ -1,10 +1,12 @@
+import { keys } from "../../support/keyboard";
 import { Button } from "@/components/ui/button";
 
 describe("Button", () => {
   it("shows a focus ring on keyboard focus and fires on Enter", () => {
     const onClick = cy.stub().as("click");
     cy.mount(<Button variant="primary" onClick={onClick}>Save</Button>);
-    cy.get("button").focus().should("have.css", "outline-style", "solid").type("{enter}");
+    cy.get("button").focus().should("have.css", "outline-style", "solid");
+    keys("{Enter}");
     cy.get("@click").should("have.been.calledOnce");
   });
   it("disabledReason keeps focus, blocks click and explains why", () => {
