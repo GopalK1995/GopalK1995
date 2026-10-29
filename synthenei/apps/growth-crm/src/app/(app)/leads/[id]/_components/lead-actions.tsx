@@ -9,12 +9,15 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "@/component
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { assignLeads, changeStatus, logCall, logEmail, scheduleDemo, sendWhatsApp } from "../../actions";
-import { CALL_OUTCOMES, field, type Result } from "../../_lib/sales";
+import { CALL_OUTCOMES, field } from "../../_lib/sales";
+import type { ActionResult } from "@/lib/actions/result";
+import { ConflictBanner } from "../../_components/conflict-banner";
+import { lt } from "../../_lib/strings";
 import { useSession, useVocab } from "@/components/shell/providers";
 import { Gate } from "@/components/ui/gate";
 import { usePerm } from "../../_components/perm";
 
-type LeadInfo = { id: string; name: string; firm: string; email: string; consentWa: boolean; ownerId: string | null; today: string; tomorrow: string };
+type LeadInfo = { id: string; name: string; firm: string; email: string; consentWa: boolean; ownerId: string | null; today: string; tomorrow: string; version?: number | null };
 const Lbl = ({ t, children, className }: { t: string; children: ReactNode; className?: string }) => (
   <label className={cn("block", className)}><span className="mb-1 block text-[12px] font-medium text-ink-2">{t}</span>{children}</label>
 );
@@ -31,9 +34,14 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
   const DQ = vv.ls.a.dq;
   const [tpl, setTpl] = useState<string>(WA_TEMPLATES[0].id);
   const [err, setErr] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
+  const [ver, setVer] = useState<number | undefined>(lead.version ?? undefined);
+  const T = lt(vv);
   const close = () => { setDlg(null); setErr(null); };
-  const run = (fn: () => Promise<Result>, after?: () => void) => start(async () => {
+  const run = (fn: () => Promise<ActionResult<{ version: number } | undefined>>, after?: () => void) => start(async () => {
     const r = await fn();
+    if (!r.ok && r.code === "conflict") { setConflict(true); close(); return; }
+    if (r.ok && r.data?.version) setVer(r.data.version);
     if (!r.ok) { setErr(r.message); toast(r.message, "Nothing was changed."); return; }
     toast(r.message, r.sub); close(); after?.();
   });
@@ -42,6 +50,7 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {conflict && <div className="w-full"><ConflictBanner title={T("conflictTitle")} body={T("conflictBody")} reload={T("conflictReload")} onReload={() => setConflict(false)} /></div>}
       <Gate can="workLeads"><Button variant="primary" onClick={() => setDlg("call")}><Phone />Log call</Button></Gate>
       <Gate can="workLeads"><Button onClick={() => setDlg("wa")}><MessageCircle />WhatsApp</Button></Gate>
       <Gate can="workLeads"><Button onClick={() => setDlg("email")}><Mail />Email</Button></Gate>
@@ -52,7 +61,7 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
           <MenuTrigger asChild><Button variant="ghost">Status<ChevronDown /></Button></MenuTrigger>
           <MenuContent align="start">
             <MenuLabel>{la.statusLabel}</MenuLabel>
-            {STATUSES.map(([k, l]) => <MenuItem key={k} onSelect={() => run(() => changeStatus(lead.id, k))}>{l}</MenuItem>)}
+            {STATUSES.map(([k, l]) => <MenuItem key={k} onSelect={() => run(() => changeStatus(lead.id, k, undefined, ver))}>{l}</MenuItem>)}
             <MenuItem onSelect={() => setDlg("dq")} className="text-danger">Disqualify…</MenuItem>
           </MenuContent>
         </Menu>
@@ -72,7 +81,7 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
         <DialogContent title="Log a call" description={`${lead.name} · ${lead.firm}`}>
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault(); const f = new FormData(e.currentTarget);
-            run(() => logCall(lead.id, { outcome: String(f.get("outcome")), minutes: Number(f.get("minutes")), notes: String(f.get("notes") ?? ""), nextDate: String(f.get("next") ?? "") }));
+            run(() => logCall(lead.id, { outcome: String(f.get("outcome")), minutes: Number(f.get("minutes")), notes: String(f.get("notes") ?? ""), nextDate: String(f.get("next") ?? "") }, ver));
           }}>
             <div className="grid grid-cols-2 gap-3">
               <Lbl t="Outcome"><select name="outcome" className={field} defaultValue="connected">{CALL_OUTCOMES.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Lbl>
@@ -107,7 +116,7 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
         <DialogContent title="Email" description={`Opens your mail app to ${lead.email} and logs the email on this timeline.`}>
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault(); const f = new FormData(e.currentTarget); const subject = String(f.get("subject")), body = String(f.get("body"));
-            run(() => logEmail(lead.id, subject), () => { window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; });
+            run(() => logEmail(lead.id, subject, ver), () => { window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; });
           }}>
             <Lbl t="Subject"><input name="subject" required className={field} defaultValue={la.emailSubject(tenantName, lead.firm)} /></Lbl>
             <Lbl t="Message"><textarea name="body" className={cn(field, "h-28 py-2")} defaultValue={la.emailBody(first, tenantName)} /></Lbl>
@@ -138,7 +147,7 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
 
       <Dialog open={dlg === "dq"} onOpenChange={(o) => !o && close()}>
         <DialogContent title={`Disqualify ${lead.name}?`} description={la.dqDesc}>
-          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => changeStatus(lead.id, "disqualified", String(f.get("reason")))); }}>
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => changeStatus(lead.id, "disqualified", String(f.get("reason")), ver)); }}>
             <Lbl t="Reason"><select name="reason" className={field} required defaultValue=""><option value="" disabled>Choose a reason</option>{DQ.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Lbl>
             {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
             <Foot onCancel={close} label="Disqualify" pending={pending} />

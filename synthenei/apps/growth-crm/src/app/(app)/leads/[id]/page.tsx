@@ -16,6 +16,7 @@ import { vocabFor, type Vocab } from "@/lib/vertical";
 import { DAY, isOpenLead, ownsOrManages, shortCity } from "../_lib/sales";
 import { ScoreWithFactors } from "../_components/leads-table";
 import { LeadActions } from "./_components/lead-actions";
+import { EditLead } from "./_components/edit-lead";
 import { Timeline, type TimelineCat, type TimelineItem } from "./_components/timeline";
 import { AiPanel, type Suggestion } from "./_components/ai-panel";
 
@@ -164,6 +165,8 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
 
   const owners = team.filter((t) => t.role === "sales_rep" || t.role === "sales_manager").map((t) => ({ id: t.id, name: t.name }));
   const tomorrow = dayKey(new Date(nowMs + DAY).toISOString());
+  // Real rows carry `version` (migration 0014); demo rows do not.
+  const version = (lead as { version?: number }).version ?? null;
   const canWork = ownsOrManages(role, session.uid, lead.ownerId);
   const firstTouchDone = lead.firstResponseMins !== null;
 
@@ -172,7 +175,8 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
       {header}
       {canWork && (
         <div className="mb-5">
-          <LeadActions lead={{ id: lead.id, name: lead.name, firm, email: lead.email, consentWa: lead.consent.whatsapp, ownerId: lead.ownerId || null, today, tomorrow }} owners={owners} />
+          <LeadActions lead={{ id: lead.id, name: lead.name, firm, email: lead.email, consentWa: lead.consent.whatsapp, ownerId: lead.ownerId || null, today, tomorrow, version }} owners={owners} />
+          <div className="mt-2"><EditLead lead={{ id: lead.id, version, fullName: lead.name, roleTitle: lead.title, firmName: account?.name ?? "", email: lead.email, phone: lead.phone, city: lead.city }} /></div>
         </div>
       )}
       {!canWork && accessFor(role, "/leads") === "R" && <p className="mb-5 text-[12px] text-ink-3">{ld.readOnly(v.role[role])}</p>}

@@ -13,6 +13,7 @@ import { vocabFor } from "@/lib/vertical";
 import { BAND_LABEL, VIEWS, bandOf, defaultView, isOpenLead, shortCity, type Band, type ViewKey } from "./_lib/sales";
 import { LeadsTable, type LeadRow } from "./_components/leads-table";
 import { ImportDialog } from "./_components/import-dialog";
+import { CreateLead } from "./_components/create-lead";
 
 export const metadata = { title: "Leads" };
 const PAGE = 40;
@@ -121,7 +122,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       <PageHeader eyebrow={role === "sales_rep" ? t.eyebrowRep : masked ? t.eyebrowMasked(vc.role[role]) : t.eyebrowAll(num(visible.length))}
         title={t.title}
         sub={t.sub(viewLabel, num(filtered.length), filtered.length, filtered.length > PAGE ? `, showing ${(page - 1) * PAGE + 1}–${Math.min(page * PAGE, filtered.length)}` : "")}
-        actions={<ImportDialog />} />
+        actions={<div className="flex items-center gap-2"><CreateLead owners={owners.map((o) => ({ id: o.id, name: o.name }))} /><ImportDialog /></div>} />
 
       <nav aria-label="Saved views" className="scrollbar-thin -mx-4 mb-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
         {VIEWS.filter((v) => !(v.key === "mine" && role !== "sales_rep" && role !== "sales_manager")).map((v) => (
