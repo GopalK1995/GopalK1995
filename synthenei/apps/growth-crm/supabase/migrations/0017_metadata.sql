@@ -251,12 +251,32 @@ $$;
 revoke all on function authz.org_allows(uuid, text), authz.record_ok(uuid, uuid, text, uuid, jsonb), authz.shared_record_ids(text) from public, anon;
 grant execute on function authz.org_allows(uuid, text), authz.record_ok(uuid, uuid, text, uuid, jsonb), authz.shared_record_ids(text) to authenticated, service_role;
 
+-- The role_permissions guard (0013) blocks edits of system roles by users. Seeding the default grants of a new custom object type is
+-- the one allowed exception: it must run inside the object-type trigger (trigger depth > 1) with the transaction-local flag set.
+create or replace function authz.role_permissions_guard() returns trigger
+language plpgsql security definer set search_path = '' as $fn$
+declare v_system boolean;
+begin
+  if tg_op <> 'DELETE' and exists (select 1 from public.permissions p where p.key = new.permission_key and p.platform_only) then
+    raise exception 'platform-only permissions cannot be granted to org roles' using errcode = '42501';
+  end if;
+  if pg_trigger_depth() > 1 and coalesce(current_setting('app.object_type_seed', true), '') = 'on' then
+    return coalesce(new, old);
+  end if;
+  if (select auth.uid()) is not null then
+    select r.is_system into v_system from public.roles r where r.id = coalesce(new.role_id, old.role_id);
+    if coalesce(v_system, false) then raise exception 'system roles are read-only' using errcode = '42501'; end if;
+  end if;
+  return coalesce(new, old);
+end $fn$;
+
 -- A custom object type owns three permissions; owner and sales_manager system roles get working defaults.
 create or replace function metadata.object_type_perms() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare v_a text;
 begin
   if new.kind <> 'custom' then return null; end if;
+  perform set_config('app.object_type_seed', 'on', true);
   foreach v_a in array array['read', 'write', 'delete'] loop
     insert into public.permissions (key, resource, action, description)
     values ('obj:' || new.key || '.' || v_a, 'obj:' || new.key, v_a, initcap(v_a) || ' ' || new.key || ' records')
@@ -266,6 +286,7 @@ begin
      where r.tenant_id is null and r.is_system and (r.key = 'owner' or (r.key = 'sales_manager' and v_a <> 'delete'))
     on conflict (role_id, permission_key) do nothing;
   end loop;
+  perform set_config('app.object_type_seed', 'off', true);
   return null;
 end $$;
 drop trigger if exists trg_object_types_perms on public.object_types;
