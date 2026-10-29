@@ -4,13 +4,14 @@
 // Won asks for plan, seats, value and start date; Lost asks for a reason. The server action re-checks everything.
 import Link from "next/link";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
-import { useMemo, useRef, useState, useTransition, type PointerEvent as RPE } from "react";
-import { ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight, Hourglass } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as RPE } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DealStage } from "@/lib/data/types";
 import { useDealStages, useSession, useVocab } from "@/components/shell/providers";
 import { fmtDate, inr, inrCompact, pct } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { DisabledReason } from "@/components/ui/disabled-reason";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "@/components/ui/dropdown";
@@ -21,23 +22,24 @@ import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { moveDeal } from "../actions";
 import { field } from "../../leads/_lib/sales";
+import { StageAgeTicks } from "./stage-age";
+import { fill, type PipelineLabels } from "../_lib/labels";
+import { DEFAULT_STAGE_MAX_DAYS } from "../_lib/stage-age";
 
 export type DealCard = {
   id: string; name: string; firm: string; contact: string | null; leadId: string; value: number; seats: number; plan: string; stayLine?: string;
-  owner: string; days: number; next: string | null; nextOverdue: boolean; stage: DealStage; close: string; prob: number; lostReason?: string;
+  owner: string; days: number; version?: number; slaDays?: number; next: string | null; nextOverdue: boolean; stage: DealStage; close: string; prob: number; lostReason?: string;
 };
-const MAX_DAYS = 14; // pipeline_stages.max_days default (spec 6.3 M41)
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-function AgeBadge({ days }: { days: number }) {
-  const tone = days > MAX_DAYS ? "danger" : days > 10 ? "warn" : "neutral";
-  return <Badge tone={tone} title={`${days} days in this stage${days > MAX_DAYS ? `, over the ${MAX_DAYS}-day limit` : ""}`}><Hourglass aria-hidden />{days}d</Badge>;
-}
-
-export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; canMove: boolean; masked: boolean; today: string }) {
+export function Board({ deals, canMove, canMoveReason, masked, today, labels }: { deals: DealCard[]; canMove: boolean; canMoveReason?: string | null; masked: boolean; today: string; labels: PipelineLabels }) {
+  const router = useRouter();
   const DEAL_STAGES = useDealStages();
   const vv = useVocab(), pl = vv.pl, DEAL_STAGE_LABEL = vv.dealStage, PLANS = pl.plans, LOST_REASONS = vv.lost.map(([key, label]) => ({ key, label })), tenantName = useSession().tenant.name;
   const [items, setItems] = useState(deals);
+  const [animate, setAnimate] = useState(false); // layout animation only after a move the user caused
+  const [conflict, setConflict] = useState<null | { owner: string }>(null);
+  useEffect(() => { setItems(deals); setAnimate(false); }, [deals]);
   const [view, setView] = useState<"board" | "table">("board");
   const [mStage, setMStage] = useState<DealStage>(() => DEAL_STAGES.find((s) => deals.some((d) => d.stage === s)) ?? "discovery");
   const [dlg, setDlg] = useState<null | { kind: "won" | "lost"; card: DealCard }>(null);
@@ -55,11 +57,21 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
 
   const commit = (card: DealCard, to: DealStage, extra?: Parameters<typeof moveDeal>[2]) => {
     const before = items;
+    setAnimate(true); setConflict(null);
     setItems((xs) => xs.map((d) => (d.id === card.id ? { ...d, stage: to, days: 0, prob: prob[to], ...(extra?.won ? { value: extra.won.value, seats: extra.won.seats, plan: extra.won.plan } : {}) } : d)));
     startT(async () => {
-      const r = await moveDeal(card.id, to, extra);
-      if (!r.ok) { setItems(before); toast(r.message, "The card went back to its stage."); }
-      else toast(r.message, r.sub);
+      let r: Awaited<ReturnType<typeof moveDeal>>;
+      try { r = await moveDeal(card.id, to, extra, card.version); }
+      catch { setItems(before); toast(labels.moveFailed); return; }
+      if (r.ok) {
+        const version = r.data?.version;
+        if (version) setItems((xs) => xs.map((d) => (d.id === card.id ? { ...d, version } : d)));
+        toast(r.message, r.sub);
+        return;
+      }
+      setItems(before); // rollback: the card goes back to its stage
+      if (r.code === "conflict") setConflict({ owner: card.owner.split(" ")[0] });
+      toast(r.message, r.sub ?? labels.moveFailed);
     });
   };
   const request = (card: DealCard, to: DealStage) => {
@@ -90,7 +102,11 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
   };
   const dragged = drag ? items.find((d) => d.id === drag.id) : null;
 
-  const moveMenu = (card: DealCard) => !canMove ? null : (
+  const moveMenu = (card: DealCard) => !canMove ? (
+    <DisabledReason reason={canMoveReason ?? labels.deniedReason}>
+      <button type="button" className="inline-grid size-8 place-items-center rounded-chip text-ink-3 opacity-60" aria-label={`Move ${card.firm} to another stage`}><ArrowRightLeft className="size-4" aria-hidden /></button>
+    </DisabledReason>
+  ) : (
     <Menu>
       <MenuTrigger asChild>
         <button type="button" className="inline-grid size-8 place-items-center rounded-sm text-ink-3 outline-none hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Move ${card.firm} to another stage`}>
@@ -124,7 +140,7 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
         <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={card.owner} size={20} /><span className="truncate">{card.owner.split(" ")[0]}</span></span>
         <span className="flex items-center gap-1.5">
           {card.stage === "lost" && card.lostReason ? <span className="max-w-[120px] truncate text-[11px] text-ink-3" title={card.lostReason}>{card.lostReason}</span>
-            : card.stage !== "won" && <AgeBadge days={card.days} />}
+            : card.stage !== "won" && <StageAgeTicks days={card.days} max={card.slaDays ?? DEFAULT_STAGE_MAX_DAYS} labels={labels} />}
           {card.next && card.stage !== "won" && card.stage !== "lost" && (
             <span className={cn("inline-flex items-center gap-1 text-[11px] num", card.nextOverdue ? "font-medium text-danger" : "text-ink-3")} title="Next step date">
               <CalendarClock className="size-3" aria-hidden />{fmtDate(card.next)}
@@ -181,6 +197,12 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
         </div>
       </div>
 
+      {conflict && (
+        <div role="alert" data-testid="move-conflict" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-control border px-3 py-2 text-[13px]" style={{ borderColor: "color-mix(in oklch, var(--warn) 50%, transparent)", background: "color-mix(in oklch, var(--warn) 12%, transparent)" }}>
+          <span className="inline-flex items-start gap-2"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden /><span><strong className="font-semibold">{fill(labels.conflictTitle, { owner: conflict.owner })}</strong> <span className="text-ink-2">{labels.conflictBody}</span></span></span>
+          <span className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => { setConflict(null); router.refresh(); }}>{labels.conflictReload}</Button><Button size="sm" variant="ghost" onClick={() => setConflict(null)}>{labels.conflictDismiss}</Button></span>
+        </div>
+      )}
       {view === "table" ? (
         <div className="scrollbar-thin relative overflow-x-auto rounded-md border border-line bg-surface">
           <table className="w-full border-collapse" style={{ minWidth: 860 }} aria-label={pl.tableAria}>
@@ -218,7 +240,7 @@ export function Board({ deals, canMove, masked, today }: { deals: DealCard[]; ca
                   {columnHead(s)}
                   <ul className="flex min-h-24 flex-1 flex-col gap-2 px-2 pb-2">
                     {byStage[s].map((card) => (
-                      <motion.li key={card.id} layout={!reduce} layoutId={reduce ? undefined : `deal-${card.id}`} transition={{ duration: 0.15, ease: EASE }}
+                      <motion.li key={card.id} layout={!reduce && animate} layoutId={reduce || !animate ? undefined : `deal-${card.id}`} transition={{ duration: 0.15, ease: EASE }}
                         onPointerDown={(e) => onDown(e, card)}
                         className={cn("relative rounded-sm border border-line bg-surface p-2.5 shadow-1", canMove && "cursor-grab active:cursor-grabbing", drag?.id === card.id && "opacity-40")}>
                         {cardBody(card)}
