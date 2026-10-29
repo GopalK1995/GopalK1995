@@ -1,3 +1,4 @@
+import { demoModeOn as envDemoModeOn } from "@/lib/env";
 // One cookie-options helper for middleware (edge) and server actions.
 export const cookieOpts = (maxAgeSecs: number) => ({
   httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: maxAgeSecs,
@@ -11,4 +12,4 @@ export function safeNext(n: unknown): string | null {
   try { const u = new URL(s, "http://x.invalid"); return u.origin === "http://x.invalid" ? u.pathname + u.search : null; } catch { return null; }
 }
 /** Demo personas are a security switch: server-only env, never NEXT_PUBLIC. */
-export const demoModeOn = () => !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.DEMO_MODE === "1";
+export const demoModeOn = envDemoModeOn;

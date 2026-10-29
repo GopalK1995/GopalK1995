@@ -13,7 +13,8 @@ const TN_HOLIDAYS: Holiday[] = [
   { date: "2026-12-25", name: "Christmas" }, { date: "2027-01-14", name: "Pongal" }, { date: "2027-01-15", name: "Thiruvalluvar Day" }, { date: "2027-01-16", name: "Uzhavar Thirunal" },
 ];
 import type { Workspace } from "../tenancy";
-import { createSupabaseServerClient, supabaseConfigured } from "../supabase/server";
+import { createSupabaseServerClient } from "../supabase/server";
+import { loadEnv } from "../env";
 
 export interface DataSource {
   readonly kind: "mock" | "supabase";
@@ -110,6 +111,6 @@ function supabaseSource(ws: Workspace): DataSource {
 export function getDataSource(ws: Workspace, opts: { demo: boolean }): DataSource {
   const mock = mockSource(datasetFor(ws.dataset), ws.id);
   // Demo sessions ALWAYS read the mock and never touch a Supabase client.
-  if (!opts.demo && process.env.DATA_SOURCE === "supabase" && supabaseConfigured()) return supabaseSource(ws);
+  if (!opts.demo && loadEnv().dataSourceSupabase) return supabaseSource(ws);
   return mock;
 }
