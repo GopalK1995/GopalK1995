@@ -18,6 +18,7 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
   const [step, setStep] = useState<"password" | "code">(startOnCode ? "code" : "password");
   const [email, setEmail] = useState(demo ? "vikram@synthan.example" : "");
   const [pwErr, setPwErr] = useState("");
+  const [pw, setPw] = useState("");
   const [code, setCode] = useState("");
   const codeRef = useRef<HTMLInputElement>(null);
   const codeOk = /^\d{6}$/.test(code);
@@ -26,6 +27,7 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
     <form className="mt-6 space-y-3" noValidate onSubmit={(e) => {
       e.preventDefault();
       const pw = String(new FormData(e.currentTarget).get("password") || "");
+      setPw(pw);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setPwErr("Enter your Synthan operator email.");
       if (pw.length < 8) return setPwErr("Password is at least 8 characters.");
       setPwErr(""); setStep("code"); setTimeout(() => codeRef.current?.focus(), 0);
@@ -45,6 +47,7 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
     <form action={adminLogin} className="mt-6 space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
       <input type="hidden" name="email" value={email} />
+      <input type="hidden" name="password" value={demo ? "" : pw} />
       <p className="text-[13px] text-ink-2">Signing in as <span className="font-medium text-ink">{email || "your operator account"}</span></p>
       <div>
         <label htmlFor={`${id}-c`} className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-ink-2"><KeyRound className="size-3.5" aria-hidden />6-digit code from your authenticator</label>
@@ -53,7 +56,7 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
           aria-invalid={codeError && !codeOk} aria-describedby={`${id}-ch${codeError ? ` ${id}-ce` : ""}`}
           className={fieldCls + " text-center font-mono text-[20px] tracking-[0.4em]"} />
         <p id={`${id}-ch`} aria-live="polite" className="mt-1 text-[12px] text-ink-3 num">{code.length} of 6 digits</p>
-        {codeError && <p id={`${id}-ce`} role="alert" className="mt-1 text-[12px] text-danger">That code was not 6 digits. Enter the current code from your authenticator.</p>}
+        {codeError && <p id={`${id}-ce`} role="alert" className="mt-1 text-[12px] text-danger">That code or sign-in was not accepted. Check your details and enter the current code from your authenticator.</p>}
       </div>
       {demo && <p className="flex flex-wrap items-center gap-2 text-[12px] text-ink-3"><span className="rounded-[3px] border border-dashed border-warn/60 bg-warn-soft px-1.5 py-0.5 font-medium text-warn-ink">Demo — any 6-digit code</span>Not real MFA. Signs in as Vikram Anand (Synthan).</p>}
       <Verify />
