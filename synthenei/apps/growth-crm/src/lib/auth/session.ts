@@ -61,3 +61,45 @@ export async function verifySupport(t: string | undefined | null) {
   const s = await verify<SupportSession>(t, 1000 * 60 * 60);
   return s && s.endsAt > Date.now() ? s : null;
 }
+
+// ---- Real-auth helpers (pure, unit-tested) ----
+export type Membership = { ws: string; role: Role };
+export const COOKIE_PREFIX = "gcrm_";
+/** True for every cookie this app owns (session, workspace, support, per-tenant config). Logout clears them all. */
+export const isAppCookie = (name: string) => name.startsWith(COOKIE_PREFIX);
+
+/** Same message for every credential failure, so the form never reveals whether an account exists. */
+export const GENERIC_AUTH_ERROR = "credentials";
+/** Login throttle: attempts per window, keyed by email and by client address. */
+export const LOGIN_LIMIT = { perEmail: 8, perIp: 30, windowS: 900 } as const;
+export const RESET_LIMIT = { perEmail: 3, perIp: 10, windowS: 3600 } as const;
+export function throttleBucket(kind: "login" | "reset", dimension: "email" | "ip", value: string): string {
+  return `${kind}:${dimension}:${value.trim().toLowerCase().slice(0, 150)}`;
+}
+export const clientIp = (forwardedFor: string | null | undefined) => (forwardedFor?.split(",")[0] ?? "").trim() || "unknown";
+
+/** Build the signed-cookie payload from what Supabase says right now. Cookie claims are routing hints only. */
+export function buildLiveSession(input: { uid: string; email: string; fullName?: string | null; platformAdmin: boolean; memberships: Membership[]; now?: number }): Session {
+  return { uid: input.uid, name: input.fullName || input.email, email: input.email, demo: false, platformAdmin: input.platformAdmin, memberships: input.memberships, iat: input.now ?? Date.now() };
+}
+
+/** Re-sign an existing session after a refresh: memberships and admin flag come from the database, identity stays. */
+export function reSign(prev: Session, fresh: { platformAdmin: boolean; memberships: Membership[]; fullName?: string | null }, now = Date.now()): Session {
+  return { ...prev, name: fresh.fullName || prev.name, platformAdmin: fresh.platformAdmin, memberships: fresh.memberships, iat: now };
+}
+
+/** Where a signed-in user must go before a session cookie is issued, given Supabase assurance levels. */
+export function mfaStep(a: { current: string | null | undefined; next: string | null | undefined }, opts: { platformAdmin: boolean; hasVerifiedTotp: boolean }): "none" | "challenge" | "enrol" {
+  if (a.current === "aal2") return "none";
+  if (opts.hasVerifiedTotp || a.next === "aal2") return "challenge";
+  return opts.platformAdmin ? "enrol" : "none";
+}
+
+/** Minimum bar for a new password: 10+ characters with a letter and a digit. Returns an error code or null. */
+export function passwordProblem(pw: string, confirm?: string): "short" | "weak" | "mismatch" | null {
+  if (pw.length < 10) return "short";
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "weak";
+  if (confirm !== undefined && pw !== confirm) return "mismatch";
+  return null;
+}
+export const TOTP_RE = /^\d{6}$/;
