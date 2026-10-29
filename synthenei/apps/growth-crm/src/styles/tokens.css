@@ -29,7 +29,7 @@
   --line-strong: oklch(0.84 0.011 90);
   --ink: oklch(0.2 0.02 var(--brand-h));
   --ink-2: oklch(0.42 0.018 var(--brand-h));
-  --ink-3: oklch(0.56 0.014 var(--brand-h));
+  --ink-3: oklch(0.52 0.014 var(--brand-h));
 
   /* 30: navy structure */
   --navy-950: oklch(0.19 0.042 var(--brand-h));
@@ -39,7 +39,7 @@
   --navy-line: oklch(0.32 0.04 var(--brand-h));
   --navy-ink: oklch(0.96 0.01 var(--brand-h));
   --navy-ink-2: oklch(0.76 0.03 var(--brand-h));
-  --navy-ink-3: oklch(0.6 0.035 var(--brand-h));
+  --navy-ink-3: oklch(0.67 0.035 var(--brand-h));
 
   /* 10: accent */
   --accent: oklch(0.52 0.15 var(--brand-h));
@@ -69,12 +69,12 @@
   --seq-5: oklch(0.45 0.13 var(--brand-h));
 
   /* semantic (fixed, never themed; always paired with an icon or label) */
-  --success: oklch(0.55 0.13 155);
+  --success: oklch(0.47 0.12 155);
   --success-soft: oklch(0.95 0.04 155);
   --warn: oklch(0.62 0.14 70);
   --warn-ink: oklch(0.48 0.12 65);
   --warn-soft: oklch(0.96 0.05 85);
-  --danger: oklch(0.55 0.19 27);
+  --danger: oklch(0.5 0.19 27);
   --danger-soft: oklch(0.96 0.03 25);
   --info: oklch(0.5 0.1 220);
   --info-soft: oklch(0.95 0.03 220);

@@ -3,16 +3,16 @@
 // mono tabular numbers via ColumnMeta-free `numeric` flag on the column id list. Server-safe DataTable stays in data-table.tsx.
 import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { createSortedRowModel, flexRender, rowSortingFeature, sortFns, tableFeatures, useTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
+import { createSortedRowModel, flexRender, rowSortingFeature, sortFns, tableFeatures, useTable, type ColumnDef, type RowData, type SortingState } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState } from "./states";
 import { SkeletonRows } from "./skeleton";
 
 const features = tableFeatures({ rowSortingFeature, sortedRowModel: createSortedRowModel(), sortFns });
 
-export type DataTableV2Column<T> = ColumnDef<typeof features, T>;
+export type DataTableV2Column<T extends RowData> = ColumnDef<typeof features, T>;
 
-export type DataTableV2Props<T> = {
+export type DataTableV2Props<T extends RowData> = {
   data: T[];
   columns: DataTableV2Column<T>[];
   getRowId: (row: T) => string;
@@ -28,7 +28,7 @@ export type DataTableV2Props<T> = {
   className?: string;
 };
 
-export function DataTableV2<T>({ data, columns, getRowId, caption, numericColumns = [], onRowClick, loading, error, empty, density = "table", className }: DataTableV2Props<T>) {
+export function DataTableV2<T extends RowData>({ data, columns, getRowId, caption, numericColumns = [], onRowClick, loading, error, empty, density = "table", className }: DataTableV2Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const table = useTable({ features, columns, data, getRowId, state: { sorting }, onSortingChange: setSorting });
   if (error) return <ErrorState source={error.source} message={error.message} retry={error.retry} />;
