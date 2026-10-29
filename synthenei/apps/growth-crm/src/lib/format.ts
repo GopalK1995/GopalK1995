@@ -43,3 +43,21 @@ export function median(xs: number[]) {
   const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
+
+// Locale-aware variants (en-IN / ta-IN). The legacy helpers above stay en-IN for existing screens.
+export type FormatLocale = "en" | "ta";
+export function formatters(locale: FormatLocale = "en") {
+  const tag = locale === "ta" ? "ta-IN" : "en-IN";
+  const n0 = new Intl.NumberFormat(tag, { maximumFractionDigits: 0 });
+  const inrF = new Intl.NumberFormat(tag, { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+  const dOpts = { timeZone: IST } as const;
+  return {
+    tag,
+    number: (n: number) => n0.format(n),
+    /** Indian grouping: 1234567 -> 12,34,567 (currency symbol per locale). */
+    inr: (n: number) => inrF.format(Math.round(n)),
+    date: (iso: string) => new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", year: "numeric", ...dOpts }).format(new Date(iso)),
+    time: (iso: string) => new Intl.DateTimeFormat(tag, { hour: "numeric", minute: "2-digit", hour12: true, ...dOpts }).format(new Date(iso)),
+    dateTime: (iso: string) => new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, ...dOpts }).format(new Date(iso)),
+  };
+}

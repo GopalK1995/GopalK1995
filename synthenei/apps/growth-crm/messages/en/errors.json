@@ -1,0 +1,7 @@
+{
+  "generic": "Something went wrong. Try again.",
+  "notFound": "We could not find that page.",
+  "forbidden": "You do not have access to this.",
+  "conflict": "Someone else changed this. Reload and try again.",
+  "validation": "Check the highlighted fields."
+}
