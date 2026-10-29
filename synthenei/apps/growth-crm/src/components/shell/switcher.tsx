@@ -20,7 +20,8 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
   const [pending, start] = useTransition();
   const groups = useMemo(() => {
     const list = s.workspaces.filter((w) => `${w.tenantName} ${w.name}`.toLowerCase().includes(q.toLowerCase()));
-    return [...new Set(list.map((w) => w.tenantName))].map((t) => ({ tenant: t, items: list.filter((w) => w.tenantName === t) }));
+    // Group by tenant id (two tenants may share a display name); the label is the tenant name.
+    return [...new Set(list.map((w) => w.tenantId))].map((id) => { const items = list.filter((w) => w.tenantId === id); return { tenant: items[0].tenantName, key: id, items }; });
   }, [s.workspaces, q]);
   return (
     <M.Root>
@@ -50,7 +51,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
             </div>
           )}
           {groups.map((g) => (
-            <M.Group key={g.tenant}>
+            <M.Group key={g.key} data-tenant={g.key}>
               <M.Label className="px-2 pb-1 pt-2 text-[10.5px] font-medium uppercase tracking-[0.08em] text-ink-3">{g.tenant}</M.Label>
               {g.items.map((w) => (
                 <M.Item key={w.id} data-ws={w.id} onSelect={() => { if (w.id !== s.ws.id) start(() => switchWorkspace(w.id)); }}

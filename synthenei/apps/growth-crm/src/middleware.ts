@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, signSession, verifySession, verifySupport } from "./lib/auth/session";
 const ADMIN_IDLE_MS = 30 * 60e3;
 import { HOME_FOR, ROLE_LABEL, accessFor } from "./lib/auth/roles";
-import { resolveActive } from "./lib/auth/context";
+import { resolveHint } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
 import { moduleForPath } from "./lib/vertical";
 import { cfgCookieName, decodeCfgCookie } from "./lib/config/cookie-codec";
@@ -62,15 +62,16 @@ export async function middleware(req: NextRequest) {
   }
 
   const support = session.platformAdmin ? await verifySupport(req.cookies.get(SUPPORT_COOKIE)?.value) : null;
-  const active = resolveActive(session, req.cookies.get(WS_COOKIE)?.value, support);
+  // Edge-safe: cookie hints only, no DB call. requireActive() loads my_workspaces() and enforces for real sessions.
+  const active = resolveHint(session, req.cookies.get(WS_COOKIE)?.value, support);
   if (!active) return NextResponse.redirect(new URL(session.platformAdmin ? "/admin" : "/login?error=no_profile", req.url));
   if (pathname === "/" && HOME_FOR[active.role] !== "/") return NextResponse.redirect(new URL(HOME_FOR[active.role], req.url));
   if (!accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
   // Module switches (tenant config) are enforced here, server-side, as well as hidden in the nav.
   const mod = moduleForPath(pathname);
   // Demo sessions keep config in a signed cookie, which the edge can read; real sessions are checked in requireActive().
-  const cfgCookie = mod && session.demo ? await decodeCfgCookie(active.tenant.id, req.cookies.get(cfgCookieName(active.tenant.id))?.value) : null;
-  if (mod && resolveEffective(active.tenant.id, cfgCookie?.ovr).modules[mod] === false) {
+  const cfgCookie = mod && session.demo && active.demoTenantId ? await decodeCfgCookie(active.demoTenantId!, req.cookies.get(cfgCookieName(active.demoTenantId!))?.value) : null;
+  if (mod && session.demo && resolveEffective(active.demoTenantId ?? "", cfgCookie?.ovr).modules[mod] === false) {
     if (isPrefetch) return new NextResponse(null, { status: 204 });
     const url = new URL("/forbidden", req.url); url.searchParams.set("page", pathname); url.searchParams.set("off", "1");
     return NextResponse.rewrite(url, { status: 403 });
