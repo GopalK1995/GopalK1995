@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...p }: HTMLAttributes<HTMLDivElement>) {
-  return <section className={cn("min-w-0 rounded-md border border-line bg-surface shadow-1", className)} {...p} />;
+  return <section className={cn("min-w-0 rounded-control border border-line bg-surface", className)} {...p} />;
 }
 export function CardHeader({ title, sub, action, className, eyebrow }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; className?: string; eyebrow?: ReactNode }) {
   return (
@@ -21,5 +21,5 @@ export function CardBody({ className, ...p }: HTMLAttributes<HTMLDivElement>) {
 }
 /** Navy "key panel" (the 30% structure colour used for the one panel that matters most on a page). */
 export function NavyPanel({ className, ...p }: HTMLAttributes<HTMLDivElement>) {
-  return <section className={cn("min-w-0 rounded-md bg-navy-900 text-navy-ink shadow-2", className)} {...p} />;
+  return <section className={cn("min-w-0 rounded-control bg-navy-900 text-navy-ink", className)} {...p} />;
 }
