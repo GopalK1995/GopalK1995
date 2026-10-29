@@ -12,7 +12,7 @@ export const metadata = { title: "Sign in" };
 const ICON: Record<string, typeof UserRound> = { "owner-lawsome": Briefcase, "mgr-lawsome": BarChart3, "rep-lawsome": UserRound, "mkt-lawsome": Megaphone, "owner-kaveri": Building2, super: ShieldCheck, "data-lawsome": Database, "viewer-lawsome": Eye };
 const ERR: Record<string, string> = {
   credentials: "Email or password is incorrect.", no_backend: "Password sign-in needs the Supabase backend. Use a demo role below.",
-  inactive: "Your access was removed by your admin.", no_profile: "You are signed in but not invited to a workspace.", revoked: "Your access to that workspace was removed. Sign in again.", role: "Pick one of the demo roles.", demo_disabled: "Demo roles are disabled on this deployment.",
+  inactive: "Your access was removed by your admin.", no_profile: "You are signed in but not invited to a workspace.", revoked: "Your access to that workspace was removed. Sign in again.", link: "That link has expired or was already used. Ask for a new invitation or reset your password.", throttled: "Too many attempts. Wait 15 minutes and try again.", role: "Pick one of the demo roles.", demo_disabled: "Demo roles are disabled on this deployment.",
 };
 
 function Mono({ letter, size = 32 }: { letter: string; size?: number }) {
@@ -62,6 +62,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Password</span>
               <input name="password" type="password" autoComplete="current-password" required disabled={!live} className="h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none focus:border-ring disabled:bg-paper-2" /></label>
             <Button variant="primary" size="lg" className="w-full" disabled={!live}>Sign in</Button>
+            {live && <p className="text-[12px]"><Link href="/auth/reset" className="font-medium text-accent hover:underline">Forgot password?</Link></p>}
             {!live && <p className="text-[12px] text-ink-3">Password sign-in activates when the Supabase project is connected. This deployment runs in demo mode.</p>}
           </form>
 

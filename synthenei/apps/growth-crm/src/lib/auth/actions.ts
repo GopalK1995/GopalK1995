@@ -206,7 +206,7 @@ export async function logout() {
   if (sb) await sb.auth.signOut();
   const wasAdmin = s?.platformAdmin;
   const tid = tenantOf(store.get(WS_COOKIE)?.value ?? "")?.id;
-  store.delete(SESSION_COOKIE); store.delete(SUPPORT_COOKIE);
+  for (const c of store.getAll()) if (isAppCookie(c.name)) store.delete(c.name); // gcrm_session, gcrm_ws, gcrm_support, gcrm_cfg_*
   // Clients return to their own branded link, not the internal hub.
   redirect(wasAdmin ? "/admin/login?signed_out=1" : tid && (SIGNIN_SLUGS as readonly string[]).includes(tid) && tid !== "lawsome" ? `/g/${tid}?signed_out=1` : "/login?signed_out=1");
 }

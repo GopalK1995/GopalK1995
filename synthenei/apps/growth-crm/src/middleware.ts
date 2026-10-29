@@ -26,6 +26,8 @@ export async function middleware(req: NextRequest) {
   };
 
   const isClientLink = pathname.startsWith("/g/");
+  // /auth/* (invite, reset, set-password, MFA, callback) must be reachable before a gcrm_session exists; each page checks Supabase itself.
+  if (pathname.startsWith("/auth/")) return NextResponse.next();
   if (PUBLIC.includes(pathname) || isClientLink) {
     if (session && (pathname === "/login" || isClientLink) && !session.platformAdmin) return NextResponse.redirect(new URL("/", req.url));
     if (session && pathname === "/admin/login" && session.platformAdmin) return NextResponse.redirect(new URL("/admin", req.url));
