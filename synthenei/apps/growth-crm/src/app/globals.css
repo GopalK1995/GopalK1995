@@ -43,8 +43,21 @@
   --color-danger-soft: var(--danger-soft);
   --font-sans: var(--font-ui);
   --font-mono: var(--font-mono-ui);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --radius-bar: var(--r-bar);
+  --radius-chip: var(--r-chip);
+  --radius-control: var(--r-control);
+  --radius-round: var(--r-round);
+  --radius-sm: var(--r-chip);
+  --radius-md: var(--r-control);
+  --text-12: var(--text-12);
+  --text-13: var(--text-13);
+  --text-14: var(--text-14);
+  --text-15: var(--text-15);
+  --text-19: var(--text-19);
+  --text-22: var(--text-22);
+  --text-26: var(--text-26);
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
   --shadow-pop: var(--shadow-pop);
@@ -74,12 +87,30 @@
   scrollbar-color: var(--line-strong) transparent;
 }
 @utility eyebrow {
-  font-size: 11px; line-height: 16px; font-weight: 550; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);
+  font-size: 12px; line-height: 16px; font-weight: 550; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);
 }
+
+/* Numbers, ids, money, dates: mono with tabular figures */
+@utility num-mono { font-family: var(--font-mono-ui); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Uppercase column and section labels: mono 12 px, +14% tracking */
+@utility label-caps {
+  font-family: var(--font-mono-ui); font-size: 12px; line-height: 16px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
+}
+
+/* Density zones. Assign every region one zone before layout. */
+@utility zone-decision { padding: var(--zone-decision-pad); font-size: var(--text-15); line-height: 1.45; }
+@utility zone-work { padding: var(--zone-work-pad); font-size: var(--text-13); line-height: 1.5; }
+@utility zone-ledger {
+  font-size: var(--text-12); line-height: 1.4;
+  & tbody tr, & [role="row"], & [data-row] { min-height: var(--row-ledger); height: var(--row-ledger); }
+  & td, & th, & [role="cell"], & [role="columnheader"] { padding: 0 var(--zone-ledger-pad); }
+}
+.zone-ledger[data-density="list"] tbody tr, .zone-ledger[data-density="list"] [data-row] { height: var(--row-list); min-height: var(--row-list); }
 
 /* Recharts: recessive chrome */
 .recharts-cartesian-grid line { stroke: var(--chart-grid); }
-.recharts-text { fill: var(--ink-3); font-size: 11px; }
+.recharts-text { fill: var(--ink-3); font-size: 12px; }
 .recharts-cartesian-axis-tick-value { font-variant-numeric: tabular-nums; }
 .recharts-surface:focus, .recharts-wrapper:focus, .recharts-sector:focus { outline: none; }
 
