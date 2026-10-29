@@ -161,3 +161,38 @@ export function topFirms(accounts: Account[], deals: Deal[], leads: Lead[], n = 
 
 export const ICP_TITLES = ["Managing Partner", "Senior Advocate", "Partner", "Founding Advocate"];
 export const icpMatch = (l: Lead, acc?: Account) => ICP_TITLES.includes(l.title) && !l.email.endsWith("@mail.example") && (!acc || acc.icpTier !== "C"); // M15
+
+// ---- Aggregate view mappers (migration 0008). Rows are camelCased view rows from DataSource.views. ----
+type ViewRow = Record<string, unknown>;
+const num = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+
+/** v_pipeline_summary -> per-stage count/value/weighted value (M34, M35, M41). */
+export function pipelineSummaryFromView(rows: ViewRow[]) {
+  const stages = rows.map((r) => ({
+    key: String(r.key ?? ""), label: String(r.label ?? ""), position: num(r.position), probability: num(r.probability),
+    deals: num(r.deals), value: num(r.valueInr), weighted: num(r.weightedValueInr), stuck: num(r.stuckDeals),
+  })).sort((a, b) => a.position - b.position);
+  return { stages, totalValue: stages.reduce((a, s) => a + s.value, 0), weightedValue: stages.reduce((a, s) => a + s.weighted, 0), openDeals: stages.reduce((a, s) => a + s.deals, 0) };
+}
+
+/** v_rep_scorecard -> one row per rep with target attainment (M38). */
+export function repScorecardFromView(rows: ViewRow[]) {
+  return rows.map((r) => ({
+    repId: String(r.repId ?? ""), name: String(r.fullName ?? ""), openLeads: num(r.openLeads), leadsThisMonth: num(r.leadsThisMonth),
+    slaPct: r.slaPct30d == null ? null : num(r.slaPct30d), demosDone: num(r.demosDone), wonValue: num(r.wonValueInr),
+    targetDemos: num(r.targetDemos), targetWon: num(r.targetWonInr), attainmentPct: r.attainmentPct == null ? null : num(r.attainmentPct),
+  }));
+}
+
+/** v_funnel_daily -> total events and distinct people per funnel event name over the last `days` days. */
+export function funnelFromView(rows: ViewRow[], days = 90, nowIso: string = new Date().toISOString()) {
+  const since = new Date(Date.parse(nowIso) - days * 86400_000).toISOString().slice(0, 10);
+  const out: Record<string, { events: number; people: number }> = {};
+  for (const r of rows) {
+    if (String(r.day ?? "").slice(0, 10) < since) continue;
+    const k = String(r.eventName ?? "");
+    const o = (out[k] ??= { events: 0, people: 0 });
+    o.events += num(r.events); o.people += num(r.people); // people is per-day distinct; summed as an upper bound
+  }
+  return out;
+}

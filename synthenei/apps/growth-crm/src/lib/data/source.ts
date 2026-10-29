@@ -7,7 +7,7 @@ import type {
 import { datasetFor } from "./mock/generate-index";
 import type { AiSettings, Dataset, Holiday } from "./types";
 
-const AI_OFF: AiSettings = { scoring: true, summaries: false, nextBestAction: false, replyDrafts: false, campaignDigest: false, askCrm: false };
+import { AI_OFF, STILL_NOT_WIRED, createWiredReads, type WiredReads } from "./supabase/reads";
 const TN_HOLIDAYS: Holiday[] = [
   { date: "2026-10-20", name: "Ayudha Pooja" }, { date: "2026-10-21", name: "Vijayadasami" }, { date: "2026-11-08", name: "Deepavali" },
   { date: "2026-12-25", name: "Christmas" }, { date: "2027-01-14", name: "Pongal" }, { date: "2027-01-15", name: "Thiruvalluvar Day" }, { date: "2027-01-16", name: "Uzhavar Thirunal" },
@@ -45,6 +45,8 @@ export interface DataSource {
   aiSettings(): Promise<AiSettings>;
   /** Tenant holiday list entered by the Owner (not fetched). */
   holidays(): Promise<Holiday[]>;
+  /** Raw aggregate view rows (supabase only; see the view mappers in metrics.ts). Mock sources compute from arrays instead. */
+  readonly views?: WiredReads["views"];
 }
 
 export const mockSource = (d: Dataset, workspaceId: string): DataSource => ({
@@ -77,10 +79,10 @@ export const mockSource = (d: Dataset, workspaceId: string): DataSource => ({
 
 /**
  * Supabase source (opt-in with DATA_SOURCE=supabase plus NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).
- * Only leads and campaigns are read from tables today; every other method falls back to the mock so the UI keeps
- * working while tables are filled. Row mapping follows supabase/schema.sql (snake_case to camelCase).
+ * Leads, accounts, deals, tasks and campaigns read their tables directly; every other entity comes from ./supabase/reads.
+ * Row mapping follows supabase/schema.sql (snake_case to camelCase).
  */
-function supabaseSource(ws: Workspace): DataSource {
+function supabaseSource(ws: Workspace, piiRead: boolean): DataSource {
   // Real sessions NEVER see synthetic rows. Errors (incl. RLS denials) throw to the page error state with the failing
   // source; empty tables render empty; entities not mapped yet return []/null and are listed in `notWired`.
   const read = async <T,>(table: string, map: (r: Record<string, unknown>) => T) => {
@@ -91,26 +93,28 @@ function supabaseSource(ws: Workspace): DataSource {
     return (data ?? []).map(map);
   };
   const camel = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()), v])) as never;
-  const none = async () => [] as never[];
   const byId = <T extends { id: string },>(get: () => Promise<T[]>) => async (id: string) => (await get()).find((x) => x.id === id) ?? null;
   const leads = () => read<Lead>("leads", camel), accounts = () => read<Account>("accounts", camel), deals = () => read<Deal>("deals", camel);
   const tasks = () => read<Task>("tasks", camel), campaigns = () => read<Campaign>("campaigns", camel);
   const campaignDays = async (id?: string) => { const xs = await read<CampaignDay>("campaign_daily_metrics", camel); return id ? xs.filter((x) => x.campaignId === id) : xs; };
+  const w = createWiredReads(ws.uuid, undefined, { piiRead });
   return {
     kind: "supabase", workspaceId: ws.id,
-    notWired: ["team", "activities", "ga4", "conversations", "integrations", "consent", "privacyRequests", "audit", "syncRuns", "aiSettings", "holidays"],
+    // Only entities without a table in migrations 0001-0015 remain: privacy requests (0020) and AI policies (0021).
+    notWired: [...STILL_NOT_WIRED],
     now: () => new Date().toISOString(),
-    team: none, leads, lead: byId(leads), accounts, account: byId(accounts), deals, tasks, campaigns, campaign: byId(campaigns), campaignDays,
-    activities: none, ga4: async () => ({ days: [], pages: [] }), conversations: none, integrations: none, integration: async () => null,
-    consent: none, privacyRequests: none, audit: none, syncRuns: none,
-    aiSettings: async () => AI_OFF, holidays: async () => [],
+    team: w.team, leads, lead: byId(leads), accounts, account: byId(accounts), deals, tasks, campaigns, campaign: byId(campaigns), campaignDays,
+    activities: w.activities, ga4: w.ga4, conversations: w.conversations, integrations: w.integrations,
+    integration: async (id) => (await w.integrations()).find((x) => x.id === id) ?? null,
+    consent: w.consent, privacyRequests: w.privacyRequests, audit: w.audit, syncRuns: w.syncRuns,
+    aiSettings: w.aiSettings, holidays: w.holidays, views: w.views,
   };
 }
 
 /** Every read is scoped to one workspace (RLS does the same server-side when Supabase is on). */
-export function getDataSource(ws: Workspace, opts: { demo: boolean }): DataSource {
+export function getDataSource(ws: Workspace, opts: { demo: boolean; /** caller holds pii.read; default false = masked */ piiRead?: boolean }): DataSource {
   const mock = mockSource(datasetFor(ws.dataset), ws.id);
   // Demo sessions ALWAYS read the mock and never touch a Supabase client.
-  if (!opts.demo && loadEnv().dataSourceSupabase) return supabaseSource(ws);
+  if (!opts.demo && loadEnv().dataSourceSupabase) return supabaseSource(ws, opts.piiRead === true);
   return mock;
 }
