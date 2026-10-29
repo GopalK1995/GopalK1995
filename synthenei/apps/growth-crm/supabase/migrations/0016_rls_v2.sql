@@ -284,6 +284,7 @@ declare
   v_off text[]; v_capped text[] := '{}'; v_all constant text[] := array['inbox','ai','integrations','audience','analytics','tasks','accounts','campaigns','data-health'];
 begin
   if v_uid is null then return null; end if;
+  select null::uuid as id, null::text as mode, null::timestamptz as expires_at into v_ss;   -- always assigned (0013 left it unset for members)
   select r.id, r.key, r.base_role into v_role
     from public.memberships m join public.roles r on r.id = m.role_id
    where m.user_id = v_uid and m.workspace_id = p_ws and m.is_active and (m.valid_until is null or m.valid_until > now());
