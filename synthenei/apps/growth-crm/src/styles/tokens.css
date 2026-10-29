@@ -29,7 +29,7 @@
   --line-strong: oklch(0.84 0.011 90);
   --ink: oklch(0.2 0.02 var(--brand-h));
   --ink-2: oklch(0.42 0.018 var(--brand-h));
-  --ink-3: oklch(0.56 0.014 var(--brand-h));
+  --ink-3: oklch(0.52 0.014 var(--brand-h));
 
   /* 30: navy structure */
   --navy-950: oklch(0.19 0.042 var(--brand-h));
@@ -39,7 +39,7 @@
   --navy-line: oklch(0.32 0.04 var(--brand-h));
   --navy-ink: oklch(0.96 0.01 var(--brand-h));
   --navy-ink-2: oklch(0.76 0.03 var(--brand-h));
-  --navy-ink-3: oklch(0.6 0.035 var(--brand-h));
+  --navy-ink-3: oklch(0.67 0.035 var(--brand-h));
 
   /* 10: accent */
   --accent: oklch(0.52 0.15 var(--brand-h));
@@ -69,22 +69,54 @@
   --seq-5: oklch(0.45 0.13 var(--brand-h));
 
   /* semantic (fixed, never themed; always paired with an icon or label) */
-  --success: oklch(0.55 0.13 155);
+  --success: oklch(0.47 0.12 155);
   --success-soft: oklch(0.95 0.04 155);
   --warn: oklch(0.62 0.14 70);
   --warn-ink: oklch(0.48 0.12 65);
   --warn-soft: oklch(0.96 0.05 85);
-  --danger: oklch(0.55 0.19 27);
+  --danger: oklch(0.5 0.19 27);
   --danger-soft: oklch(0.96 0.03 25);
+  --info: oklch(0.5 0.1 220);
+  --info-soft: oklch(0.95 0.03 220);
+  /* state fills sit behind text at 12%, borders of state chips at 50% */
+  --state-fill: 12%;
+  --state-border: 50%;
 
   /* type */
   --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono-ui: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* shape: 8px grid, two radii only */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --shadow-1: 0 1px 0 oklch(0.2 0.02 245 / 0.04), 0 1px 2px oklch(0.2 0.02 245 / 0.06);
+  /* type scale: the only sizes allowed (12 px is the floor; Tamil minimum is 13 px) */
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-19: 19px;
+  --text-22: 22px;
+  --text-26: 26px;
+
+  /* shape: four radius roles */
+  --r-bar: 2px;
+  --r-chip: 4px;
+  --r-control: 8px;
+  --r-round: 9999px;
+  --radius-sm: var(--r-chip);
+  --radius-md: var(--r-control);
+
+  /* density zones */
+  --zone-decision-pad: 24px;
+  --zone-work-pad: 16px;
+  --zone-ledger-pad: 8px;
+  --row-ledger: 36px;
+  --row-list: 40px;
+
+  /* motion: user-caused changes only */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* depth: no shadow on cards or rows; only the single raised surface uses --shadow-pop */
+  --shadow-1: none;
   --shadow-2: 0 1px 2px oklch(0.2 0.02 245 / 0.06), 0 8px 24px -8px oklch(0.2 0.03 245 / 0.14);
   --shadow-pop: 0 12px 40px -12px oklch(0.15 0.04 245 / 0.35), 0 2px 6px oklch(0.15 0.04 245 / 0.1);
 }

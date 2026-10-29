@@ -22,4 +22,4 @@ export function MenuItem({ children, onSelect, disabled, className }: { children
   );
 }
 export const MenuSep = () => <M.Separator className="my-1 h-px bg-line" />;
-export const MenuLabel = ({ children }: { children: ReactNode }) => <M.Label className="px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-3">{children}</M.Label>;
+export const MenuLabel = ({ children }: { children: ReactNode }) => <M.Label className="px-2 pb-1 pt-1.5 text-12 font-medium uppercase tracking-wide text-ink-3">{children}</M.Label>;

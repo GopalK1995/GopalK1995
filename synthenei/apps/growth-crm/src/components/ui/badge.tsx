@@ -1,8 +1,9 @@
 import type { HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { LiveStatusChip, type LiveStatus } from "./chip";
 
-export const badgeVariants = cva("inline-flex items-center gap-1 whitespace-nowrap rounded-[4px] px-1.5 h-5 text-[11px] font-medium leading-none [&_svg]:size-3", {
+export const badgeVariants = cva("inline-flex items-center gap-1 whitespace-nowrap rounded-chip px-1.5 h-5 text-12 font-medium leading-none [&_svg]:size-3", {
   variants: {
     tone: {
       neutral: "bg-paper-2 text-ink-2 ring-1 ring-inset ring-line",
@@ -21,13 +22,9 @@ export function Badge({ className, tone, ...p }: HTMLAttributes<HTMLSpanElement>
   return <span className={cn(badgeVariants({ tone }), className)} {...p} />;
 }
 
-/** Status chip for integrations and demo surfaces. Showcase = neutral slate, dashed outline (reads as a label, not success). */
-export type Status = "showcase" | "connected" | "needs_attention" | "error" | "not_configured" | "sample";
-const STATUS: Record<Status, { tone: NonNullable<VariantProps<typeof badgeVariants>["tone"]>; label: string }> = {
-  showcase: { tone: "showcase", label: "Showcase" }, connected: { tone: "success", label: "Connected" }, needs_attention: { tone: "warn", label: "Needs attention" },
-  error: { tone: "danger", label: "Error" }, not_configured: { tone: "outline", label: "Not configured" }, sample: { tone: "showcase", label: "Sample data" },
-};
+/** Status chip for integrations, sync and demo surfaces. Connector and live/stale/offline states render with an icon (see chip.tsx). */
+export type Status = "showcase" | "sample" | LiveStatus;
 export function StatusChip({ status, label, className }: { status: Status; label?: string; className?: string }) {
-  const s = STATUS[status];
-  return <Badge tone={s.tone} className={className}>{label ?? s.label}</Badge>;
+  if (status === "showcase" || status === "sample") return <Badge tone="showcase" className={className}>{label ?? (status === "sample" ? "Sample data" : "Showcase")}</Badge>;
+  return <LiveStatusChip status={status} label={label} className={className} />;
 }
