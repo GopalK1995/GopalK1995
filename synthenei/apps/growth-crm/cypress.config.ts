@@ -1,5 +1,6 @@
 import { defineConfig } from "cypress";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 
 const baseUrl = process.env.CYPRESS_BASE_URL ?? "http://localhost:3202";
 
@@ -24,6 +25,6 @@ export default defineConfig({
     supportFile: "cypress/support/component.ts",
     indexHtmlFile: "cypress/support/component-index.html",
     video: false,
-    devServer: { framework: "react", bundler: "vite", viteConfig: { plugins: [react()] } },
+    devServer: { framework: "react", bundler: "vite", viteConfig: { plugins: [react()], resolve: { alias: { "@": path.resolve(__dirname, "src") } } } },
   },
 });
