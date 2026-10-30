@@ -4,11 +4,11 @@
 // the reschedule dialog, which is the keyboard and touch alternative. Mobile shows one day at a time.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useRef, useState, type PointerEvent as RPE } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent as RPE } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { dayKey, fmtDate, fmtTime, fmtWeekday } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { KIND_ICON, istIso, type TaskRow } from "./shared";
+import { KIND_ICON, istIso, type TaskRow, type TaskStrings } from "./shared";
 import { useVocab } from "@/components/shell/providers";
 
 export type { Holiday } from "@/lib/data/types";
@@ -39,8 +39,9 @@ function lanes(rows: TaskRow[]) {
   return out;
 }
 
-export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove, onOpen }: {
-  rows: TaskRow[]; now: string; weekOffset: number; holidays: Holiday[]; canEdit: boolean;
+const BIZ_START = 10, BIZ_END = 18; // business hours shaded in IST; the tenant setting arrives with the settings task
+export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove, onOpen, t }: {
+  rows: TaskRow[]; now: string; weekOffset: number; holidays: Holiday[]; canEdit: boolean; t: TaskStrings;
   onMove: (id: string, iso: string) => void; onOpen: (r: TaskRow) => void;
 }) {
   const KIND_LABEL = useVocab().tk.kind;
@@ -51,6 +52,7 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
   const days = Array.from({ length: 6 }, (_, i) => new Date(monday.getTime() + i * DAY).toISOString().slice(0, 10));
   const [mDay, setMDay] = useState(days.includes(today) ? today : days[0]);
   const [drag, setDrag] = useState<null | { id: string; day: string; min: number }>(null);
+  const [announce, setAnnounce] = useState("");
   const start = useRef<{ id: string; x: number; y: number; grabMin: number; moved: boolean } | null>(null);
   const justDragged = useRef(false);
   const nowMin = istMinutes(now);
@@ -91,13 +93,28 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
     }
   };
 
+  /** Keyboard move: Alt+Left/Right = one day, Alt+Up/Down = 30 minutes. Enter/click still opens the time picker. */
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>, r: TaskRow) => {
+    if (!canEdit || !e.altKey) return;
+    const dd = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const dm = e.key === "ArrowDown" ? SNAP : e.key === "ArrowUp" ? -SNAP : 0;
+    if (!dd && !dm) return;
+    e.preventDefault();
+    const min = Math.max(START * 60, Math.min(END * 60 - SNAP, istMinutes(r.due) + dm));
+    const day = dayKey(new Date(new Date(r.due).getTime() + dd * DAY).toISOString());
+    const iso = istIso(day, `${pad(Math.floor(min / 60))}:${pad(min % 60)}`);
+    if (iso === r.due || iso < now) return;
+    setAnnounce(t.calMovedAnnounce.replace("{title}", r.title).replace("{when}", `${fmtWeekday(iso)} ${fmtDate(iso)}, ${fmtTime(iso)}`));
+    onMove(r.id, iso);
+  };
+
   const block = (r: TaskRow, pos: { lane: number; of: number } | undefined) => {
     const m = istMinutes(r.due), clamped = Math.max(START * 60, Math.min(END * 60 - SNAP, m));
     const I = KIND_ICON[r.kind];
     const late = r.due < now;
     return (
       <button key={r.id} type="button"
-        onPointerDown={(e) => onDown(e, r)} onPointerMove={onMoveP} onPointerUp={() => onUp(r)}
+        onKeyDown={(e) => onKey(e, r)} onPointerDown={(e) => onDown(e, r)} onPointerMove={onMoveP} onPointerUp={() => onUp(r)}
         onClick={() => { if (justDragged.current) { justDragged.current = false; return; } onOpen(r); }}
         aria-label={`${KIND_LABEL[r.kind]}: ${r.title}, ${fmtWeekday(r.due)} ${fmtTime(r.due)}${late ? ", overdue" : ""}. ${canEdit ? "Press Enter to reschedule." : ""}`}
         className={cn("absolute overflow-hidden rounded-[4px] border px-1.5 py-1 text-left text-[11px] leading-4 outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -115,6 +132,8 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
     const pos = lanes(dayRows);
     return (
       <div key={d} data-day={d} className={cn("relative border-l border-line", hol && "bg-[repeating-linear-gradient(135deg,var(--paper-2)_0_6px,transparent_6px_12px)]", d === today && "bg-accent-soft/30", wide && "border-l-0")} style={{ height: (END - START) * HOUR }}>
+        <div className="absolute inset-x-0 bg-paper-2/70" style={{ top: 0, height: (BIZ_START - START) * HOUR }} aria-hidden title={t.calOutsideHours} />
+        <div className="absolute inset-x-0 bg-paper-2/70" style={{ top: (BIZ_END - START) * HOUR, height: (END - BIZ_END) * HOUR }} aria-hidden title={t.calOutsideHours} />
         {Array.from({ length: END - START }, (_, i) => <div key={i} className="absolute inset-x-0 border-t border-line/70" style={{ top: i * HOUR }} aria-hidden />)}
         {hol && <div className="absolute inset-x-1 top-1 z-10 rounded-[4px] bg-surface/90 px-1.5 py-0.5 text-[10px] font-medium text-ink-2">{hol.name}</div>}
         {d === today && nowMin >= START * 60 && nowMin < END * 60 && <div aria-hidden className="absolute inset-x-0 z-10 border-t-2 border-danger" style={{ top: ((nowMin - START * 60) / 60) * HOUR }} />}
@@ -133,19 +152,19 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
   );
   const dayHead = (d: string) => {
     const hol = holidays.find((h) => h.date === d);
-    return <div className={cn("px-2 py-2 text-[12px] font-medium", d === today ? "text-accent" : "text-ink-2")}>{fmtWeekday(d + "T06:00:00Z")} <span className="num">{Number(d.slice(8))}</span>{hol && <span className="sr-only">, holiday: {hol.name}</span>}</div>;
+    return <div className={cn("px-2 py-2 text-[12px] font-medium", d === today ? "text-accent" : "text-ink-2")}>{fmtWeekday(d + "T06:00:00Z")} <span className="num">{Number(d.slice(8))}</span>{hol && <span className="sr-only">, {t.calHoliday}: {hol.name}</span>}</div>;
   };
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <Link href={href(weekOffset - 1)} scroll={false} aria-label="Previous week" className="grid size-9 place-items-center rounded-sm border border-line-strong bg-surface text-ink-2 hover:bg-paper-2"><ChevronLeft className="size-4" /></Link>
-          <Link href={href(weekOffset + 1)} scroll={false} aria-label="Next week" className="grid size-9 place-items-center rounded-sm border border-line-strong bg-surface text-ink-2 hover:bg-paper-2"><ChevronRight className="size-4" /></Link>
+          <Link href={href(weekOffset - 1)} scroll={false} aria-label={t.calPrev} className="grid size-9 place-items-center rounded-sm border border-line-strong bg-surface text-ink-2 hover:bg-paper-2"><ChevronLeft className="size-4" /></Link>
+          <Link href={href(weekOffset + 1)} scroll={false} aria-label={t.calNext} className="grid size-9 place-items-center rounded-sm border border-line-strong bg-surface text-ink-2 hover:bg-paper-2"><ChevronRight className="size-4" /></Link>
           <span className="ml-2 text-[13px] font-medium text-ink num">{fmtDate(days[0] + "T06:00:00Z")} – {fmtDate(days[5] + "T06:00:00Z")}</span>
-          {weekOffset !== 0 && <Link href={href(0)} scroll={false} className="ml-2 text-[12px] font-medium text-accent hover:underline">This week</Link>}
+          {weekOffset !== 0 && <Link href={href(0)} scroll={false} className="ml-2 text-[12px] font-medium text-accent hover:underline">{t.calThisWeek}</Link>}
         </div>
-        <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3" aria-label="Legend">
+        <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3" aria-label={t.calLegend}>
           {(["demo", "call", "whatsapp", "proposal", "follow_up", "email"] as const).map((k) => (
             <li key={k} className="inline-flex items-center gap-1"><span className={cn("size-2.5 rounded-[2px] border", TONE[k])} aria-hidden />{KIND_LABEL[k]}</li>
           ))}
@@ -173,9 +192,10 @@ export function WeekCalendar({ rows, now, weekOffset, holidays, canEdit, onMove,
       </div>
 
       <p className="mt-2 text-[12px] text-ink-3">
-        {canEdit ? "Drag a block to move it (30-minute steps), or select it to pick a new time. " : ""}
-        Hatched days are tenant holidays entered by the Owner.{outside ? ` ${outside} task${outside > 1 ? "s" : ""} fall outside 08:00–20:00 and are pinned to the edge.` : ""}
+        {canEdit ? `${t.calDragHelp} ${t.calKeyHelp} ` : ""}
+        {t.calHolidayNote} {t.calBusinessHours}: {pad(BIZ_START)}:00 to {pad(BIZ_END)}:00.{outside ? ` ${t.calOutside.replace("{n}", String(outside))}` : ""}
       </p>
+      <p className="sr-only" role="status" aria-live="polite">{announce}</p>
     </div>
   );
 }
