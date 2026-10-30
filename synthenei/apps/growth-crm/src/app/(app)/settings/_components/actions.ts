@@ -1,56 +1,128 @@
 "use server";
-// Settings mutations. Each one re-checks permissions server-side with the support-aware can() plus the
-// row-level rules the UI also shows (manager scope, tenant primary owner). Demo: no persistence; the result
-// says what would have happened. Real path: RPCs invite_member(), set_member_role(), deactivate_member(),
-// update_tenant_branding(), save_pipeline_stages(), erase_lead(); RLS + has_member_role() are the guarantee.
+// Settings mutations. Member administration (invite, change role, suspend, reactivate, territories) is real: each action
+// runs assertCan, the privilege-escalation guards (settings/roles/_lib/guards.ts), then the repositories/RPCs; RLS and the
+// guard triggers of migrations 0005/0013 are the second line. Demo sessions validate and answer, and never build a client.
+// Branding, pipeline and erasure below are unchanged (demo-only until their owning tasks).
 import { requireActive } from "@/lib/auth/server";
-import { can, ROLE_LABEL } from "@/lib/auth/roles";
-import { MEMBERSHIPS, userById } from "@/lib/tenancy";
-import type { Role } from "@/lib/data/types";
+import { can } from "@/lib/auth/roles";
+import { failResult, okResult, type ActionResult as Result } from "@/lib/actions/result";
+import { DbError } from "@/lib/db/errors";
+import { adminCtx, realDb, type AdminCtx } from "../roles/_lib/ctx";
+import { checkMemberChange, checkRoleAssignment } from "../roles/_lib/guards";
+import { act, customRolesBlocked, loadWorld, refOf, roleOfMember, rpc, verdict } from "../roles/_lib/ops";
+import { attributesSchema, changeRoleSchema, inviteSchema, memberIdSchema } from "../roles/_lib/schemas";
+import { activeOwnerCount, setMemberActive, setMemberAttributes, setMemberRole } from "../roles/_lib/store";
+import { sa } from "../roles/_lib/strings";
 import { contrastChecks } from "./contrast";
 
 export type ActionResult = { ok: boolean; message: string; detail?: string };
 const DEMO = "Demo: nothing was saved or sent.";
 const SUPPORT = { ok: false, message: "Not available in a support session." } as const;
-const MANAGER_SCOPE: Role[] = ["sales_rep", "viewer"];
-const ROLES: Role[] = ["owner", "sales_manager", "sales_rep", "marketing", "data", "viewer"];
+const notFound = () => failResult("not_found", sa("memberNotFound"));
 
-async function manageCtx() {
-  const { session, active } = await requireActive();
-  return { session, active, ok: can("manageUsers", { role: active.role, support: active.support }) };
-}
-/** Owner: any role. Sales Manager: only Sales Rep and Viewer, for both the target's current and new role. */
-const inScope = (actor: Role, ...roles: Role[]) => actor === "owner" || (actor === "sales_manager" && roles.every((r) => MANAGER_SCOPE.includes(r)));
-
-export async function inviteMember(email: string, role: Role): Promise<ActionResult> {
-  const { active, ok } = await manageCtx();
-  if (active.support) return SUPPORT;
-  if (!ok) return { ok: false, message: `Your role (${ROLE_LABEL[active.role]}) cannot invite users.` };
-  const clean = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a valid email address." };
-  if (!ROLES.includes(role) || !inScope(active.role, role)) return { ok: false, message: "Sales Managers can invite Sales Reps and Viewers only." };
-  return { ok: true, message: `Invitation to ${clean} as ${ROLE_LABEL[role]}`, detail: `For ${active.tenant.name} · ${active.ws.name} only, expires in 7 days. ${DEMO}` };
-}
-
-export async function changeMemberRole(userId: string, role: Role): Promise<ActionResult> {
-  const { session, active, ok } = await manageCtx();
-  if (active.support) return SUPPORT;
-  if (!ok) return { ok: false, message: "Your role cannot change roles." };
-  if (userId === session.uid) return { ok: false, message: "You cannot change your own role." };
-  const m = MEMBERSHIPS.find((x) => x.userId === userId && x.workspaceId === active.ws.id);
-  if (!m) return { ok: false, message: "Not a member of this workspace." };
-  if (!ROLES.includes(role) || !inScope(active.role, m.role, role)) return { ok: false, message: "Sales Managers manage Sales Reps and Viewers only." };
-  return { ok: true, message: `${userById(userId)?.name ?? "Member"}: ${ROLE_LABEL[m.role]} to ${ROLE_LABEL[role]}`, detail: `In ${active.ws.name} only; other workspaces unchanged. ${DEMO}` };
+/** Invite: real invite_member RPC (existing confirmed user is added at once, new user gets an invitation row) then the
+ *  admin invite email. A custom role is applied right away for an existing user; for a new user it is applied after accept. */
+export async function inviteMember(input: { email: string; roleId: string; fullName?: string; districts?: string[] }): Promise<Result> {
+  return act(async () => {
+    const v = inviteSchema.parse(input);
+    const c = await adminCtx("members.invite");
+    const db = c.demo ? null : await realDb(c);
+    const w = await loadWorld(c, db);
+    const role = w.roles.find((r) => r.id === v.roleId);
+    if (!role) return failResult("not_found", sa("roleNotFound"));
+    const bad = verdict(checkRoleAssignment(c.actor, refOf(role))) ?? (role.isSystem ? null : customRolesBlocked(w.policy));
+    if (bad) return bad;
+    if (w.policy.maxSeats != null && w.members.filter((m) => m.isActive).length >= w.policy.maxSeats && !w.members.some((m) => m.email.toLowerCase() === v.email))
+      return failResult("denied", sa("seatCap", { n: w.policy.maxSeats }));
+    if (c.demo || !db) return okResult(sa("inviteDone", { email: v.email, role: role.name }), { sub: sa("demoNotice") });
+    const res = (await rpc(db, "invite_member", { p_ws: c.ws, p_email: v.email, p_role: role.baseRole, p_full_name: v.fullName || null, p_districts: v.districts })) as { status?: string; user_id?: string } | null;
+    if (res?.status === "member_added") {
+      if (!role.isSystem && res.user_id) await setMemberRole(db, c.ws, res.user_id, role.id);
+      return okResult(sa("inviteAdded", { email: v.email, role: role.name }));
+    }
+    // New user: the invitation row exists; the admin invite email comes from Supabase Auth (service role, server only).
+    const sent = await sendInviteEmail(v.email, v.fullName);
+    const sub = [sent ? sa("inviteEmailSent") : sa("inviteEmailFailed"), role.isSystem ? "" : sa("inviteCustomLater")].filter(Boolean).join(" ");
+    return okResult(sa("inviteDone", { email: v.email, role: role.name }), { sub });
+  });
 }
 
-export async function suspendMember(userId: string): Promise<ActionResult> {
-  const { session, active, ok } = await manageCtx();
-  if (active.support) return SUPPORT;
-  if (!ok) return { ok: false, message: "Your role cannot suspend members." };
-  if (userId === session.uid) return { ok: false, message: "You cannot suspend yourself." };
-  const m = MEMBERSHIPS.find((x) => x.userId === userId && x.workspaceId === active.ws.id);
-  if (!m || !inScope(active.role, m.role)) return { ok: false, message: "Sales Managers manage Sales Reps and Viewers only." };
-  return { ok: true, message: `${userById(userId)?.name ?? "Member"} suspended in ${active.ws.name}`, detail: `Membership deactivated, sessions revoked, history kept. ${DEMO}` };
+async function sendInviteEmail(email: string, fullName?: string): Promise<boolean> {
+  try {
+    const [{ serviceDb }, { headers }] = await Promise.all([import("@/lib/db/service"), import("next/headers")]);
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : undefined;
+    const { error } = await serviceDb().auth.admin.inviteUserByEmail(email, {
+      data: fullName ? { full_name: fullName } : undefined,
+      redirectTo: origin ? `${origin}/auth/callback?next=/auth/accept-invite` : undefined,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+async function targetOf(c: AdminCtx, userId: string) {
+  const db = c.demo ? null : await realDb(c);
+  const w = await loadWorld(c, db);
+  const m = w.members.find((x) => x.userId === userId);
+  const r = m ? roleOfMember(w.roles, m) : undefined;
+  return { db, w, m, r };
+}
+
+export async function changeMemberRole(userId: string, roleId: string): Promise<Result> {
+  return act(async () => {
+    const v = changeRoleSchema.parse({ userId, roleId });
+    const c = await adminCtx("members.manage");
+    const { db, w, m, r } = await targetOf(c, v.userId);
+    const next = w.roles.find((x) => x.id === v.roleId);
+    if (!m || !r) return notFound();
+    if (!next) return failResult("not_found", sa("roleNotFound"));
+    const bad = verdict(checkMemberChange(c.actor, { userId: m.userId, isActive: m.isActive, role: refOf(r) }, { kind: "role", to: refOf(next) }, activeOwnerCount(w.members)))
+      ?? (next.isSystem ? null : customRolesBlocked(w.policy));
+    if (bad) return bad;
+    if (c.demo || !db) return okResult(sa("roleChanged", { name: m.name, role: next.name }), { sub: sa("demoNotice") });
+    await setMemberRole(db, c.ws, m.userId, next.id); // guard trigger re-checks; the audit trigger on memberships records old and new role
+    return okResult(sa("roleChanged", { name: m.name, role: next.name }), { sub: sa("inThisWorkspaceOnly") });
+  });
+}
+
+async function setActive(userId: string, active: boolean): Promise<Result> {
+  return act(async () => {
+    const v = memberIdSchema.parse({ userId });
+    const c = await adminCtx("members.manage");
+    const { db, w, m, r } = await targetOf(c, v.userId);
+    if (!m || !r) return notFound();
+    const bad = verdict(checkMemberChange(c.actor, { userId: m.userId, isActive: m.isActive, role: refOf(r) }, { kind: active ? "reactivate" : "suspend" }, activeOwnerCount(w.members)));
+    if (bad) return bad;
+    if (c.demo || !db) return okResult(sa(active ? "reactivated" : "suspended", { name: m.name }), { sub: sa("demoNotice") });
+    await setMemberActive(db, c.ws, m.userId, active);
+    return okResult(sa(active ? "reactivated" : "suspended", { name: m.name }), { sub: sa(active ? "inThisWorkspaceOnly" : "suspendedSub") });
+  });
+}
+export async function suspendMember(userId: string): Promise<Result> { return setActive(userId, false); }
+export async function reactivateMember(userId: string): Promise<Result> { return setActive(userId, true); }
+
+/** Membership attributes: districts (territories) and regions. Same scope rules as a role change, never your own. */
+export async function setMemberTerritory(userId: string, districts: string[], regions: string[]): Promise<Result> {
+  return act(async () => {
+    const v = attributesSchema.parse({ userId, districts, regions });
+    const c = await adminCtx("members.manage");
+    const { db, w, m, r } = await targetOf(c, v.userId);
+    if (!m || !r) return notFound();
+    const bad = verdict(checkMemberChange(c.actor, { userId: m.userId, isActive: m.isActive, role: refOf(r) }, { kind: "role", to: refOf(r) }, activeOwnerCount(w.members)));
+    if (bad) return bad;
+    const d = [...new Set(v.districts)], g = [...new Set(v.regions)];
+    if (c.demo || !db) return okResult(sa("territorySaved", { name: m.name }), { sub: sa("demoNotice") });
+    try {
+      await setMemberAttributes(db, c.ws, m.userId, d, g);
+    } catch (e) {
+      if (e instanceof DbError && e.code === "unique") return failResult("invalid", sa("districtTaken"));
+      throw e;
+    }
+    return okResult(sa("territorySaved", { name: m.name }));
+  });
 }
 
 export async function saveBranding(input: { name: string; product: string; hue: number }): Promise<ActionResult> {
