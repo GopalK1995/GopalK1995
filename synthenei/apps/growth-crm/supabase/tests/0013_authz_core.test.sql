@@ -79,7 +79,7 @@ end $f$;
 
 -- ---------- catalogue and system roles (as postgres) ----------
 select is((select count(*) from public.roles where tenant_id is null and is_system), 6::bigint, 'six system roles');
-select is((select count(*) from public.permissions), 73::bigint, 'permission catalogue seeded');
+select is((select count(*) from public.permissions), 74::bigint, 'permission catalogue seeded');
 select is((select count(*) from public.role_permissions rp join public.roles r on r.id = rp.role_id
             where r.key = 'viewer' and r.tenant_id is null and rp.permission_key = 'pii.read'), 0::bigint, 'viewer has no pii.read');
 select is((select scope from public.role_permissions rp join public.roles r on r.id = rp.role_id
@@ -181,7 +181,7 @@ select throws_ok($$insert into public.roles (tenant_id, key, name, base_role) va
 select throws_ok($$update public.memberships set role_id = '60000000-0000-4000-8000-000000000001' where user_id = 'a1000000-0000-4000-8000-000000000004'$$, '42501', null, 'custom roles need roles.manage');
 select ok(not authz.role_within_caller('20000000-0000-4000-8000-0000000000a1', '30000000-0000-4000-8000-000000000001'), 'manager cannot hand out the owner role (more permissions than held)');
 select pg_temp.act('a1000000-0000-4000-8000-000000000004');
-select is((select count(*) from public.permissions), 73::bigint, 'authenticated reads the catalogue');
+select is((select count(*) from public.permissions), 74::bigint, 'authenticated reads the catalogue');
 select throws_ok($$insert into public.permissions (key, resource, action) values ('x.y', 'x', 'y')$$, '42501', null, 'authenticated cannot write the catalogue');
 select pg_temp.act('a1000000-0000-4000-8000-000000000001');
 select lives_ok($$update public.memberships set role_id = '60000000-0000-4000-8000-000000000001' where user_id = 'a1000000-0000-4000-8000-000000000004'$$, 'owner assigns a custom role');
