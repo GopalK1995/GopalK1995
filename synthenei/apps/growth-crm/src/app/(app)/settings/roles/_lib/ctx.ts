@@ -29,6 +29,14 @@ export interface AdminCtx {
   support: boolean;
 }
 
+/** What the caller holds, for the escalation checks. Demo adds the finer admin keys the legacy fixture lacks. */
+export function heldOf(principal: Principal, demo: boolean, role: string): Record<string, Grant> {
+  const held: Record<string, Grant> = { ...principal.grants };
+  if (demo && role === "owner") for (const k of ["roles.manage", "members.invite", "teams.manage", "members.manage"]) held[k] = { scope: "all" };
+  if (demo && role === "sales_manager") for (const k of ["members.invite", "teams.manage"]) held[k] = { scope: "all" };
+  return held;
+}
+
 export async function adminCtx(perm: AdminPerm): Promise<AdminCtx> {
   const { session, active } = await requireActive();
   const demo = session.demo === true;
@@ -36,9 +44,7 @@ export async function adminCtx(perm: AdminPerm): Promise<AdminCtx> {
   if (active.support) throw new AuthzError({ allow: false, reason: "support_blocked", step: 4, permission: perm, maskedFields: [] });
   const principal = await assertCan(demo ? DEMO_FALLBACK[perm] : perm);
   if (demo && perm === "roles.manage" && active.role !== "owner") await assertCan("roles.manage"); // throws: not held in the fixture
-  const held: Record<string, Grant> = { ...principal.grants };
-  if (demo && active.role === "owner") for (const k of ["roles.manage", "members.invite", "teams.manage", "members.manage"]) held[k] = { scope: "all" };
-  if (demo && active.role === "sales_manager") for (const k of ["members.invite", "teams.manage"]) held[k] = { scope: "all" };
+  const held = heldOf(principal, demo, active.role);
   let db: Db | null = null, tenant = active.tenant.id;
   if (!demo) {
     db = await dbForRequest();
