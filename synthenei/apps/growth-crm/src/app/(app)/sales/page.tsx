@@ -17,6 +17,9 @@ import { TargetBar } from "@/components/charts/target";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/data/types";
 import { vocabFor } from "@/lib/vertical";
+import { normTasks } from "../tasks/_lib/rows";
+import { tt } from "../tasks/_lib/strings";
+import { DayRuler } from "./day-ruler";
 
 export const metadata = { title: "My day" };
 const KIND_ICON: Record<Task["kind"], typeof Phone> = { call: Phone, whatsapp: MessageCircle, email: Mail, demo: Video, follow_up: Clock, proposal: FileText };
@@ -26,7 +29,8 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const { ds, now, session, role, active, stageOrder } = await pageCtx();
   const v = vocabFor(active.tenant), m = v.md, hosp = v.id === "hospitality";
   const sp = await searchParams;
-  const [allLeads, allDeals, allTasks, team, accounts, acts, convs] = await Promise.all([ds.leads(), ds.deals(), ds.tasks(), ds.team(), ds.accounts(), ds.activities(), ds.conversations()]);
+  const [allLeads, allDeals, rawTasks, team, accounts, acts, convs, holidays] = await Promise.all([ds.leads(), ds.deals(), ds.tasks(), ds.team(), ds.accounts(), ds.activities(), ds.conversations(), ds.holidays().catch(() => [])]);
+  const allTasks = normTasks(rawTasks); // real rows use assigneeId/numeric priority; normalised once for every widget below
   const reps = team.filter((t) => t.role === "sales_rep");
   const repId = role === "sales_rep" ? session.uid : reps.find((r) => r.id === sp.rep)?.id ?? reps[0].id;
   const rep = team.find((t) => t.id === repId)!;
@@ -168,6 +172,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
             </ul>
           </Card>
         </StaggerItem>
+        <StaggerItem className="lg:col-span-12"><DayRuler now={now} tasks={tasks} holidays={holidays} t={tt(v)} /></StaggerItem>
         {/* W5 */}
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
