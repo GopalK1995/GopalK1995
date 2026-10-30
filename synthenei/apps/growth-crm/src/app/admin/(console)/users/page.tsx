@@ -1,5 +1,6 @@
 import { Info, ShieldCheck, ShieldPlus } from "lucide-react";
-import { requirePlatformAdmin } from "@/lib/auth/server";
+import { platformCtx } from "../../_lib/platform-session";
+import { RealUsers } from "../../_components/real-views";
 import { TENANTS } from "@/lib/tenancy";
 import { fmtDateY, relTime } from "@/lib/format";
 import { PageHeader } from "@/components/ui/misc";
@@ -16,7 +17,8 @@ import { grantPlatformAdmin, revokePlatformAdmin } from "../../_components/actio
 export const metadata = { title: "Users" };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ tenant?: string; status?: string; q?: string }> }) {
-  const me = await requirePlatformAdmin();
+  const { session: me, role } = await platformCtx();
+  if (!me.demo) return <RealUsers role={role} />;
   const sp = await searchParams;
   const now = adminNow();
   const admins = platformAdmins(me.uid);

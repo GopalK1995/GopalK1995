@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ArrowRight, LifeBuoy } from "lucide-react";
-import { requirePlatformAdmin } from "@/lib/auth/server";
+import { platformCtx } from "../_lib/platform-session";
+import { RealOverview } from "../_components/real-views";
 import { SUPPORT_COOKIE, verifySupport } from "@/lib/auth/session";
 import { getBackupAdapter } from "@/lib/data/backup";
 import { USERS, WORKSPACES } from "@/lib/tenancy";
@@ -17,7 +18,8 @@ import { SessionState, TenantMark } from "../_components/bits";
 export const metadata = { title: "Overview" };
 
 export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ support?: string }> }) {
-  await requirePlatformAdmin();
+  const { session, role } = await platformCtx();
+  if (!session.demo) return <RealOverview role={role} />;
   const sp = await searchParams;
   const live = await verifySupport((await cookies()).get(SUPPORT_COOKIE)?.value);
   const tenants = allTenants();

@@ -3,7 +3,9 @@
 // and goes through lib/config/apply so the same validation and section rules apply as for org admins.
 // Platform admins never get business data here: config is not business data, so no support session is needed.
 import { revalidatePath } from "next/cache";
-import { requirePlatformAdmin } from "@/lib/auth/server";
+import { AuthzError } from "@/lib/authz/engine";
+import { assertPlatform } from "../../../../_lib/platform-session";
+import { at } from "../../../../_lib/strings";
 import { applyOverrides, applyPatch, historyFor, resetToPreset, type ApplyResult } from "@/lib/config/apply";
 import type { Actor } from "@/lib/config/permissions";
 import { presetConfig } from "@/lib/config/presets";
@@ -15,29 +17,33 @@ import { TENANTS } from "@/lib/tenancy";
 
 export type ConfigActionResult = { ok: boolean; message: string; detail?: string };
 type FormResult = { ok: boolean; message: string; sub?: string; field?: string };
-const actor = async (): Promise<{ a: Actor; demo: boolean }> => { const me = await requirePlatformAdmin(); return { a: { kind: "platform", uid: me.uid, name: me.name }, demo: me.demo }; };
+const DENIED = { ok: false, message: at("denied") };
+/** Config writes need platform.tenants.manage (super admin). null = denied by the authz engine. */
+const actor = async (): Promise<{ a: Actor; demo: boolean } | null> => {
+  try { const { session: me } = await assertPlatform("platform.tenants.manage"); return { a: { kind: "platform", uid: me.uid, name: me.name }, demo: me.demo }; } catch (e) { if (e instanceof AuthzError) return null; throw e; }
+};
 const out = (r: ApplyResult): ConfigActionResult => { if (r.ok) { revalidatePath("/admin", "layout"); revalidatePath("/", "layout"); } return r.ok ? { ok: true, message: r.message, detail: r.detail } : { ok: false, message: r.message }; };
 const s = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const SLUG = /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/, EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TEMPLATE_LABEL: Record<PresetId, string> = { legal: "Legal", hospitality: "Guesthouse", blank: "Blank" };
 
 export async function adminSaveConfig(tenantId: string, patch: unknown, reason?: string): Promise<ConfigActionResult> {
-  const { a } = await actor(); return out(await applyPatch(a, tenantId, patch, reason));
+  const g = await actor(); if (!g) return DENIED; const { a } = g; return out(await applyPatch(a, tenantId, patch, reason));
 }
 export async function adminResetConfig(tenantId: string, sections: (keyof TenantConfig)[], reason?: string): Promise<ConfigActionResult> {
-  const { a } = await actor();
+  const g = await actor(); if (!g) return DENIED; const { a } = g;
   if (!Array.isArray(sections) || sections.some((x) => !["vocabulary", "stages", "taxonomies", "modules", "dashboard", "branding", "data", "features", "modulesLocked"].includes(x))) return { ok: false, message: "Unknown section." };
   return out(await resetToPreset(a, tenantId, sections, reason));
 }
 export async function adminRollbackConfig(tenantId: string, version: number, reason?: string): Promise<ConfigActionResult> {
-  const { a } = await actor();
+  const g = await actor(); if (!g) return DENIED; const { a } = g;
   const h = (await historyFor(tenantId)).find((x) => x.version === version);
   return h ? out(await applyOverrides(a, tenantId, h.overrides, reason)) : { ok: false, message: "That version is no longer available." };
 }
 
 /** Change preset. Vocabulary, stages, taxonomies, modules, features and dashboard return to the new preset; branding, data and locks stay. */
 export async function setPreset(f: FormData): Promise<FormResult> {
-  const { a } = await actor();
+  const g = await actor(); if (!g) return DENIED; const { a } = g;
   const tenant = s(f, "tenant"), preset = s(f, "preset") as PresetId, reason = s(f, "reason");
   if (!PRESET_IDS.includes(preset)) return { ok: false, field: "preset", message: "Choose a preset." };
   if (s(f, "confirm") !== tenant) return { ok: false, field: "confirm", message: `Type ${tenant} exactly to confirm.` };
@@ -49,7 +55,7 @@ export async function setPreset(f: FormData): Promise<FormResult> {
 
 /** Copy wording, stages, categories, modules, dashboard and targets from another tenant. Brand, sample-data switch and locks are never copied. */
 export async function copyConfigFrom(f: FormData): Promise<FormResult> {
-  const { a } = await actor();
+  const g = await actor(); if (!g) return DENIED; const { a } = g;
   const target = s(f, "tenant"), source = s(f, "source"), reason = s(f, "reason");
   if (!TENANTS.some((t) => t.id === source)) return { ok: false, field: "source", message: "Choose a tenant to copy from." };
   if (source === target) return { ok: false, field: "source", message: "Choose a different tenant." };
@@ -64,7 +70,7 @@ export async function copyConfigFrom(f: FormData): Promise<FormResult> {
 
 /** New tenant from a template (Legal, Guesthouse, Blank). Demo: validates and says what would happen; real: admin_create_tenant + admin_set_tenant_config. */
 export async function createTenantFromTemplate(f: FormData): Promise<FormResult> {
-  const { a, demo } = await actor();
+  const g = await actor(); if (!g) return DENIED; const { a, demo } = g;
   const name = s(f, "name"), slug = s(f, "slug"), template = s(f, "template") as PresetId, hue = Number(s(f, "hue")), ws = s(f, "workspace"), owner = s(f, "owner"), reason = s(f, "reason");
   if (name.length < 2) return { ok: false, field: "name", message: "Enter the tenant's trading name." };
   if (!SLUG.test(slug)) return { ok: false, field: "slug", message: "Slug: 3-32 lowercase letters, digits or hyphens." };
@@ -79,7 +85,7 @@ export async function createTenantFromTemplate(f: FormData): Promise<FormResult>
   if (demo) return { ok: true, message: `Would create tenant ${name} (${slug}) from the ${TEMPLATE_LABEL[template]} template and invite ${owner} as Owner.`, sub: `${summary}. Demo: nothing was saved or sent.` };
   const sb = await createSupabaseServerClient();
   if (!sb) return { ok: false, message: "Supabase is not configured on this deployment." };
-  const created = await sb.rpc("admin_create_tenant", { p_name: name, p_slug: slug, p_branding: { brand_name: name, brand_primary_hue: hue }, p_owner_email: owner, p_workspace_name: ws });
+  const created = await sb.rpc("admin_create_tenant", { p_name: name, p_slug: slug, p_branding: { brand_name: name, brand_primary: `oklch(0.52 0.15 ${hue})` }, p_owner_email: owner, p_workspace_name: ws });
   if (created.error) return { ok: false, message: `admin_create_tenant failed: ${created.error.message}` };
   const set = await sb.rpc("admin_set_tenant_config", { p_tenant: slug, p_config: { v: 1, preset: template }, p_reason: `Created from ${TEMPLATE_LABEL[template]} template: ${reason}` });
   void a;

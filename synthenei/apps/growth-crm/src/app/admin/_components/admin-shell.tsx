@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Building2, ChevronDown, Gauge, LifeBuoy, LogOut, ScrollText, ShieldAlert, ShieldCheck, Users } from "lucide-react";
+import { Building2, ChevronDown, Gauge, LifeBuoy, LogOut, ScrollText, ShieldAlert, ShieldCheck, Plug, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { endSupport, logout } from "@/lib/auth/actions";
 import { Avatar } from "@/components/ui/avatar";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin", label: "Overview", icon: Gauge },
   { href: "/admin/tenants", label: "Tenants", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/connectors", label: "Connectors", icon: Plug },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin/support", label: "Support sessions", icon: LifeBuoy },
 ];

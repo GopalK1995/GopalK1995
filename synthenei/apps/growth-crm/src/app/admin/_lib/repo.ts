@@ -168,3 +168,8 @@ export async function listPlatformAdmins(db: Db): Promise<PlatformAdminDbRow[]> 
   throwIfError(error);
   return ((data as R[] | null) ?? []).map((r) => ({ userId: s(r.user_id), role: s(r.platform_role), active: r.is_active !== false, createdAt: s(r.created_at) }));
 }
+
+export async function setBranding(db: Db, tenantId: string, brandName: string, brandPrimary: string): Promise<void> {
+  const { error } = await from(db, "tenants").update({ brand_name: brandName, brand_primary: brandPrimary }).eq("id", tenantId);
+  throwIfError(error);
+}

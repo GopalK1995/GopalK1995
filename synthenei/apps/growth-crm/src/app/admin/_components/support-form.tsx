@@ -3,7 +3,7 @@
 // Posts to BUILD's startSupport action, which re-checks platform admin, logs, sets the session and opens the workspace.
 import { useId, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { startSupport } from "@/lib/auth/actions";
+import { startSupportSession } from "./actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fieldCls } from "./action-dialog";
@@ -30,7 +30,7 @@ export function SupportForm({ options, initialWs, error, blocked }: { options: O
   const reasonOk = len >= MIN, reason2Ok = mode === "read_only" || len2 >= MIN2;
   const reasonErr = error === "reason", reason2Err = error === "reason2";
   return (
-    <form action={startSupport} className="space-y-4">
+    <form action={startSupportSession} className="space-y-4">
       <input type="hidden" name="ws" value={ws} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -98,6 +98,8 @@ export function SupportForm({ options, initialWs, error, blocked }: { options: O
       </fieldset>
 
       {error === "rpc" && <p role="alert" className="rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[12px] text-danger">start_support_session was refused by the database. Check that your MFA session (aal2) is still valid.</p>}
+      {error === "role" && <p role="alert" className="rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[12px] text-danger">Your platform role cannot open support sessions.</p>}
+      {error === "ws" && <p role="alert" className="rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[12px] text-danger">Choose a workspace from the list.</p>}
       {blocked && <p role="status" className="rounded-sm border border-warn/40 bg-warn-soft px-3 py-2 text-[12px] text-warn-ink">{blocked}</p>}
       <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center">
         <Submit disabled={!ws || !reasonOk || !reason2Ok || !!blocked} />
