@@ -145,7 +145,7 @@ begin
       end if;
     end if;
   else
-    if (new.tenant_id, new.workspace_id, new.object_type, new.object_id, new.parent_id, new.author_id, new.created_at)
+    if (select auth.uid()) is not null and (new.tenant_id, new.workspace_id, new.object_type, new.object_id, new.parent_id, new.author_id, new.created_at)
        is distinct from (old.tenant_id, old.workspace_id, old.object_type, old.object_id, old.parent_id, old.author_id, old.created_at) then
       raise exception 'only body and mentions can be edited' using errcode = '23514';
     end if;
@@ -206,12 +206,15 @@ do $$ begin
        and authz.check(workspace_id, authz.object_perm(object_type, 'read'), object_type, object_id)$p$);
   perform private.rls_put('comments', 'update',
     $p$workspace_id in (select public.member_ws_ids())
-       and ((author_id = (select auth.uid()) and deleted_at is null and created_at > now() - interval '15 minutes')
+       and ((author_id = (select auth.uid()) and created_at > now() - interval '15 minutes')
             or workspace_id in (select authz.ws_with('comments.moderate', 'all')))$p$,
     $p$workspace_id in (select public.member_ws_ids())
-       and ((author_id = (select auth.uid()) and deleted_at is null)
-            or workspace_id in (select authz.ws_with('comments.moderate', 'all')))$p$);
-  perform private.rls_put('comments', 'delete', $p$workspace_id in (select authz.ws_with('comments.moderate', 'all'))$p$, null);
+       and (author_id = (select auth.uid()) or workspace_id in (select authz.ws_with('comments.moderate', 'all')))$p$);
+  -- removal is a real DELETE (a soft delete through UPDATE would be blocked by the select policy above): moderators any time, authors for 15 minutes
+  perform private.rls_put('comments', 'delete',
+    $p$workspace_id in (select public.member_ws_ids())
+       and ((author_id = (select auth.uid()) and created_at > now() - interval '15 minutes')
+            or workspace_id in (select authz.ws_with('comments.moderate', 'all')))$p$, null);
 
   perform private.rls_put('notifications', 'select', 'user_id = (select auth.uid())', null);
   perform private.rls_put('notifications', 'update', 'user_id = (select auth.uid())', 'user_id = (select auth.uid())');
@@ -241,7 +244,7 @@ grant select, delete on public.notifications to authenticated;
 grant update (read_at) on public.notifications to authenticated;     -- everything else is written by triggers / the notifier (service role)
 grant all on public.comments, public.notifications, public.notification_prefs, public.notification_rules, public.follows to service_role;
 revoke update on public.comments from authenticated;
-grant update (body, mentions, deleted_at) on public.comments to authenticated;
+grant update (body, mentions) on public.comments to authenticated;
 
 -- ---------- 5. Activity feed: events on records the caller can read ----------
 -- events_select (0014) lets events.read holders see everything; this second permissive policy lets anyone read the events of
@@ -335,6 +338,11 @@ begin
 end $$;
 revoke all on function public.queue_health() from public, anon, authenticated;
 grant execute on function public.queue_health() to service_role;
+
+-- ---------- 7b. Event types requested by later tasks ----------
+insert into public.event_types (type, domain, description, webhook_eligible, agent_eligible) values
+  ('lead.exported', 'lead', 'Leads were exported', true, true)
+on conflict (type) do nothing;
 
 -- ---------- 8. Self-check ----------
 do $$

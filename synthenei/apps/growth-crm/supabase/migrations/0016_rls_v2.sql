@@ -102,9 +102,9 @@ begin
   if p_sel is not null then
     perform private.rls_put(p_tbl, 'select',
       private.rls_arms(p_sel, p_cols, p_sel_extra, p_type, 'viewer', false, null)
-        || private.rls_and(p_and)
-        || case when exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = p_tbl and c.column_name = 'deleted_at')
-                then ' and deleted_at is null' else '' end, null);
+        || private.rls_and(p_and), null);
+  -- NOTE: no "deleted_at is null" here (CONTRACTS C3.5 has one). PostgreSQL also checks the new row of an UPDATE ... WHERE against the
+  -- SELECT policy, so a client-side soft delete (set deleted_at) would fail. Repos, views and masked views filter deleted rows instead.
   end if;
   if p_ins is not null then
     perform private.rls_put(p_tbl, 'insert', null, private.rls_arms(p_ins, p_wcols, null, null, null, p_strict_w, v_cond) || v_refs);
@@ -335,7 +335,7 @@ end $$;
 
 -- ---------- 6. Swap with parity block ----------
 -- Identities = one active member per (workspace, role) already in the database. Counts are taken as that user through the real
--- authenticated role, before and after the swap. Deleted rows are excluded on both sides (v2 hides soft-deleted rows by design).
+-- authenticated role, before and after the swap.
 -- Deliberate deltas (documented in README 13): data role sees all activities (catalogue: activities.read all) instead of own.
 do $$
 declare
@@ -344,7 +344,6 @@ declare
     'integration_field_maps','sync_runs','consent_log','ai_insights','backup_checks','backup_alert_rules','pipeline_stages','territories',
     'sales_targets','invitations','v_leads_masked'];
   v_ident record; v_t text; v_n bigint; v_before jsonb := '{}'; v_after jsonb := '{}'; v_key text; v_diffs text := ''; v_cnt int := 0;
-  v_has_del boolean;
 begin
   for pass in 1..2 loop
     if pass = 2 then
@@ -360,9 +359,7 @@ begin
       perform set_config('request.jwt.claim.sub', v_ident.user_id::text, true);
       execute 'set local role authenticated';
       foreach v_t in array v_tables loop
-        v_has_del := exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = v_t and c.column_name = 'deleted_at');
-        execute format('select count(*) from public.%I where workspace_id = $1 %s', v_t, case when v_has_del then 'and deleted_at is null' else '' end)
-          into v_n using v_ident.workspace_id;
+        execute format('select count(*) from public.%I where workspace_id = $1', v_t) into v_n using v_ident.workspace_id;
         v_key := v_ident.workspace_id || '|' || v_ident.role || '|' || v_t;
         if pass = 1 then v_before := v_before || jsonb_build_object(v_key, v_n);
         else v_after := v_after || jsonb_build_object(v_key, v_n); end if;

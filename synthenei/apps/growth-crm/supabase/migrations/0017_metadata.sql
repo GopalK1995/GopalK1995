@@ -698,7 +698,7 @@ do $$ begin
 
   -- records: obj:<key>.read|write|delete resolved through object_types.key (authz.record_ok), plus shared tuples
   perform private.rls_put('records', 'select',
-    $p$deleted_at is null and (authz.record_ok(workspace_id, object_type_id, 'read', owner_id) or id in (select authz.shared_record_ids('viewer')))$p$, null);
+    $p$authz.record_ok(workspace_id, object_type_id, 'read', owner_id) or id in (select authz.shared_record_ids('viewer'))$p$, null);
   perform private.rls_put('records', 'insert', null,
     $p$authz.record_ok(workspace_id, object_type_id, 'write', owner_id, to_jsonb(records)) and created_by is not distinct from (select auth.uid())$p$);
   perform private.rls_put('records', 'update',

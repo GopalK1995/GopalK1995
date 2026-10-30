@@ -1,7 +1,7 @@
 -- pgTAP for 0016_rls_v2. Run on the Supabase branch DB: node scripts/run-pgtap.mjs supabase/tests/0016_rls_v2.test.sql
 -- Everything happens inside one transaction and is rolled back.
 begin;
-select plan(61);
+select plan(62);
 
 -- ---------- fixture (as postgres) ----------
 insert into public.tenants (id, slug, name, brand_name) values
@@ -102,7 +102,7 @@ select ok((select count(*) from pg_policies where schemaname = 'public' and poli
             and tablename in ('leads','contacts','accounts','deals','activities','tasks','campaigns','conversations','messages','integrations','pipeline_stages','invitations')) = 12,
           'every managed table has exactly one select policy');
 select ok(not exists (select 1 from pg_policies where tablename = 'leads' and policyname in ('leads_select') and qual not like '%authz.ws_with%'), 'leads_select is built on authz.ws_with');
-select ok(exists (select 1 from pg_policies where tablename = 'leads' and policyname = 'leads_select' and qual like '%deleted_at IS NULL%'), 'leads_select hides soft-deleted rows');
+select ok(exists (select 1 from pg_policies where tablename = 'leads' and policyname = 'leads_select' and qual like '%pii.read%'), 'leads_select requires pii.read (viewers use v_leads_masked)');
 
 -- ---------- owner (all scope) ----------
 select pg_temp.act('c1000000-0000-4000-8000-000000000001');
@@ -119,6 +119,7 @@ select is((select count(*) from public.v_contacts_masked), 2::bigint, 'owner: ma
 select is((select count(*) from public.v_conversations_masked), 2::bigint, 'owner: masked conversations view');
 select is((select count(*) from public.v_messages_masked), 1::bigint, 'owner: masked messages view');
 select is(pg_temp.upd($$update public.leads set score = 5 where id = '40000000-0000-4000-8000-0000000000c3'$$), 1::bigint, 'owner: update lead');
+select is(pg_temp.upd($$update public.leads set deleted_at = now() where id = '40000000-0000-4000-8000-0000000000c3'$$), 1::bigint, 'owner: soft delete (set deleted_at) works through the client');
 select is(pg_temp.upd($$delete from public.leads where id = '40000000-0000-4000-8000-0000000000c3'$$), 1::bigint, 'owner: hard delete lead (member only)');
 select throws_ok($$insert into public.leads (workspace_id, full_name, account_id) values ('20000000-0000-4000-8000-0000000000c1', 'X', '41000000-0000-4000-8000-0000000000d1')$$,
   '42501', null, 'owner: cannot reference an account of another tenant');
