@@ -12,7 +12,7 @@ declare
   u_kav   constant uuid := 'c0000000-0000-4000-8000-00000000000c';  -- owner Kaveri
   u_adm   constant uuid := 'd0000000-0000-4000-8000-00000000000d';  -- platform admin
   res text := '';
-  n bigint; m bigint; ok boolean; err text;
+  n bigint; m bigint; ok_n bigint; ok boolean; err text;
 begin
   insert into auth.users (id, email, email_confirmed_at, aud, role) values
     (u_owner, 'qa-owner@verify.example', now(), 'authenticated', 'authenticated'),
@@ -101,6 +101,37 @@ begin
   begin insert into public.memberships (user_id, workspace_id, role) values (u_adm, kv, 'viewer');
         res := res || E'\nplatform admin given a membership: ALLOWED (FAIL)';
   exception when others then res := res || E'\nplatform admin given a membership: refused (PASS)'; end;
+
+  -- 0016-0018 tables (v2 policies, metadata, collaboration)
+  perform set_config('request.jwt.claim.sub', u_owner::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_owner, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  execute 'set local role authenticated';
+  select (select count(*) from public.pipelines where workspace_id = tn), (select count(*) from public.pipelines where workspace_id <> tn and workspace_id <> kl) into n, m;
+  res := res || format(E'
+owner TN: pipelines in TN = %s (expect >0), in other workspaces = %s (expect 0)', n, m);
+  select count(*) into n from public.object_types where tenant_id <> (select tenant_id from public.workspaces where id = tn)
+     and tenant_id not in (select tenant_id from public.workspaces where id = kl);
+  res := res || format(E'
+owner TN: object types of other tenants = %s (expect 0)', n);
+  select (select count(*) from public.comments), (select count(*) from public.notifications), (select count(*) from public.records) into n, m, ok_n;
+  res := res || format(E'
+owner TN: comments/notifications/records visible = %s/%s/%s (expect 0/0/0 on a fresh seed)', n, m, ok_n);
+  execute 'reset role';
+  perform set_config('request.jwt.claim.sub', u_kav::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_kav, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.pipelines where workspace_id <> kv;
+  res := res || format(E'
+Kaveri owner: pipelines outside own workspace = %s (expect 0)', n);
+  select count(*) into n from public.field_defs f where f.tenant_id <> (select tenant_id from public.workspaces where id = kv);
+  res := res || format(E'
+Kaveri owner: field definitions of other tenants = %s (expect 0)', n);
+  begin insert into public.comments (workspace_id, object_type, object_id, body) values (tn, 'lead', (select id from public.leads limit 1), 'x');
+        res := res || E'
+Kaveri owner comments in TN: ALLOWED (FAIL)';
+  exception when others then res := res || E'
+Kaveri owner comments in TN: refused (PASS)'; end;
+  execute 'reset role';
 
   raise exception 'VERIFY RESULTS (rolled back):%', res;
 end $$;

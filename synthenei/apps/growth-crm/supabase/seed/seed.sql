@@ -446,4 +446,13 @@ values (null, 'Nightly dump missing', 'logical_dump', 'no success in 26h', 26, n
        (null, 'Dump size drop', 'logical_dump', 'size dropped more than 20% vs 7-day median', null, 20, 'demo:slack #ops'),
        (null, 'Restore drill overdue', 'restore_drill', 'no success in 100 days', 2400, null, 'demo:email owner');
 
+-- 0017/0018 defaults for the seeded tenants and workspaces (system object types, lead + deal pipelines); idempotent.
+do $$ begin
+  if to_regnamespace('metadata') is not null then   -- migrations 0017+ applied (triggers also do this for new rows)
+    perform metadata.seed_object_types(id) from public.tenants;
+    perform metadata.default_pipeline(id, 'lead') from public.workspaces;
+    perform metadata.default_pipeline(id, 'deal') from public.workspaces;
+  end if;
+end $$;
+
 commit;

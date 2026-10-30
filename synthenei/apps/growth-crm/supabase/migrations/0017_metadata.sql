@@ -545,7 +545,7 @@ begin
     alter table public.pipeline_stages add constraint pipeline_stages_pipeline_key unique (pipeline_id, key);
   end if;
   if not exists (select 1 from pg_constraint where conname = 'pipeline_stages_pipeline_position' and conrelid = 'public.pipeline_stages'::regclass) then
-    alter table public.pipeline_stages add constraint pipeline_stages_pipeline_position unique (pipeline_id, position) deferrable initially immediate;
+    alter table public.pipeline_stages add constraint pipeline_stages_pipeline_position unique (pipeline_id, position);   -- not deferrable: legacy seed_workspace_defaults uses ON CONFLICT DO NOTHING without a target
   end if;
 end $$;
 
