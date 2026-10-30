@@ -5,7 +5,7 @@ import type { OrgPolicy } from "./repo";
 export const POLICY_BOOLS = ["allow_custom_roles", "allow_custom_objects", "allow_api_keys", "allow_webhooks", "allow_byok"] as const;
 export const POLICY_NUMS = ["max_seats", "max_workspaces", "max_custom_fields"] as const;
 export const POLICY_LISTS = ["allow_connectors", "allowed_modules"] as const;
-export type PolicyPatch = Partial<Record<(typeof POLICY_BOOLS)[number], boolean> & Record<(typeof POLICY_NUMS)[number], number | null> & Record<(typeof POLICY_LISTS)[number], string[] | null>>>;
+export type PolicyPatch = Partial<Record<(typeof POLICY_BOOLS)[number], boolean> & Record<(typeof POLICY_NUMS)[number], number | null> & Record<(typeof POLICY_LISTS)[number], string[] | null>>;
 
 export const MODULE_CHOICES: readonly string[] = MODULE_IDS;
 
