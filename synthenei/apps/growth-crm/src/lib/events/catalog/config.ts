@@ -1,0 +1,6 @@
+// Event catalogue: metadata (BUILD-PLAN 1.10). Mirrors public.event_types; new types are added to the SQL seed by the next DB task.
+import type { EventTypeDef } from "../types";
+
+export const EVENT_TYPES = [
+  { type: "metadata.changed", description: "Custom fields, objects or pipelines changed", webhook: true, agent: false },
+] as const satisfies readonly EventTypeDef[];
