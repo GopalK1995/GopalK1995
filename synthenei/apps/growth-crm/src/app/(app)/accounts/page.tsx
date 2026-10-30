@@ -91,7 +91,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
     <>
       <PageHeader eyebrow={ac.eyebrow} title={ac.title}
         sub={ac.sub(accounts.length, districts.length, customers.length, accounts.filter((a) => a.status === "trial").length, rep, masked)}
-        actions={<ListActions districts={districts} create={verdict("createAccount", ctx)} importV={verdict("importCsv", ctx)} exportV={verdict("exportCsv", ctx)} />} />
+        actions={<ListActions owners={team.filter((m) => m.role !== "viewer").map((m) => ({ id: m.id, name: m.name }))} districts={districts} create={verdict("createAccount", ctx)} importV={verdict("importCsv", ctx)} exportV={verdict("exportCsv", ctx)} />} />
 
       <Stagger className="grid gap-4">
         <StaggerItem className="grid grid-cols-2 gap-4 lg:grid-cols-4">

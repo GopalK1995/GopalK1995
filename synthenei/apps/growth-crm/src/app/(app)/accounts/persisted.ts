@@ -105,7 +105,7 @@ export async function deleteAccount(accountId: string, input: unknown): Promise<
   const v = vocabFor(ctx.active.tenant), t = at(v);
   const p = deleteSchema.safeParse(input);
   if (ctx.session.demo) {
-    const g = await demoAccount(ctx, "editAccount", accountId);
+    const g = await demoAccount(ctx, "deleteAccount", accountId);
     if ("error" in g) return g.error;
     return okResult(t("deleted"), { sub: DEMO_SUB });
   }
@@ -122,7 +122,7 @@ export async function mergeAccounts(sourceId: string, input: unknown): Promise<A
   const v = vocabFor(ctx.active.tenant), t = at(v);
   const p = mergeSchema.safeParse(input);
   if (ctx.session.demo) {
-    const g = await demoAccount(ctx, "editAccount", sourceId);
+    const g = await demoAccount(ctx, "mergeAccount", sourceId);
     if ("error" in g) return g.error;
     if (!p.success) return invalid(p.error);
     if (p.data.targetId === sourceId) return failResult("invalid", t("mergeSame"));

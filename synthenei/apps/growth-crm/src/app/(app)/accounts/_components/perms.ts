@@ -6,7 +6,7 @@ import type { Role } from "@/lib/data/types";
 
 export type Support = { mode: "read_only" | "read_write" } | null | undefined;
 export type EngageAction =
-  | "createAccount" | "editAccount" | "addContact" | "createDeal" | "logActivity" | "assignAccount" | "importCsv" | "exportCsv"
+  | "createAccount" | "editAccount" | "deleteAccount" | "mergeAccount" | "addContact" | "createDeal" | "logActivity" | "assignAccount" | "importCsv" | "exportCsv"
   | "replyInbox" | "assignConversation" | "linkConversation"
   | "editScoreWeights" | "aiToggle" | "viewAiLog" | "askCrm";
 
@@ -14,6 +14,8 @@ export type EngageAction =
 const MAP: Record<EngageAction, Action | Role[]> = {
   createAccount: ["owner", "sales_manager", "sales_rep", "data"],
   editAccount: ["owner", "sales_manager", "sales_rep", "data"],
+  deleteAccount: ["owner", "sales_manager"],
+  mergeAccount: ["owner", "sales_manager"],
   addContact: ["owner", "sales_manager", "sales_rep", "data"],
   createDeal: "moveDeals",
   logActivity: "workLeads",

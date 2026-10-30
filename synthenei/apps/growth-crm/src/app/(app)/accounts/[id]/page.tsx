@@ -15,6 +15,14 @@ import { verdict } from "../_components/perms";
 import { DetailActions } from "../_components/account-actions";
 import { cn } from "@/lib/utils";
 import { vocabFor } from "@/lib/vertical";
+import { accountsRepo } from "@/lib/db/repo/accounts";
+import { contactsRepo } from "@/lib/db/repo/contacts";
+import type { Contact } from "@/lib/db/repo/types";
+import { AssignAccountDialog, DeleteAccountDialog, EditAccountDialog, MergeAccountDialog } from "../_components/record-actions";
+import { AddContactDialog } from "../../contacts/_components/contact-dialogs";
+import { ContactsTable } from "../../contacts/_components/contacts-table";
+import { at } from "../_lib/strings";
+import { ErrorState } from "@/components/ui/states";
 
 const ICON: Partial<Record<ActivityKind, typeof Phone>> = {
   call: Phone, whatsapp_in: MessageCircle, whatsapp_out: MessageCircle, email_sent: Mail, email_open: Mail, email_click: Mail,
@@ -57,6 +65,28 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const won = allDeals.filter((d) => d.accountId === acc.id && d.stage === "won").sort((a, b) => (b.wonAt ?? "").localeCompare(a.wonAt ?? ""))[0];
   const ctx = { role, support, uid: session.uid, ownerId: acc.ownerId };
+  // Persisted facts (version, owner, live contacts) come from the repositories in real workspaces; demo keeps the mock data.
+  const real = !session.demo, t = at(v);
+  let rec = { version: 1, ownerId: (acc.ownerId || null) as string | null, city: acc.city as string, district: acc.district, website: acc.website };
+  let targets: { id: string; name: string; version: number }[] = [];
+  let realContacts: Contact[] | "error" = [];
+  if (real) {
+    const ws = active.ws.uuid;
+    try {
+      const [row, list] = await Promise.all([accountsRepo.get(ws, acc.id), accountsRepo.list(ws, { limit: 200 })]);
+      if (row) rec = { version: row.version, ownerId: row.ownerId, city: row.city ?? "", district: row.district ?? "", website: row.website ?? "" };
+      targets = list.rows.map((r) => ({ id: r.id, name: r.name, version: r.version }));
+    } catch (e) { console.error("[account page]", e); }
+    try { realContacts = (await contactsRepo.list(ws, { limit: 100, filters: [{ field: "accountId", op: "eq", value: acc.id }] })).rows; } catch (e) { console.error("[account contacts]", e); realContacts = "error"; }
+  }
+  const owners = team.filter((m) => m.role !== "viewer").map((m) => ({ id: m.id, name: m.name }));
+  const ea = { id: acc.id, version: rec.version, name: acc.name, city: rec.city, district: rec.district, website: rec.website, ownerId: rec.ownerId };
+  const districtOpts = [rec.district].filter(Boolean);
+  const realCard = realContacts === "error"
+    ? <div className="px-4 pb-4 sm:px-5"><ErrorState source={t("ui.contactsTitle")} message={t("ui.contactsErrorHint")} /></div>
+    : <ContactsTable rows={realContacts} accounts={[{ id: acc.id, name: acc.name }]} t={t} role={role} support={support} uid={session.uid} showAccount={false}
+        emptyAction={<AddContactDialog v={verdict("addContact", ctx)} accounts={[{ id: acc.id, name: acc.name }]} accountId={acc.id} />} />;
+
   const byDay = timeline.reduce<Record<string, Activity[]>>((m, a) => { (m[dayKey(a.at)] ??= []).push(a); return m; }, {});
 
   return (
@@ -64,8 +94,14 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
       <Link href="/accounts" className="mb-3 inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />{ac.back}</Link>
       <PageHeader eyebrow={d_.eyebrow(acc.district, acc.icpTier, acc.guestKind ? ac.kinds[acc.guestKind] ?? "" : "")} title={acc.name}
         sub={d_.sub(`${acc.locality}, ${shortCity(acc.city)}`, acc.lawyers, clerksFor(acc), owner, acc.stays ?? 0)}
-        actions={<DetailActions accountId={acc.id} firm={acc.name} seats={hosp ? 2 : acc.lawyers} plan={plan}
-          addContact={verdict("addContact", ctx)} createDeal={verdict("createDeal", ctx)} logActivity={verdict("logActivity", ctx)} />}>
+        actions={<>
+          <DetailActions accountId={acc.id} firm={acc.name} seats={hosp ? 2 : acc.lawyers} plan={plan} createDeal={verdict("createDeal", ctx)} logActivity={verdict("logActivity", ctx)} />
+          <AddContactDialog v={verdict("addContact", { ...ctx, ownerId: rec.ownerId ?? undefined })} accounts={[{ id: acc.id, name: acc.name }]} accountId={acc.id} />
+          <EditAccountDialog v={verdict("editAccount", { ...ctx, ownerId: rec.ownerId ?? undefined })} a={ea} districts={districtOpts} />
+          <AssignAccountDialog v={verdict("assignAccount", ctx)} a={ea} owners={owners} />
+          <MergeAccountDialog v={verdict("mergeAccount", ctx)} a={ea} targets={targets.length ? targets : [{ id: acc.id, name: acc.name, version: rec.version }]} />
+          <DeleteAccountDialog v={verdict("deleteAccount", ctx)} a={ea} />
+        </>}>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Badge tone={STATUS_TONE[acc.status]}>{STATUS_LABEL[acc.status]}</Badge>
           {focus.map((c) => <Badge key={c} tone={!hosp && (c.includes("HC") || c === "Madurai Bench") ? "accent" : "neutral"}>{c}</Badge>)}
@@ -95,8 +131,8 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader title={d_.contacts} sub={masked ? d_.contactsMasked : d_.contactsSub(contacts.length, hiddenContacts)} />
-            {masked ? <div className="px-4 pb-4 sm:px-5"><Empty title={d_.maskedEmpty(firmLeads.length)}>Names, phone numbers and timelines are not shown to Viewers. Ask your Owner if you need them.</Empty></div>
+            <CardHeader title={d_.contacts} sub={masked ? d_.contactsMasked : real ? undefined : d_.contactsSub(contacts.length, hiddenContacts)} />
+            {real && !masked ? realCard : masked ? <div className="px-4 pb-4 sm:px-5"><Empty title={d_.maskedEmpty(firmLeads.length)}>Names, phone numbers and timelines are not shown to Viewers. Ask your Owner if you need them.</Empty></div>
               : contacts.length === 0 ? <div className="px-4 pb-4 sm:px-5"><Empty title={d_.noContacts}>{d_.noContactsHint}</Empty></div> : (
               <>
                 <Table minWidth={600} className="hidden md:block">

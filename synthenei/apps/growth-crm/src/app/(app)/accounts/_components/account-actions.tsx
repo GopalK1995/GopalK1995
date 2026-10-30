@@ -1,5 +1,5 @@
 "use client";
-import { Building2, Download, FilePlus2, NotebookPen, Upload, UserPlus } from "lucide-react";
+import { FilePlus2, NotebookPen, Upload } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -8,6 +8,7 @@ import { accountAction } from "../actions";
 import { Gated } from "./gated";
 import { useVocab } from "@/components/shell/providers";
 import type { Verdict } from "./perms";
+import { CreateAccountDialog, ExportAccountsButton } from "./record-actions";
 
 const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
 const Lbl = ({ t, children }: { t: string; children: ReactNode }) => <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t}</span>{children}</label>;
@@ -46,28 +47,19 @@ function FormDialog({ v, trigger, title, description, kind, accountId, submit, c
   );
 }
 
-export function ListActions({ create, importV, exportV, districts }: { create: Verdict; importV: Verdict; exportV: Verdict; districts: string[] }) {
-  const dl = useVocab().ac.dlg;
-  const imp = useRun("importCsv", null), exp = useRun("exportCsv", null);
+export function ListActions({ create, importV, exportV, districts, owners }: { create: Verdict; importV: Verdict; exportV: Verdict; districts: string[]; owners: { id: string; name: string }[] }) {
+  const imp = useRun("importCsv", null);
   return (
     <>
       <Gated v={importV}><Button size="sm" onClick={() => imp.run({})} disabled={imp.pending}><Upload />Import CSV</Button></Gated>
-      <Gated v={exportV}><Button size="sm" onClick={() => exp.run({})} disabled={exp.pending}><Download />Export</Button></Gated>
-      <FormDialog v={create} kind="createAccount" accountId={null} title={dl.addTitle} description={dl.addDesc} submit={dl.addBtn}
-        trigger={<Button size="sm" variant="primary"><Building2 />{dl.addBtn}</Button>}>
-        <Lbl t={dl.lName}><input name="name" required className={field} placeholder={dl.namePh} /></Lbl>
-        <div className="grid grid-cols-2 gap-3">
-          <Lbl t={dl.lDistrict}><select name="district" className={field}>{districts.map((d) => <option key={d}>{d}</option>)}</select></Lbl>
-          <Lbl t={dl.lSize}><input name="lawyers" type="number" min={1} defaultValue={6} className={field} /></Lbl>
-        </div>
-        <Lbl t={dl.lMain}><select name="court" className={field}>{dl.mains.map((c) => <option key={c}>{c}</option>)}</select></Lbl>
-      </FormDialog>
+      <ExportAccountsButton v={exportV} />
+      <CreateAccountDialog v={create} owners={owners} districts={districts} />
     </>
   );
 }
 
-export function DetailActions({ accountId, firm, addContact, createDeal, logActivity, seats, plan }: {
-  accountId: string; firm: string; addContact: Verdict; createDeal: Verdict; logActivity: Verdict; seats: number; plan: string;
+export function DetailActions({ accountId, firm, createDeal, logActivity, seats, plan }: {
+  accountId: string; firm: string; createDeal: Verdict; logActivity: Verdict; seats: number; plan: string;
 }) {
   const dl = useVocab().ac.dlg;
   return (
@@ -76,16 +68,6 @@ export function DetailActions({ accountId, firm, addContact, createDeal, logActi
         trigger={<Button size="sm"><NotebookPen />Log activity</Button>}>
         <Lbl t="Type"><select name="kind" className={field}>{dl.logTypes.map((k) => <option key={k}>{k}</option>)}</select></Lbl>
         <Lbl t="Notes"><textarea name="notes" className={field + " h-20 py-2"} defaultValue={dl.logNote} /></Lbl>
-      </FormDialog>
-      <FormDialog v={addContact} kind="addContact" accountId={accountId} title="Add contact" description={dl.addContactDesc(firm)} submit="Add contact"
-        trigger={<Button size="sm"><UserPlus />Add contact</Button>}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Lbl t="Name"><input name="name" required className={field} placeholder={dl.namePh2} /></Lbl>
-          <Lbl t={dl.roleLabel}><select name="title" className={field}>{dl.roles.map((t) => <option key={t}>{t}</option>)}</select></Lbl>
-          <Lbl t="Mobile"><input name="phone" inputMode="tel" className={field} placeholder="+91 98xxx xxxxx" /></Lbl>
-          <Lbl t="Email"><input name="email" type="email" className={field} placeholder="name@example.in" /></Lbl>
-        </div>
-        <label className="flex items-center gap-2 text-[13px] text-ink-2"><input type="checkbox" name="decision" className="size-4 accent-[var(--accent)]" />{dl.decisionLbl}</label>
       </FormDialog>
       <FormDialog v={createDeal} kind="createDeal" accountId={accountId} title={dl.dealTitle} description={dl.dealDesc(firm)} submit={dl.dealBtn}
         trigger={<Button size="sm" variant="primary"><FilePlus2 />{dl.dealBtn}</Button>}>

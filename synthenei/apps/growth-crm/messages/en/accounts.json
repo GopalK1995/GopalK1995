@@ -32,6 +32,8 @@
   "exportSupport": "Export is not available in a support session.",
   "realUnavailable": "Not connected yet for this workspace.",
   "ui": {
+    "add": "Add {noun}",
+    "export": "Export",
     "edit": "Edit details",
     "editTitle": "Edit {noun}",
     "assign": "Reassign",
@@ -66,6 +68,8 @@
     "contactPhone": "Mobile",
     "contactEmail": "Email",
     "contactDecision": "Decision maker",
+    "contactAccount": "Linked {noun}",
+    "contactEditHint": "Contact details",
     "pageTitle": "Contacts",
     "pageSub": "People across all your {nouns}.",
     "pageEmpty": "No contacts yet",
@@ -73,7 +77,6 @@
     "pageError": "Contacts could not be loaded",
     "pageErrorHint": "Check your connection and reload.",
     "pageNotWired": "Contacts are not connected yet for this demo workspace.",
-    "pageMore": "Showing the first {n}. Search to narrow the list.",
-    "export": "Export"
+    "pageMore": "Showing the first {n}. Search to narrow the list."
   }
 }
