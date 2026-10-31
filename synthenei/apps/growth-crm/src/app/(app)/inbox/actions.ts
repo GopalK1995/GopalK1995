@@ -13,7 +13,7 @@ import type { ConversationRow } from "@/lib/db/repo/types";
 import { allowed, deniedReason } from "../accounts/_components/perms";
 import * as P from "./_lib/persist";
 import { inboxRepos } from "./_lib/repos";
-import { assignSchema, linkSchema, noteSchema, readSchema, sendSchema, statusSchema } from "./_lib/schemas";
+import { assignSchema, linkSchema, readSchema, sendSchema, statusSchema } from "./_lib/schemas";
 import { it } from "./_lib/strings";
 
 const WINDOW_H = 24;
