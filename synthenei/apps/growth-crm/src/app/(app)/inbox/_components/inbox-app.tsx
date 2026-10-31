@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { ArrowLeft, Check, CheckCheck, CircleAlert, Clock, Info, Link2, Lock, NotebookPen, Send, UserRoundCog, X, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, BellOff, Check, CheckCheck, CircleAlert, Clock, Info, Link2, Lock, NotebookPen, Send, UserRoundCog, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Badge, StatusChip } from "@/components/ui/badge";
@@ -15,27 +16,38 @@ import { useVocab } from "@/components/shell/providers";
 import { fmtDate, fmtTime, inrCompact, relTime, dayKey } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
+import { ConflictBanner } from "../../leads/_components/conflict-banner";
 import type { Verdict } from "../../accounts/_components/perms";
-import { assignConversation, closeConversation, linkConversation, sendMessage } from "../actions";
+import { assignConversation, linkConversation, markConversationRead, sendMessage, setConversationStatus } from "../actions";
+import { draftKey } from "../_lib/draft-key";
+import { fillTemplate } from "../_lib/fill";
+import type { Ch, ConvStatus, InboxConv, InboxMode, Msg, TemplateOpt } from "../_lib/types";
 
-type Ch = "whatsapp" | "email" | "linkedin";
-type Msg = { id: string; from: "lead" | "us" | "note"; at: string; body: string; status?: "read" | "delivered" | "sent" | "simulated"; author: string; template?: string };
-export type InboxConv = {
-  id: string; channel: Ch; subject: string; unread: number; lastAt: string; messages: Msg[];
-  draft: { en: string; ta: string | null; rationale: string[]; basedOn: string; needsReview: string | null };
-  lead: { id: string; name: string; first: string; title: string; stage: string; score: number; ownerId: string; ownerName: string; consent: { followup: boolean; marketing: boolean; whatsapp: boolean; at: string }; phone: string; email: string };
-  firm: { id: string; name: string; district: string; lawyers: number } | null;
-  deal: { id: string; stage: string; value: number; plan: string; seats: number } | null;
-  windowLeftH: number | null; mine: boolean; reply: Verdict;
-};
+export type { InboxConv };
+type Strings = Record<string, string>;
+type Act = { ok: boolean; message: string; sub?: string; code?: string; data?: unknown; current?: unknown };
+const versionOf = (r: Act): number | undefined => (r.ok ? (r.data as { version?: number } | undefined)?.version : (r.current as { version?: number } | undefined)?.version);
+
 const CH_LABEL: Record<Ch, string> = { whatsapp: "WhatsApp", email: "Email", linkedin: "LinkedIn" };
 const CH_INTEGRATION: Record<Ch, string> = { whatsapp: "whatsapp", email: "gmail", linkedin: "linkedin" };
 const field = "w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
 
-export function InboxApp({ items, now, linkable, reps, uid, assign, readOnlyRole }: {
-  items: InboxConv[]; now: string; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; uid: string; assign: Verdict; readOnlyRole: boolean;
+type Env = {
+  mode: InboxMode; strings: Strings; templates: TemplateOpt[]; wsKey: string; uid: string; masked: boolean;
+  /** version the page rendered, raised by every successful write */
+  versionOf: (c: InboxConv) => number | undefined;
+  /** shared result handler: toast, remember the new version, raise the conflict banner, refresh server data */
+  report: (c: InboxConv, r: Act, opts?: { quiet?: boolean }) => void;
+};
+type TplOpt = { id: string; label: string; body: string };
+const statusOfConv = (env: Env, c: InboxConv, closedLocal: boolean): ConvStatus => (env.mode === "demo" ? (closedLocal ? "closed" : "open") : c.status ?? "open");
+
+export function InboxApp({ mode, items, now, linkable, reps, uid, wsKey, assign, readOnlyRole, templates, hidden, strings, masked }: {
+  mode: InboxMode; items: InboxConv[]; now: string; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; uid: string; wsKey: string;
+  assign: Verdict; readOnlyRole: boolean; templates: TemplateOpt[]; hidden: number; strings: Strings; masked: boolean;
 }) {
   const vv = useVocab();
+  const router = useRouter();
   const [filter, setFilter] = useState<"all" | "unread" | "mine">("all");
   const [chs, setChs] = useState<Ch[]>([]);
   const [sel, setSel] = useState<string | null>(items[0]?.id ?? null);
@@ -43,87 +55,119 @@ export function InboxApp({ items, now, linkable, reps, uid, assign, readOnlyRole
   const [read, setRead] = useState<Record<string, boolean>>({});
   const [sent, setSent] = useState<Record<string, Msg[]>>({});
   const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const [ver, setVer] = useState<Record<string, number>>({});
+  const [conflict, setConflict] = useState(false);
+  const real = mode === "real";
 
-  const list = items.filter((c) => (filter === "all" || (filter === "unread" ? c.unread > 0 && !read[c.id] : c.lead.ownerId === uid)) && (!chs.length || chs.includes(c.channel)));
+  const env: Env = {
+    mode, strings, templates, wsKey, uid, masked,
+    versionOf: (c) => (c.version === undefined && ver[c.id] === undefined ? undefined : Math.max(ver[c.id] ?? 0, c.version ?? 0)),
+    report: (c, r, o) => {
+      const v = versionOf(r);
+      if (v !== undefined) setVer((x) => ({ ...x, [c.id]: Math.max(x[c.id] ?? 0, v) }));
+      if (r.code === "conflict") { setConflict(true); return; }
+      if (!o?.quiet || !r.ok) toast(r.message, r.sub);
+      if (r.ok && real) router.refresh();
+    },
+  };
+
+  const unreadOf = (c: InboxConv) => c.unread > 0 && !read[c.id];
+  const list = items.filter((c) => (filter === "all" || (filter === "unread" ? unreadOf(c) : c.lead.ownerId === uid)) && (!chs.length || chs.includes(c.channel)));
   const cur = items.find((c) => c.id === sel) ?? null;
-  const open = (id: string) => { setSel(id); setRead((r) => ({ ...r, [id]: true })); setMobileThread(true); };
-  const counts = { all: items.length, unread: items.filter((c) => c.unread > 0 && !read[c.id]).length, mine: items.filter((c) => c.lead.ownerId === uid).length };
+  const open = (id: string) => {
+    setSel(id); setMobileThread(true);
+    const c = items.find((x) => x.id === id);
+    if (c && unreadOf(c)) {
+      setRead((r) => ({ ...r, [id]: true }));
+      // Real sessions persist the read marker quietly; a read marker never raises a banner.
+      if (real && !readOnlyRole) void markConversationRead(id, env.versionOf(c)).then((r) => env.report(c, r, { quiet: true })).catch(() => setRead((x) => ({ ...x, [id]: false })));
+    }
+  };
+  const counts = { all: items.length, unread: items.filter(unreadOf).length, mine: items.filter((c) => c.lead.ownerId === uid).length };
+  const onClosed = (id: string) => setClosed((x) => ({ ...x, [id]: true }));
 
   return (
-    <div className="overflow-hidden rounded-md border border-line bg-surface shadow-1 md:grid md:h-[calc(100dvh-14rem)] md:min-h-[600px] md:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[312px_minmax(0,1fr)_288px]">
-      {/* List */}
-      <section aria-label="Conversations" className={cn("flex min-h-0 flex-col border-line md:border-r", mobileThread && "hidden md:flex")}>
-        <div className="space-y-2 border-b border-line p-3">
-          <div role="tablist" aria-label="Filter conversations" className="flex gap-1">
-            {(["all", "unread", "mine"] as const).map((f) => (
-              <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)}
-                className={cn("h-8 rounded-sm px-2.5 text-[12px] font-medium transition-colors duration-150", filter === f ? "bg-navy-900 text-navy-ink" : "text-ink-2 hover:bg-paper-2")}>
-                {f === "all" ? "All" : f === "unread" ? "Unread" : "Mine"} <span className="num opacity-70">{counts[f]}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-1.5" aria-label="Channels">
-            {(vv.ib.channels as Ch[]).map((ch) => {
-              const on = chs.includes(ch);
-              return (
-                <button key={ch} aria-pressed={on} onClick={() => setChs((x) => (on ? x.filter((y) => y !== ch) : [...x, ch]))}
-                  className={cn("inline-flex h-7 items-center gap-1 rounded-full border pl-1 pr-2.5 text-[12px] transition-colors duration-150", on ? "border-accent bg-accent-soft text-accent-strong" : "border-line-strong text-ink-2 hover:bg-paper-2")}>
-                  <ChannelMark channel={ch} />{CH_LABEL[ch]}
+    <div className="space-y-2">
+      {conflict && <ConflictBanner title={strings.conflictTitle} body={strings.conflictBody} reload={strings.conflictReload} onReload={() => { setConflict(false); setVer({}); }} />}
+      {hidden > 0 && <p data-cy="partial-note" className="flex items-center gap-2 rounded-sm border border-line bg-paper px-3 py-2 text-[12px] text-ink-2"><Info className="size-3.5 shrink-0" aria-hidden />{strings.partial.replace("{n}", String(hidden))}</p>}
+      {real && <p data-cy="queue-banner" className="flex items-start gap-2 rounded-sm border border-line bg-paper px-3 py-2 text-[12px] text-ink-2"><Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden /><span><strong className="font-medium text-ink">{strings.queuedBanner}</strong>. {strings.queuedBannerHint}</span></p>}
+      <div className="overflow-hidden rounded-md border border-line bg-surface shadow-1 md:grid md:h-[calc(100dvh-14rem)] md:min-h-[600px] md:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[312px_minmax(0,1fr)_288px]">
+        {/* List */}
+        <section aria-label="Conversations" className={cn("flex min-h-0 flex-col border-line md:border-r", mobileThread && "hidden md:flex")}>
+          <div className="space-y-2 border-b border-line p-3">
+            <div role="tablist" aria-label="Filter conversations" className="flex gap-1">
+              {(["all", "unread", "mine"] as const).map((f) => (
+                <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)}
+                  className={cn("h-8 rounded-sm px-2.5 text-[12px] font-medium transition-colors duration-150", filter === f ? "bg-navy-900 text-navy-ink" : "text-ink-2 hover:bg-paper-2")}>
+                  {f === "all" ? "All" : f === "unread" ? "Unread" : "Mine"} <span className="num opacity-70">{counts[f]}</span>
                 </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5" aria-label="Channels">
+              {(vv.ib.channels as Ch[]).map((ch) => {
+                const on = chs.includes(ch);
+                return (
+                  <button key={ch} aria-pressed={on} onClick={() => setChs((x) => (on ? x.filter((y) => y !== ch) : [...x, ch]))}
+                    className={cn("inline-flex h-7 items-center gap-1 rounded-full border pl-1 pr-2.5 text-[12px] transition-colors duration-150", on ? "border-accent bg-accent-soft text-accent-strong" : "border-line-strong text-ink-2 hover:bg-paper-2")}>
+                    <ChannelMark channel={ch} />{CH_LABEL[ch]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <ul className="scrollbar-thin min-h-0 flex-1 divide-y divide-line overflow-y-auto" data-cy="conversation-list">
+            {list.map((c) => {
+              const last = [...c.messages, ...(sent[c.id] ?? [])].filter((m) => m.from !== "note").at(-1);
+              const unread = unreadOf(c);
+              const st = statusOfConv(env, c, !!closed[c.id]);
+              return (
+                <li key={c.id}>
+                  <button onClick={() => open(c.id)} aria-current={sel === c.id ? "true" : undefined} data-cy="conversation-row"
+                    className={cn("relative block w-full px-3 py-3 text-left transition-colors duration-150 hover:bg-paper/70", sel === c.id && "bg-accent-soft/60 md:before:absolute md:before:inset-y-0 md:before:left-0 md:before:w-0.5 md:before:bg-accent")}>
+                    <div className="flex items-center gap-2">
+                      <ChannelMark channel={c.channel} />
+                      <span className={cn("min-w-0 flex-1 truncate text-[13px]", unread ? "font-semibold text-ink" : "font-medium text-ink")}>{c.lead.name}</span>
+                      {last && <span className="shrink-0 text-[12px] text-ink-3 num">{relTime(last.at, now)}</span>}
+                    </div>
+                    <div className="mt-0.5 truncate pl-7 text-[12px] text-ink-3">{c.firm?.name}</div>
+                    <div className="mt-1 flex items-center gap-2 pl-7">
+                      <p className={cn("min-w-0 flex-1 truncate text-[12px]", unread ? "text-ink" : "text-ink-2")}>{last ? <>{last.from === "us" ? "You: " : ""}{last.body}</> : ""}</p>
+                      {unread && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[12px] font-semibold text-accent-ink num" aria-label={`${c.unread} unread`}>{c.unread}</span>}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7">
+                      {c.windowLeftH !== null && <WindowChip h={c.windowLeftH} />}
+                      {st === "closed" && <Badge tone="outline">{strings.closedBadge}</Badge>}
+                      {st === "snoozed" && <Badge tone="outline"><BellOff aria-hidden />{strings.snoozedBadge}</Badge>}
+                      <span className="text-[12px] text-ink-3">{c.lead.ownerName.split(" ")[0]}</span>
+                    </div>
+                  </button>
+                </li>
               );
             })}
-          </div>
-        </div>
-        <ul className="scrollbar-thin min-h-0 flex-1 divide-y divide-line overflow-y-auto">
-          {list.map((c) => {
-            const last = [...c.messages, ...(sent[c.id] ?? [])].at(-1)!;
-            const unread = c.unread > 0 && !read[c.id];
-            return (
-              <li key={c.id}>
-                <button onClick={() => open(c.id)} aria-current={sel === c.id ? "true" : undefined}
-                  className={cn("relative block w-full px-3 py-3 text-left transition-colors duration-150 hover:bg-paper/70", sel === c.id && "bg-accent-soft/60 md:before:absolute md:before:inset-y-0 md:before:left-0 md:before:w-0.5 md:before:bg-accent")}>
-                  <div className="flex items-center gap-2">
-                    <ChannelMark channel={c.channel} />
-                    <span className={cn("min-w-0 flex-1 truncate text-[13px]", unread ? "font-semibold text-ink" : "font-medium text-ink")}>{c.lead.name}</span>
-                    <span className="shrink-0 text-[11px] text-ink-3 num">{relTime(last.at, now)}</span>
-                  </div>
-                  <div className="mt-0.5 truncate pl-7 text-[12px] text-ink-3">{c.firm?.name}</div>
-                  <div className="mt-1 flex items-center gap-2 pl-7">
-                    <p className={cn("min-w-0 flex-1 truncate text-[12px]", unread ? "text-ink" : "text-ink-2")}>{last.from === "us" ? "You: " : ""}{last.body}</p>
-                    {unread && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-semibold text-accent-ink num" aria-label={`${c.unread} unread`}>{c.unread}</span>}
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7">
-                    {c.windowLeftH !== null && <WindowChip h={c.windowLeftH} />}
-                    {closed[c.id] && <Badge tone="outline">Closed</Badge>}
-                    <span className="text-[11px] text-ink-3">{c.lead.ownerName.split(" ")[0]}</span>
-                  </div>
-                </button>
+            {!list.length && (
+              <li className="px-4 py-10 text-center" data-cy="inbox-empty">
+                <p className="text-[13px] font-medium text-ink">{items.length ? "No conversations match these filters." : strings.empty}</p>
+                <p className="mt-1 text-[12px] text-ink-3">{items.length ? "Clear the channel chips to see everything." : strings.emptyHint}</p>
+                {items.length > 0 && <Button size="sm" variant="ghost" className="mt-3" onClick={() => { setChs([]); setFilter("all"); }}>Show all</Button>}
               </li>
-            );
-          })}
-          {!list.length && (
-            <li className="px-4 py-10 text-center">
-              <p className="text-[13px] font-medium text-ink">{items.length ? "No conversations match these filters." : "No conversations yet."}</p>
-              <p className="mt-1 text-[12px] text-ink-3">{items.length ? "Clear the channel chips to see everything." : "Replies to WhatsApp templates and campaign emails will land here."}</p>
-              {items.length > 0 && <Button size="sm" variant="ghost" className="mt-3" onClick={() => { setChs([]); setFilter("all"); }}>Show all</Button>}
-            </li>
-          )}
-        </ul>
-      </section>
+            )}
+          </ul>
+        </section>
 
-      {/* Thread */}
-      <section aria-label="Thread" className={cn("min-h-0 min-w-0 flex-col", mobileThread ? "flex" : "hidden md:flex")}>
-        {cur ? <Thread key={cur.id} c={cur} now={now} extra={sent[cur.id] ?? []} closed={!!closed[cur.id]} readOnlyRole={readOnlyRole}
-          onBack={() => setMobileThread(false)}
-          onSent={(m) => setSent((s) => ({ ...s, [cur.id]: [...(s[cur.id] ?? []), m] }))}
-          context={<ContextPanel c={cur} linkable={linkable} reps={reps} assign={assign} onClosed={() => setClosed((x) => ({ ...x, [cur.id]: true }))} />} />
-          : <div className="grid flex-1 place-items-center p-8 text-center text-[13px] text-ink-3">Pick a conversation on the left.</div>}
-      </section>
+        {/* Thread */}
+        <section aria-label="Thread" className={cn("min-h-0 min-w-0 flex-col", mobileThread ? "flex" : "hidden md:flex")}>
+          {cur ? <Thread key={cur.id} c={cur} env={env} now={now} extra={sent[cur.id] ?? []} status={statusOfConv(env, cur, !!closed[cur.id])} readOnlyRole={readOnlyRole}
+            onBack={() => setMobileThread(false)}
+            onSent={(m) => (real ? router.refresh() : setSent((s) => ({ ...s, [cur.id]: [...(s[cur.id] ?? []), m] })))}
+            context={<ContextPanel c={cur} env={env} status={statusOfConv(env, cur, !!closed[cur.id])} linkable={linkable} reps={reps} assign={assign} onClosed={() => onClosed(cur.id)} />} />
+            : <div className="grid flex-1 place-items-center p-8 text-center text-[13px] text-ink-3">Pick a conversation on the left.</div>}
+        </section>
 
-      {/* Context (xl) */}
-      <aside aria-label="Lead context" className="hidden min-h-0 overflow-y-auto border-l border-line xl:block">
-        {cur && <ContextPanel c={cur} linkable={linkable} reps={reps} assign={assign} onClosed={() => setClosed((x) => ({ ...x, [cur.id]: true }))} />}
-      </aside>
+        {/* Context (xl) */}
+        <aside aria-label="Lead context" className="hidden min-h-0 overflow-y-auto border-l border-line xl:block">
+          {cur && <ContextPanel c={cur} env={env} status={statusOfConv(env, cur, !!closed[cur.id])} linkable={linkable} reps={reps} assign={assign} onClosed={() => onClosed(cur.id)} />}
+        </aside>
+      </div>
     </div>
   );
 }
@@ -133,15 +177,28 @@ function WindowChip({ h }: { h: number }) {
   return <Badge tone={h < 4 ? "warn" : "neutral"}><Clock aria-hidden />{h < 1 ? `${Math.max(1, Math.round(h * 60))} min left` : `${Math.floor(h)} h left`}</Badge>;
 }
 
+/** The inbox's encoding device: the 24-hour customer-care window drawn as a draining bar. */
+function WindowBar({ h, label }: { h: number; label: string }) {
+  const pct = Math.max(0, Math.min(100, (h / 24) * 100));
+  return (
+    <div data-cy="window-bar" data-state={h <= 0 ? "closed" : "open"} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={24} aria-valuenow={Math.max(0, Math.round(h * 10) / 10)}
+      className="h-0.5 w-full bg-paper-2">
+      <div className={cn("h-full rounded-bar transition-[width] duration-200", h < 4 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 function Ticks({ s }: { s?: Msg["status"] }) {
   if (!s) return null;
-  if (s === "simulated") return <span className="text-[10px] font-medium uppercase tracking-wide text-ink-3">simulated</span>;
+  if (s === "simulated") return <span className="text-[12px] font-medium uppercase tracking-wide text-ink-3">simulated</span>;
+  if (s === "queued") return <span data-cy="msg-queued" className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-3"><Clock className="size-3" aria-hidden />Queued</span>;
+  if (s === "failed") return <span className="inline-flex items-center gap-1 text-[12px] font-medium text-danger"><CircleAlert className="size-3" aria-hidden />Failed</span>;
   const I = s === "sent" ? Check : CheckCheck;
   return <I className={cn("size-3.5", s === "read" ? "text-accent" : "text-ink-3")} aria-label={s} />;
 }
 
-function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }: {
-  c: InboxConv; now: string; extra: Msg[]; closed: boolean; readOnlyRole: boolean; onBack: () => void; onSent: (m: Msg) => void; context: React.ReactNode;
+function Thread({ c, env, now, extra, status, readOnlyRole, onBack, onSent, context }: {
+  c: InboxConv; env: Env; now: string; extra: Msg[]; status: ConvStatus; readOnlyRole: boolean; onBack: () => void; onSent: (m: Msg) => void; context: React.ReactNode;
 }) {
   const ib = useVocab().ib;
   const msgs = [...c.messages, ...extra];
@@ -158,12 +215,12 @@ function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }
         <Avatar name={c.lead.name} size={32} className="hidden sm:inline-grid" />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            <Link href={`/leads/${c.lead.id}`} className="truncate text-[14px] font-semibold text-ink hover:text-accent">{c.lead.name}</Link>
-            <ScoreChip score={c.lead.score} />
+            {c.lead.id ? <Link href={`/leads/${c.lead.id}`} className="truncate text-[14px] font-semibold text-ink hover:text-accent">{c.lead.name}</Link> : <span className="truncate text-[14px] font-semibold text-ink">{c.lead.name}</span>}
+            {c.lead.id && <ScoreChip score={c.lead.score} />}
           </div>
-          <div className="truncate text-[12px] text-ink-3">{c.lead.title}{c.firm && <> · <Link href={`/accounts/${c.firm.id}`} className="hover:text-accent">{c.firm.name}</Link></>} · {c.subject}</div>
+          <div className="truncate text-[12px] text-ink-3">{c.lead.title}{c.firm && <> · <Link href={`/accounts/${c.firm.id}`} className="hover:text-accent">{c.firm.name}</Link></>}{c.subject ? <> · {c.subject}</> : null}</div>
         </div>
-        <Link href={`/integrations/${CH_INTEGRATION[c.channel]}`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line-strong py-0.5 pl-0.5 pr-2.5 text-[12px] text-ink-2 hover:bg-paper-2 sm:inline-flex" title={`${CH_LABEL[c.channel]} connector (Showcase)`}>
+        <Link href={`/integrations/${CH_INTEGRATION[c.channel]}`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line-strong py-0.5 pl-0.5 pr-2.5 text-[12px] text-ink-2 hover:bg-paper-2 sm:inline-flex" title={env.mode === "demo" ? `${CH_LABEL[c.channel]} connector (Showcase)` : `${CH_LABEL[c.channel]} connector`}>
           <ChannelMark channel={c.channel} />{CH_LABEL[c.channel]}
         </Link>
         <div className="xl:hidden">
@@ -175,23 +232,25 @@ function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }
           </Dialog>
         </div>
       </header>
+      {c.windowLeftH !== null && <WindowBar h={c.windowLeftH} label={env.strings.window} />}
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto bg-paper/50 px-3 py-4 sm:px-5" aria-live="polite">
+        {!msgs.length && <p className="py-8 text-center text-[13px] text-ink-3" data-cy="thread-empty">No messages in this conversation yet.</p>}
         <ol className="space-y-2.5">
           {msgs.map((m) => {
             const day = dayKey(m.at); const showDay = day !== lastDay; lastDay = day;
             const us = m.from !== "lead";
             return (
-              <li key={m.id}>
-                {showDay && <div className="my-3 text-center text-[11px] font-medium text-ink-3">{fmtDate(m.at)}</div>}
+              <li key={m.id} data-cy={m.from === "note" ? "internal-note" : "message"}>
+                {showDay && <div className="my-3 text-center text-[12px] font-medium text-ink-3">{fmtDate(m.at)}</div>}
                 <motion.div initial={reduce || !m.id.startsWith("local") ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}
                   className={cn("flex", us ? "justify-end" : "justify-start")}>
                   <div className={cn("max-w-[min(520px,86%)] rounded-md px-3 py-2 text-[13px] leading-5 shadow-1",
                     m.from === "note" ? "border border-dashed border-warn/50 bg-warn-soft text-ink" : us ? "bg-navy-900 text-navy-ink" : "border border-line bg-surface text-ink")}>
-                    {m.from === "note" && <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-warn-ink"><NotebookPen className="size-3" aria-hidden />Internal note · not sent</div>}
-                    {m.template && <div className="mb-1 text-[11px] font-medium text-navy-ink-3">Template · {m.template}</div>}
+                    {m.from === "note" && <div className="mb-0.5 flex items-center gap-1 text-[12px] font-medium text-warn-ink"><NotebookPen className="size-3" aria-hidden />{env.mode === "demo" ? "Internal note · not sent" : env.strings.noteLabel}</div>}
+                    {m.template && <div className="mb-1 text-[12px] font-medium text-navy-ink-3">Template{env.mode === "demo" ? ` · ${m.template}` : ""}</div>}
                     <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                    <div className={cn("mt-1 flex items-center justify-end gap-1.5 text-[11px] num", us && m.from !== "note" ? "text-navy-ink-3" : "text-ink-3")}>
+                    <div className={cn("mt-1 flex items-center justify-end gap-1.5 text-[12px] num", us && m.from !== "note" ? "text-navy-ink-3" : "text-ink-3")}>
                       <span>{m.author} · {fmtTime(m.at)}</span>{m.from === "us" && <Ticks s={m.status} />}
                     </div>
                   </div>
@@ -204,47 +263,72 @@ function Thread({ c, now, extra, closed, readOnlyRole, onBack, onSent, context }
       </div>
 
       {readOnlyRole ? (
-        <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{ib.readOnly}</p>
-      ) : closed ? (
-        <p className="border-t border-line px-4 py-3 text-[12px] text-ink-3">Conversation closed. It reopens on the next inbound message.</p>
+        <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{env.masked ? env.strings.maskedNote : ib.readOnly}</p>
+      ) : status === "closed" ? (
+        <p className="border-t border-line px-4 py-3 text-[12px] text-ink-3" data-cy="closed-line">{env.mode === "demo" ? "Conversation closed. It reopens on the next inbound message." : env.strings.closedLine}</p>
       ) : (
-        <Composer c={c} windowClosed={windowClosed} onSent={onSent} now={now} />
+        <Composer c={c} env={env} windowClosed={windowClosed} onSent={onSent} now={now} />
       )}
     </>
   );
 }
 
-function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed: boolean; onSent: (m: Msg) => void; now: string }) {
+function Composer({ c, env, windowClosed, onSent, now }: { c: InboxConv; env: Env; windowClosed: boolean; onSent: (m: Msg) => void; now: string }) {
   const vv = useVocab(), ib = vv.ib;
+  const real = env.mode === "real";
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [text, setText] = useState("");
   const [fromDraft, setFromDraft] = useState<null | { lang: "en" | "ta"; original: string }>(null);
   const [checked, setChecked] = useState(false);
   const [lang, setLang] = useState<"en" | "ta">("en");
   const [showDraft, setShowDraft] = useState(true);
-  const templates = c.channel === "whatsapp" ? (vv.waQuick.length ? vv.waQuick : vv.wa) : c.channel === "email" ? ib.emailTpl : [];
+  const [saved, setSaved] = useState(false);
+  const templates: TplOpt[] = useMemo(() => {
+    if (real) return env.templates.filter((t) => t.channel === c.channel).map((t) => ({ id: t.id, label: `${t.name} (${t.language})`, body: t.body }));
+    const demo = c.channel === "whatsapp" ? (vv.waQuick.length ? vv.waQuick : vv.wa) : c.channel === "email" ? ib.emailTpl : [];
+    return demo.map((t) => ({ id: t.id, label: `${t.id} (${t.lang})`, body: t.body }));
+  }, [real, env.templates, c.channel, vv, ib]);
   const [tpl, setTpl] = useState(templates[0]?.id ?? "");
   const [pending, start] = useTransition();
   const reduce = useReducedMotion();
-  const tplBody = (id: string) => (templates.find((t) => t.id === id)?.body ?? "").replace("{{1}}", c.lead.first).replace("{{2}}", c.firm?.name ?? ib.yourFirm);
+  const vars = [c.lead.first, c.firm?.name ?? ib.yourFirm];
+  const tplBody = (id: string) => fillTemplate(templates.find((t) => t.id === id)?.body ?? "", vars);
+  const hasAiDraft = !real && !!c.draft.en;
   const draftText = lang === "ta" && c.draft.ta ? c.draft.ta : c.draft.en;
   const templateOnly = windowClosed && mode === "reply";
   const needsCheck = !!fromDraft && mode === "reply";
+  const key = draftKey(env.wsKey, env.uid, c.id);
+
+  // Drafts are saved per user on this device (real sessions). Reading and writing storage can throw (private mode): ignore.
+  useEffect(() => {
+    if (!real) return;
+    try { const d = window.localStorage.getItem(key); if (d) setText(d); } catch { /* storage unavailable */ }
+  }, [real, key]);
+  useEffect(() => {
+    if (!real) return;
+    const h = window.setTimeout(() => {
+      try {
+        if (text.trim()) { window.localStorage.setItem(key, text); setSaved(true); } else { window.localStorage.removeItem(key); setSaved(false); }
+      } catch { setSaved(false); }
+    }, 400);
+    return () => window.clearTimeout(h);
+  }, [real, key, text]);
 
   const submit = (kind: "reply" | "template" | "note", body: string, templateId?: string) => start(async () => {
-    const r = await sendMessage({ convId: c.id, kind, body, templateId, fromDraft: !!fromDraft && kind === "reply", edited: !!fromDraft && body.trim() !== fromDraft.original.trim(), lang: fromDraft?.lang, reviewed: checked });
+    const r = await sendMessage({ convId: c.id, kind, body, templateId, vars, fromDraft: !!fromDraft && kind === "reply", edited: !!fromDraft && body.trim() !== fromDraft.original.trim(), lang: fromDraft?.lang, reviewed: checked });
     toast(r.message, r.sub);
     if (!r.ok) return;
-    onSent({ id: `local-${Date.now()}`, from: kind === "note" ? "note" : "us", at: now, body, author: "You", status: kind === "note" ? undefined : "simulated", template: templateId });
-    setText(""); setFromDraft(null); setChecked(false); if (kind === "reply" && fromDraft) setShowDraft(false);
+    try { window.localStorage.removeItem(key); } catch { /* storage unavailable */ }
+    onSent({ id: `local-${Date.now()}`, from: kind === "note" ? "note" : "us", at: now, body, author: "You", status: kind === "note" ? undefined : real ? "queued" : "simulated", template: templateId });
+    setText(""); setSaved(false); setFromDraft(null); setChecked(false); if (kind === "reply" && fromDraft) setShowDraft(false);
   });
 
-  if (!c.reply.ok) return <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{c.reply.reason}</p>;
+  if (!c.reply.ok) return <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3" data-cy="reply-disabled"><Lock className="size-3.5" aria-hidden />{c.reply.reason}</p>;
 
   return (
     <div className="border-t border-line bg-surface">
       <AnimatePresence initial={false}>
-        {showDraft && mode === "reply" && (
+        {hasAiDraft && showDraft && mode === "reply" && (
           <motion.div initial={reduce ? false : { height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={reduce ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
             <div className="m-3 mb-0 rounded-md border border-accent/30 bg-accent-soft/40 p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -281,17 +365,18 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
       <div className="p-3">
         <div className="mb-2 flex items-center gap-2">
           <Segmented label="Composer mode" value={mode} onChange={setMode} options={[{ value: "reply", label: "Reply" }, { value: "note", label: "Internal note" }]} />
-          {!showDraft && mode === "reply" && !windowClosed && <Button size="sm" variant="ghost" onClick={() => setShowDraft(true)}>Show suggested reply</Button>}
+          {hasAiDraft && !showDraft && mode === "reply" && !windowClosed && <Button size="sm" variant="ghost" onClick={() => setShowDraft(true)}>Show suggested reply</Button>}
         </div>
         {templateOnly ? (
-          <TemplateRow templates={templates} tpl={tpl} setTpl={setTpl} preview={tplBody(tpl)} pending={pending} consent={c.lead.consent.whatsapp}
+          <TemplateRow templates={templates} tpl={tpl} setTpl={setTpl} preview={tplBody(tpl)} pending={pending} consent={real || c.lead.consent.whatsapp} real={real} strings={env.strings}
             onSend={() => submit("template", tplBody(tpl), tpl)} note="Outside the 24-hour WhatsApp window only approved templates can be sent." />
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); submit(mode, text); }} className="space-y-2">
             <label className="sr-only" htmlFor={`compose-${c.id}`}>{mode === "note" ? "Internal note" : "Reply"}</label>
-            <textarea id={`compose-${c.id}`} value={text} onChange={(e) => setText(e.target.value)} rows={3}
+            <textarea id={`compose-${c.id}`} value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={4000}
               placeholder={mode === "note" ? "Note for your team (not sent to the contact)" : `Reply to ${c.lead.first} on ${CH_LABEL[c.channel]}`}
               className={cn(field, "min-h-[72px] resize-y py-2", mode === "note" && "bg-warn-soft/40")} />
+            {real && saved && <p className="text-[12px] text-ink-3" title={env.strings.draftHint}>{env.strings.draftSaved}</p>}
             {needsCheck && (
               <label className="flex items-start gap-2 text-[12px] text-ink-2">
                 <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]" />
@@ -299,16 +384,17 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">
+              {mode === "reply" && real && !templates.length && <span className="text-[12px] text-ink-3" data-cy="no-templates">{env.strings.tplNone}</span>}
               {templates.length > 0 && mode === "reply" && (
                 <label className="flex min-w-0 items-center gap-1.5 text-[12px] text-ink-3">
                   <span className="shrink-0">Template</span>
                   <select value="" onChange={(e) => { if (e.target.value) { setText(tplBody(e.target.value)); setTpl(e.target.value); setFromDraft(null); } }} className={cn(field, "h-8 max-w-[200px] text-[12px]")}>
-                    <option value="">Insert…</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.id} ({t.lang})</option>)}
+                    <option value="">Insert…</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </label>
               )}
-              <Button type="submit" size="sm" variant={mode === "note" ? "secondary" : "primary"} className="ml-auto" disabled={pending || !text.trim() || (needsCheck && !checked)}>
-                {mode === "note" ? <><NotebookPen />Add note</> : <><Send />{fromDraft ? "Approve and send" : "Send"} (simulated)</>}
+              <Button type="submit" size="sm" variant={mode === "note" ? "secondary" : "primary"} className="ml-auto" disabled={pending || !text.trim() || (needsCheck && !checked)} data-cy="send">
+                {mode === "note" ? <><NotebookPen />Add note</> : <><Send />{real ? env.strings.queueBtn : <>{fromDraft ? "Approve and send" : "Send"} (simulated)</>}</>}
               </Button>
             </div>
           </form>
@@ -318,41 +404,56 @@ function Composer({ c, windowClosed, onSent, now }: { c: InboxConv; windowClosed
   );
 }
 
-function TemplateRow({ templates, tpl, setTpl, preview, pending, onSend, note, consent }: {
-  templates: { id: string; lang: string }[]; tpl: string; setTpl: (v: string) => void; preview: string; pending: boolean; onSend: () => void; note: string; consent: boolean;
+function TemplateRow({ templates, tpl, setTpl, preview, pending, onSend, note, consent, real, strings }: {
+  templates: TplOpt[]; tpl: string; setTpl: (v: string) => void; preview: string; pending: boolean; onSend: () => void; note: string; consent: boolean; real: boolean; strings: Strings;
 }) {
   if (!consent) return <p className="rounded-sm bg-warn-soft px-3 py-2 text-[12px] text-warn-ink">No WhatsApp consent on file. Record consent before sending a template.</p>;
+  if (!templates.length) return (
+    <div data-cy="template-only" className="space-y-1 rounded-sm border border-line bg-paper px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[12px] font-medium text-ink"><Lock className="size-3.5" aria-hidden />{note}</p>
+      <p className="text-[12px] text-ink-3" data-cy="no-templates">{strings.tplNone} {strings.tplNoneHint}</p>
+    </div>
+  );
   return (
-    <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{note}</p>
+    <div className="space-y-2" data-cy="template-only">
+      <p className="flex items-center gap-1.5 text-[12px] text-ink-3"><Lock className="size-3.5" aria-hidden />{note} {real ? strings.tplApprovedOnly : ""}</p>
       <select value={tpl} onChange={(e) => setTpl(e.target.value)} className={cn(field, "h-9")} aria-label="Approved template">
-        {templates.map((t) => <option key={t.id} value={t.id}>{t.id} ({t.lang})</option>)}
+        {templates.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
       </select>
       <p className="rounded-sm border border-line bg-paper px-3 py-2 text-[13px] leading-5 text-ink-2">{preview}</p>
-      <div className="flex justify-end"><Button size="sm" variant="primary" onClick={onSend} disabled={pending}><Send />Send template (simulated)</Button></div>
+      <div className="flex justify-end"><Button size="sm" variant="primary" onClick={onSend} disabled={pending} data-cy="send-template"><Send />{real ? strings.queueTplBtn : "Send template (simulated)"}</Button></div>
     </div>
   );
 }
 
-function ContextPanel({ c, linkable, reps, assign, onClosed }: { c: InboxConv; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; assign: Verdict; onClosed: () => void }) {
+function ContextPanel({ c, env, status, linkable, reps, assign, onClosed }: {
+  c: InboxConv; env: Env; status: ConvStatus; linkable: { id: string; label: string }[]; reps: { id: string; name: string }[]; assign: Verdict; onClosed: () => void;
+}) {
   const ib = useVocab().ib;
+  const real = env.mode === "real";
+  const s = env.strings;
   const [pending, start] = useTransition();
   const [link, setLink] = useState(c.lead.id);
   const [who, setWho] = useState(c.lead.ownerId);
-  const run = (p: Promise<{ ok: boolean; message: string; sub?: string }>, after?: () => void) => start(async () => { const r = await p; toast(r.message, r.sub); if (r.ok) after?.(); });
-  const opts = useMemo(() => (linkable.some((l) => l.id === c.lead.id) ? linkable : [{ id: c.lead.id, label: c.lead.name }, ...linkable]), [linkable, c.lead]);
+  const run = (p: Promise<Act>, after?: () => void, quiet = false) => start(async () => { const r = await p; env.report(c, r, { quiet }); if (r.ok) after?.(); });
+  const opts = useMemo(() => {
+    const base = linkable.some((l) => l.id === c.lead.id) || !c.lead.id ? linkable : [{ id: c.lead.id, label: c.lead.name }, ...linkable];
+    return c.lead.id ? base : [{ id: "", label: s.unlinked }, ...base];
+  }, [linkable, c.lead, s.unlinked]);
   const consent = [[ib.followUp, c.lead.consent.followup], ["WhatsApp", c.lead.consent.whatsapp], ["Marketing email", c.lead.consent.marketing]] as const;
+  const v = env.versionOf(c);
+  const setStatus = (st: ConvStatus) => run(setConversationStatus(c.id, st, v), st === "closed" ? onClosed : undefined);
   return (
     <div className="divide-y divide-line text-[13px]">
       <div className="p-4">
         <div className="eyebrow mb-2">{ib.leadEyebrow}</div>
-        <Link href={`/leads/${c.lead.id}`} className="font-semibold text-ink hover:text-accent">{c.lead.name}</Link>
+        {c.lead.id ? <Link href={`/leads/${c.lead.id}`} className="font-semibold text-ink hover:text-accent">{c.lead.name}</Link> : <span className="font-semibold text-ink">{c.lead.name}</span>}
         <div className="text-[12px] text-ink-3">{c.lead.title}</div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5"><Badge tone="neutral">{c.lead.stage}</Badge><ScoreChip score={c.lead.score} /></div>
+        {c.lead.id && <div className="mt-2 flex flex-wrap items-center gap-1.5"><Badge tone="neutral">{c.lead.stage}</Badge><ScoreChip score={c.lead.score} /></div>}
         {c.firm && <div className="mt-2 text-[12px] text-ink-2"><Link href={`/accounts/${c.firm.id}`} className="font-medium hover:text-accent">{c.firm.name}</Link>{ib.firmMeta(c.firm.district, c.firm.lawyers)}</div>}
-        <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
+        {c.lead.phone && <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
           <a href={`tel:${c.lead.phone.replace(/[^\d+]/g, "")}`} className="text-accent hover:underline num">{c.lead.phone}</a>
-        </div>
+        </div>}
       </div>
       <div className="p-4">
         <div className="eyebrow mb-2">{ib.dealEyebrow}</div>
@@ -361,8 +462,8 @@ function ContextPanel({ c, linkable, reps, assign, onClosed }: { c: InboxConv; l
       </div>
       <div className="p-4">
         <div className="eyebrow mb-2">Consent</div>
-        <ul className="space-y-1">{consent.map(([k, v]) => (
-          <li key={k} className="flex items-center justify-between text-[12px]"><span className="text-ink-2">{k}</span>{v ? <span className="inline-flex items-center gap-1 text-success"><Check className="size-3.5" aria-hidden />Granted</span> : <span className="inline-flex items-center gap-1 text-ink-3"><XCircle className="size-3.5" aria-hidden />Not given</span>}</li>
+        <ul className="space-y-1">{consent.map(([k, ok]) => (
+          <li key={k} className="flex items-center justify-between text-[12px]"><span className="text-ink-2">{k}</span>{ok ? <span className="inline-flex items-center gap-1 text-success"><Check className="size-3.5" aria-hidden />Granted</span> : <span className="inline-flex items-center gap-1 text-ink-3"><XCircle className="size-3.5" aria-hidden />Not given</span>}</li>
         ))}</ul>
       </div>
       <div className="space-y-3 p-4">
@@ -370,23 +471,33 @@ function ContextPanel({ c, linkable, reps, assign, onClosed }: { c: InboxConv; l
         <div>
           <label className="mb-1 flex items-center gap-1 text-[12px] font-medium text-ink-2" htmlFor={`link-${c.id}`}><Link2 className="size-3.5" aria-hidden />{ib.linked}</label>
           <div className="flex gap-2">
-            <select id={`link-${c.id}`} value={link} onChange={(e) => setLink(e.target.value)} className={cn(field, "h-9 min-w-0 flex-1 text-[12px]")}>
+            <select id={`link-${c.id}`} value={link} onChange={(e) => setLink(e.target.value)} className={cn(field, "h-9 min-w-0 flex-1 text-[12px]")} data-cy="link-select">
               {opts.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
             </select>
-            <Gated v={c.reply}><Button size="sm" disabled={pending || link === c.lead.id} onClick={() => run(linkConversation(c.id, link))}>Link</Button></Gated>
+            <Gated v={c.reply}><Button size="sm" disabled={pending || !link || link === c.lead.id} onClick={() => run(linkConversation(c.id, link, v))} data-cy="link-btn">Link</Button></Gated>
           </div>
         </div>
         <div>
           <label className="mb-1 flex items-center gap-1 text-[12px] font-medium text-ink-2" htmlFor={`as-${c.id}`}><UserRoundCog className="size-3.5" aria-hidden />Assigned to</label>
           <div className="flex gap-2">
-            <select id={`as-${c.id}`} value={who} onChange={(e) => setWho(e.target.value)} disabled={!assign.ok} className={cn(field, "h-9 min-w-0 flex-1 text-[12px] disabled:opacity-60")}>
+            <select id={`as-${c.id}`} value={who} onChange={(e) => setWho(e.target.value)} disabled={!assign.ok} className={cn(field, "h-9 min-w-0 flex-1 text-[12px] disabled:opacity-60")} data-cy="assign-select">
               {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
-            <Gated v={assign}><Button size="sm" disabled={pending || who === c.lead.ownerId} onClick={() => run(assignConversation(c.id, who))}>Assign</Button></Gated>
+            <Gated v={assign}><Button size="sm" disabled={pending || !who || who === c.lead.ownerId} onClick={() => run(assignConversation(c.id, who, v))} data-cy="assign-btn">Assign</Button></Gated>
           </div>
         </div>
-        <Gated v={c.reply}><Button size="sm" variant="ghost" className="w-full" disabled={pending} onClick={() => run(closeConversation(c.id), onClosed)}>Close conversation</Button></Gated>
-        <StatusChip status="showcase" label="Showcase · simulated" />
+        <div className="flex flex-wrap gap-2">
+          {status === "closed" || status === "snoozed" ? (
+            <Gated v={c.reply}><Button size="sm" variant="ghost" className="flex-1" disabled={pending} onClick={() => setStatus("open")} data-cy="reopen-btn">{s.reopenBtn}</Button></Gated>
+          ) : (
+            <>
+              <Gated v={c.reply}><Button size="sm" variant="ghost" className="flex-1" disabled={pending} onClick={() => setStatus("closed")} data-cy="close-btn">{real ? s.closeBtn : "Close conversation"}</Button></Gated>
+              {real && <Gated v={c.reply}><Button size="sm" variant="ghost" disabled={pending} onClick={() => setStatus("snoozed")} data-cy="snooze-btn"><BellOff />{s.snoozeBtn}</Button></Gated>}
+            </>
+          )}
+          {real && c.unread > 0 && <Gated v={c.reply}><Button size="sm" variant="ghost" disabled={pending} onClick={() => run(markConversationRead(c.id, v))} data-cy="mark-read-btn">{s.markReadBtn}</Button></Gated>}
+        </div>
+        {!real && <StatusChip status="showcase" label="Showcase · simulated" />}
       </div>
     </div>
   );
