@@ -96,8 +96,12 @@ async function moveTo(kind: "moved" | "snoozed", id: string, dueIso: string, lab
     return P.reschedule(pctx(ctx), id, p.data.expectedVersion, p.data.due, { moved: t(kind, { when: label }) });
   });
 }
-export const rescheduleTask = (id: string, dueIso: string, label: string, expectedVersion?: number) => moveTo("moved", id, dueIso, label, expectedVersion);
-export const snoozeTask = (id: string, dueIso: string, label: string, expectedVersion?: number) => moveTo("snoozed", id, dueIso, label, expectedVersion);
+export async function rescheduleTask(id: string, dueIso: string, label: string, expectedVersion?: number) {
+  return moveTo("moved", id, dueIso, label, expectedVersion);
+}
+export async function snoozeTask(id: string, dueIso: string, label: string, expectedVersion?: number) {
+  return moveTo("snoozed", id, dueIso, label, expectedVersion);
+}
 
 export async function reassignTask(id: string, ownerId: string, expectedVersion?: number): Promise<ActionResult<{ version: number }>> {
   const ctx = await pageCtx();
