@@ -16,7 +16,7 @@ describe("settings: no escalation", () => {
   it("owner: own row is locked, so an admin cannot edit their own role", function () {
     loginOrSkip(this, "OWNER");
     visitAccess();
-    cy.contains("tr", /\byou\b/i).find("select").first().should("be.disabled");
+    cy.contains("tr", "you").find("select").first().should("be.disabled");
   });
 
   it("owner: with a single active Owner, that Owner cannot be suspended by anyone", function () {
@@ -37,8 +37,8 @@ describe("settings: no escalation", () => {
   it("demo rep: the manage area is not reachable (forbidden page or the denied state)", () => {
     cy.loginAs("rep-lawsome");
     cy.visit("/settings/roles", { failOnStatusCode: false });
-    cy.location("pathname").then((path) => {
-      if (!path.includes("forbidden")) cy.contains(/You cannot manage this area/i).should("be.visible");
-    });
+    // The middleware rewrites to the 403 page (URL unchanged); a role that passes it gets the in-page denied state.
+    cy.contains(/You cannot manage this area|cannot open/i).should("be.visible");
+    cy.contains("button", /^Invite$/).should("not.exist");
   });
 });

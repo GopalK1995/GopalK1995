@@ -5,14 +5,20 @@ describe("settings: change role", () => {
   it("demo owner: changing a role confirms it and says nothing was saved", () => {
     cy.loginAs("owner-lawsome");
     visitAccess();
-    memberRow(/Sales Rep/i).first().find("select").first().select(1);
+    // Pick another member than the signed-in owner (their own row is locked) and move them to a role they do not hold.
+    memberRow("Arun Kumar").find("select").first().then(($s) => {
+      const next = $s.find("option").toArray().map((o) => (o as unknown as HTMLOptionElement).value).find((v) => v !== $s.val())!;
+      cy.wrap($s).select(next);
+    });
     cy.contains(/Demo workspace: nothing was saved/i).should("be.visible");
   });
 
   it("own row is disabled", () => {
     cy.loginAs("owner-lawsome");
     visitAccess();
-    cy.contains("tr", /\byou\b/i).find("select").first().should("be.disabled");
+    // The "you" tag runs into the e-mail in the row text, so \b never matches; find the row by the signed-in owner's name.
+    memberRow("Meenakshi Sundaram").contains("you").should("exist");
+    memberRow("Meenakshi Sundaram").find("select").first().should("be.disabled");
   });
 
   it("real owner: role change persists after reload", function () {

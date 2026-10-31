@@ -5,7 +5,7 @@ describe("accounts: merge", () => {
     cy.visit("/accounts");
     cy.get("table a").first().click();
     cy.get("[data-cy=merge-account]").click();
-    cy.get("select[name=targetId]").select(1);
+    cy.get("select[name=targetId]").find("option:not([disabled])").first().then(($o) => { cy.get("select[name=targetId]").select($o.val() as string); });
     cy.get("[data-cy=account-submit]").click();
     cy.contains("Demo workspace: nothing was saved").should("exist");
   });

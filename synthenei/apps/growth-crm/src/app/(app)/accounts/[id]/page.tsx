@@ -70,6 +70,8 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
   let rec = { version: 1, ownerId: (acc.ownerId || null) as string | null, city: acc.city as string, district: acc.district, website: acc.website };
   let targets: { id: string; name: string; version: number }[] = [];
   let realContacts: Contact[] | "error" = [];
+  // Demo: the other fixture accounts are the merge targets, so the dialog can be exercised without a database.
+  if (!real) targets = (await ds.accounts()).filter((x) => x.id !== acc.id).map((x) => ({ id: x.id, name: x.name, version: 1 }));
   if (real) {
     const ws = active.ws.uuid;
     try {
