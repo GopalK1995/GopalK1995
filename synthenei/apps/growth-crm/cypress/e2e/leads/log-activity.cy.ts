@@ -9,6 +9,8 @@ describe("leads: log call, email, schedule", () => {
     cy.contains("button", /Schedule demo|Schedule/).click();
     cy.get("input[name=time]").clear().type("07:00");
     cy.get("form").contains("button", /Schedule|Book/).click();
-    cy.contains(/08:00 and 20:00|between 08:00/).should("exist");
+    // The browser's own min/max (08:00 to 20:00) blocks the submit before the server's "between 08:00 and 20:00" message; assert that guard.
+    cy.get("input[name=time]").then(($i) => { expect(($i[0] as HTMLInputElement).validity.rangeUnderflow, "07:00 is before the 08:00 minimum").to.eq(true); });
+    cy.contains(/Demo workspace: nothing was saved|Demo scheduled/i).should("not.exist");
   });
 });

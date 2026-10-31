@@ -11,7 +11,9 @@ describe("audit: org viewer", () => {
     cy.get("input[name=from]").should("exist");
   });
   it("filters by source and shows the empty state when nothing matches", () => {
-    cy.get("input[name=action]").type("no.such.action{enter}");
+    cy.get("input[name=action]").type("no.such.action");
+    // Cypress 16 does not submit a form on {enter}; use the real button.
+    cy.contains("button", "Apply filters").click();
     cy.contains("No events match these filters").should("be.visible");
     cy.contains("a", "Clear filters").click();
     cy.get("table").should("exist");
