@@ -41,10 +41,8 @@ create unique index if not exists message_templates_provider_id on public.messag
 -- ---------- 3. campaign_daily_metrics: ads insights ----------
 alter table public.campaign_daily_metrics
   add column if not exists integration_id        uuid references public.integrations(id) on delete set null,
-  add column if not exists external_campaign_id  text,
-  add column if not exists source                text not null default 'csv';
-alter table public.campaign_daily_metrics drop constraint if exists campaign_daily_metrics_source_check;
-alter table public.campaign_daily_metrics add constraint campaign_daily_metrics_source_check check (source in ('api', 'csv', 'mock'));
+  add column if not exists external_campaign_id  text;
+-- `source` (api, csv, manual, mock) already exists since 0001 with a superset of the planned check: left untouched.
 create index if not exists campaign_daily_metrics_integration on public.campaign_daily_metrics (integration_id) where integration_id is not null;
 
 -- ---------- 4. New tables ----------
@@ -505,7 +503,7 @@ begin
      where r.id = v_id and (p_expected_updated_at is null or r.updated_at = p_expected_updated_at)
     returning r.updated_at into v_upd;
     if v_upd is null then
-      if exists (select 1 from public.roles r where r.id = v_id) then
+      if p_expected_updated_at is not null and exists (select 1 from public.roles r where r.id = v_id and r.updated_at <> p_expected_updated_at) then
         raise exception 'role_conflict: the role changed since it was loaded' using errcode = '40001';
       end if;
       raise exception 'role not found or not allowed' using errcode = '42501';
