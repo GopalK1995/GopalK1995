@@ -60,7 +60,11 @@ async function readBody(req: Request, mode: RouteSpec["body"]): Promise<{ raw: s
 }
 
 export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, deps: Deps = {}) {
-  return async function handler(req: Request, routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }): Promise<Response> {
+  // Next's generated route types reject an optional second argument, so the exported type is an overload pair (the
+  // two-argument form is last, which is the one Next reads); the implementation still accepts a missing context.
+  type RouteCtx = { params?: Promise<Record<string, string>> | Record<string, string> };
+  type Handler = { (req: Request): Promise<Response>; (req: Request, routeCtx: { params: Promise<Record<string, string>> }): Promise<Response> };
+  return (async function handler(req: Request, routeCtx?: RouteCtx): Promise<Response> {
     const started = Date.now();
     const requestId = sanitizeRid(req.headers.get("x-request-id"));
     const logger = deps.logger ?? serviceRequestLogger();
@@ -140,7 +144,7 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
       if (ae.code === "error") console.error("api/v1 error", { request_id: requestId, name: e instanceof Error ? e.name : "unknown" });
       return finish(problemResponse(ae, requestId, hdrs));
     }
-  };
+  }) as Handler;
 }
 
 async function problemJson(e: ApiError, requestId: string): Promise<Record<string, unknown>> {
