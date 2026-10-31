@@ -15,9 +15,9 @@ export function toStoredBody(text: string, picked: Mentionable[]): string {
   return out;
 }
 
-export function MentionComposer({ objectType, objectId, s, value, onChange, picked, onPick, disabled, autoFocus }: {
+export function MentionComposer({ objectType, objectId, s, value, onChange, onPick, disabled, autoFocus }: {
   objectType: string; objectId: string; s: Strings; value: string; onChange: (v: string) => void;
-  picked: Mentionable[]; onPick: (m: Mentionable) => void; disabled?: boolean; autoFocus?: boolean;
+  onPick: (m: Mentionable) => void; disabled?: boolean; autoFocus?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const listId = useId();

@@ -82,7 +82,7 @@ export function CommentThread({ objectType, objectId, comments, names, viewerId,
                   </div>
                   {editing === c.id ? (
                     <div className="mt-1 grid gap-2">
-                      <MentionComposer objectType={objectType} objectId={objectId} s={s} value={editText} onChange={setEditText} picked={editPicked} onPick={(m) => setEditPicked((p) => [...p, m])} autoFocus />
+                      <MentionComposer objectType={objectType} objectId={objectId} s={s} value={editText} onChange={setEditText} onPick={(m) => setEditPicked((p) => [...p, m])} autoFocus />
                       <div className="flex gap-2">
                         <Button size="sm" variant="primary" disabled={busy || !editText.trim()} onClick={() => saveEdit(c)}>{s.save}</Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>{s.cancel}</Button>
@@ -111,7 +111,7 @@ export function CommentThread({ objectType, objectId, comments, names, viewerId,
       )}
       {error && <p role="alert" className="text-13 text-danger">{error}</p>}
       <div className="grid gap-2">
-        <MentionComposer objectType={objectType} objectId={objectId} s={s} value={text} onChange={setText} picked={picked} onPick={(m) => setPicked((p) => [...p, m])} disabled={!canWrite} />
+        <MentionComposer objectType={objectType} objectId={objectId} s={s} value={text} onChange={setText} onPick={(m) => setPicked((p) => [...p, m])} disabled={!canWrite} />
         <div>
           <Button variant="primary" disabled={busy || !text.trim()} disabledReason={!canWrite ? s.composerDisabledNoPerm : undefined} onClick={post}>
             {busy ? s.posting : s.post}
