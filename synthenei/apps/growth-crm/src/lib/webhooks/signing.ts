@@ -18,7 +18,7 @@ export function signV1(secret: string, id: string, timestamp: number | string, b
   return "v1," + createHmac("sha256", secretKey(secret)).update(`${id}.${timestamp}.${body}`).digest("base64");
 }
 
-export interface SignedHeaders { "webhook-id": string; "webhook-timestamp": string; "webhook-signature": string; "content-type": string; "user-agent": string }
+export type SignedHeaders = { "webhook-id": string; "webhook-timestamp": string; "webhook-signature": string; "content-type": string; "user-agent": string };
 
 /** Headers for one delivery. `secrets` is [current] or [current, previous] inside the rotation grace window. */
 export function signedHeaders(secrets: string[], id: string, timestampSeconds: number, body: string): SignedHeaders {
