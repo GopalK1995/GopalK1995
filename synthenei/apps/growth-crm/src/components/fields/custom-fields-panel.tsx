@@ -80,7 +80,7 @@ export function CustomFieldsPanel(p: CustomFieldsPanelProps) {
 
   const groups = bySection(p.fields);
   return (
-    <section ref={root} aria-label={p.title ?? t("sectionTitle")} aria-busy={pending} className="zone-working grid gap-3">
+    <section ref={root} data-testid="custom-fields" aria-label={p.title ?? t("sectionTitle")} aria-busy={pending} className="zone-working grid gap-3">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-15 font-bold">{p.title ?? t("sectionTitle")}</h3>
         {draft ? (

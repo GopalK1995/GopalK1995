@@ -39,7 +39,8 @@ export async function saveCustomFields(raw: unknown): Promise<ActionResult<SaveO
     const meta = await getObjectMeta(active.ws.uuid, input.objectKey);
 
     if (session.demo) {
-      const { issues } = validateCustom(meta.fields, input.patch, "update");
+      // Demo records are not stored, so only the keys being changed can be checked (required fields are the record's concern).
+      const issues = validateCustom(meta.fields, input.patch, "update").issues.filter((i) => i.path in input.patch);
       if (issues.length) return failResult("invalid", t("fixFields", { n: issues.length }), { issues });
       return okResult<SaveOut>(t("valuesSaved"), { sub: t("demoNotSaved"), data: { version: input.expectedVersion, values: maskCustomValues(meta.fields, input.patch, principal, { objectKey: input.objectKey, canWriteRecord: true }) } });
     }

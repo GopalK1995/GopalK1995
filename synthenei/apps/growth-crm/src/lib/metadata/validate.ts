@@ -121,6 +121,7 @@ export function validateCustom(fields: FieldDef[], values: Record<string, unknow
   const byKey = new Map(fields.map((f) => [f.key, f]));
   const issues: Issue[] = [];
   const out: Record<string, unknown> = {};
+  const failed = new Set<string>();
   const doc: Record<string, unknown> = { ...values };
   if (mode === "create") for (const f of fields) if (!f.archivedAt && !isNil(f.default) && !(f.key in doc)) doc[f.key] = f.default;
   const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -136,7 +137,7 @@ export function validateCustom(fields: FieldDef[], values: Record<string, unknow
     }
     const val = coerceValue(def, raw);
     const err = checkValue(def, val);
-    if (err) { issues.push({ path: key, message: msg(key, err) }); continue; }
+    if (err) { issues.push({ path: key, message: msg(key, err) }); failed.add(key); continue; }
     // A retired choice stays valid for the value already stored, but cannot be newly picked.
     if ((def.type === "select" || def.type === "multi_select") && !isNil(val)) {
       const retired = new Set(choicesOf(def).filter((c) => c.archived).map((c) => c.key));
@@ -145,13 +146,14 @@ export function validateCustom(fields: FieldDef[], values: Record<string, unknow
       const prior = new Set(Array.isArray(before) ? before : isNil(before) ? [] : [before]);
       if (picked.some((k) => retired.has(k) && !prior.has(k))) {
         issues.push({ path: key, message: msg(key, def.type === "select" ? "is not one of the listed choices" : "contains a value that is not a listed choice") });
+        failed.add(key);
         continue;
       }
     }
     if (!isNil(val)) out[key] = val;
   }
   for (const f of fields) {
-    if (f.archivedAt || !f.required) continue;
+    if (f.archivedAt || !f.required || failed.has(f.key)) continue;
     if (isNil(out[f.key])) issues.push({ path: f.key, message: msg(f.key, "is required") });
   }
   return { value: out, issues };
