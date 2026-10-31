@@ -27,7 +27,7 @@ export default async function IntegrationsPage() {
     <>
       {header}
       {res.failed.length > 0 && <div className="mb-4"><PartialState done={sources.length - res.failed.length} total={sources.length} noun={t("partialNoun")} items={sources.map(([k, label]) => ({ label, status: res.failed.includes(k) ? "failed" as const : "ok" as const }))} /></div>}
-      <RealList rows={res.rows} now={new Date().getTime()} t={t} />
+      <RealList rows={res.rows} now={new Date().toISOString()} t={t} />
     </>
   );
 }

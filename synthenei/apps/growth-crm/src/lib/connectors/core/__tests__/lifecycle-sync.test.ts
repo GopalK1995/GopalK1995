@@ -38,7 +38,7 @@ describe("lifecycle: connect, test, reconnect, disconnect", () => {
     expect(await connectWithCredentials(a.deps, ACTOR, "mock", { api_key: MOCK_VALID_KEY })).toEqual({ ok: false, code: "not_available" });
     const b = makeDeps(); b.store.availability.mock = { mode: "live", gateStatus: "needs_vendor_approval" };
     expect(await connectWithCredentials(b.deps, ACTOR, "mock", { api_key: MOCK_VALID_KEY })).toEqual({ ok: false, code: "needs_vendor_approval" });
-    const needsEnv: ConnectorDef = { ...mockConnector, id: "needs-env", requiredEnv: ["NEEDS_ENV_VAR"] };
+    const needsEnv: ConnectorDef = { ...mockConnector, id: "needs-env" as ConnectorDef["id"], requiredEnv: ["NEEDS_ENV_VAR"] };
     registerConnector(needsEnv);
     const c = makeDeps(); c.store.availability["needs-env"] = { mode: "sandbox", gateStatus: "ready" };
     expect(await connectWithCredentials(c.deps, ACTOR, "needs-env", { api_key: "x" })).toEqual({ ok: false, code: "not_configured" });
@@ -102,7 +102,7 @@ describe("lifecycle: connect, test, reconnect, disconnect", () => {
 
 describe("token refresh", () => {
   const oauthDef: ConnectorDef = {
-    ...mockConnector, id: "oauth-test", auth: "oauth2", credentialFields: undefined,
+    ...mockConnector, id: "oauth-test" as ConnectorDef["id"], auth: "oauth2", credentialFields: undefined,
     oauth: { authorizeUrl: "https://v.test/a", tokenUrl: "https://v.test/t", scopes: ["x"], pkce: true, clientIdEnv: "OT_ID", clientSecretEnv: "OT_SECRET" },
     requiredEnv: [],
   };

@@ -34,7 +34,7 @@ export default async function IntegrationDetailPage({ params, searchParams }: { 
   return (
     <>
       {key && <p role="alert" className="state-danger mb-4 rounded-control border px-3 py-2 text-13 text-ink">{key.includes(".") && key.startsWith("blocked.") ? t(key, { role: v.role.replace("_", " ") }) : t(key)}</p>}
-      <RealDetail v={res.view} t={t} now={new Date().getTime()} ws={v.ws} failed={res.failed} manageBlocked={manageBlocked} />
+      <RealDetail v={res.view} t={t} now={new Date().toISOString()} ws={v.ws} failed={res.failed} manageBlocked={manageBlocked} />
     </>
   );
 }

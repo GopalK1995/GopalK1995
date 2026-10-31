@@ -18,7 +18,7 @@ const RUN_TONE: Record<string, ChipTone> = { success: "success", partial: "warn"
 const CLIENT_STEP = /^(verify|approve|authorise|grant|register|request|connect|install|link|admin|workspace admin|entra|each rep|rep connects|create (a|an) (service|api|webhook))/i;
 
 export interface DetailProps {
-  v: DetailView; t: T; now: number; ws: string; failed: string[];
+  v: DetailView; t: T; now: string; ws: string; failed: string[];
   /** Permission/support/demo reason that blocks management actions; null when the viewer may manage. */
   manageBlocked: string | null;
 }
@@ -75,7 +75,7 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
                   {v.steps.map((step, i) => (
                     <li key={step} className="grid grid-cols-[28px_1fr] gap-3 pb-4 last:pb-0">
                       <span className="grid size-7 place-items-center rounded-round border border-line-strong bg-surface text-12 font-semibold num text-ink">{i + 1}</span>
-                      <div className="min-w-0 pt-1"><p className="text-13 text-ink">{step}</p>{CLIENT_STEP.test(step) && <p className="mt-0.5 text-12 text-ink-3">Vendor admin</p>}</div>
+                      <div className="min-w-0 pt-1"><p className="text-13 text-ink">{step}</p>{CLIENT_STEP.test(step) && <p className="mt-0.5 text-12 text-ink-3">{t("stepVendorAdmin")}</p>}</div>
                     </li>
                   ))}
                 </ol>

@@ -166,5 +166,6 @@
   "map.duplicate": "That field is mapped twice.",
   "csvNote": "CSV import is available from the Import button on Leads.",
   "blocked.not_shipped": "This connector is not built yet.",
-  "chip.not_shipped": "Not available"
+  "chip.not_shipped": "Not available",
+  "stepVendorAdmin": "Vendor admin"
 }

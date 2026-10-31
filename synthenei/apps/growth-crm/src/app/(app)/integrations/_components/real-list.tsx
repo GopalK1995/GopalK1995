@@ -7,13 +7,13 @@ import type { T } from "../_lib/strings";
 
 const STALE_MS = 26 * 3600e3;   // freshness ruler: a live source with no sync for 26 h is stale
 
-export function Freshness({ at, now, t }: { at: string | null; now: number; t: T }) {
+export function Freshness({ at, now, t }: { at: string | null; now: string; t: T }) {
   if (!at) return <span className="text-ink-3">{t("never")}</span>;
-  const stale = now - new Date(at).getTime() > STALE_MS;
+  const stale = Date.parse(now) - new Date(at).getTime() > STALE_MS;
   return <span className={stale ? "text-warn-ink" : "text-ink-2"} data-stale={stale ? "true" : "false"}>{t(stale ? "freshness.stale" : "freshness.fresh", { when: relTime(at, now) })}</span>;
 }
 
-export function RealList({ rows, now, t }: { rows: ConnectorRowView[]; now: number; t: T }) {
+export function RealList({ rows, now, t }: { rows: ConnectorRowView[]; now: string; t: T }) {
   return (
     <Table minWidth={760}>
       <caption className="sr-only">{t("title")}</caption>
