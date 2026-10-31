@@ -12,9 +12,8 @@ export type DbProvider = () => Promise<Db>;
 const list = (d: unknown) => (d as Rec[] | null) ?? [];
 const del = (db: Db, t: string) => (from(db, t) as unknown as { delete(): Qb }).delete();
 
-/** "99+" above the cap the unread query fetches. */
-export const UNREAD_CAP = 100;
-export const badgeLabel = (n: number) => (n <= 0 ? "" : n >= UNREAD_CAP ? "99+" : String(n));
+import { UNREAD_CAP } from "./badge";
+export { badgeLabel, UNREAD_CAP } from "./badge";
 
 export function createNotifyRepos(getDb: DbProvider = dbForRequest) {
   return {
@@ -168,6 +167,15 @@ export function createNotifyRepos(getDb: DbProvider = dbForRequest) {
         throwIfError(error);
         if (list(data).length === 0) throw new DbError("denied", "denied");
       },
+    },
+
+    /** Display names only (never email or phone). */
+    async names(ids: string[]): Promise<Record<string, string>> {
+      if (!ids.length) return {};
+      const db = await getDb();
+      const { data, error } = await from(db, "profiles").select("id, full_name").in("id", [...new Set(ids)]);
+      throwIfError(error);
+      return Object.fromEntries(list(data).map((r) => [r.id as string, String(r.full_name)]));
     },
 
     feed: {
