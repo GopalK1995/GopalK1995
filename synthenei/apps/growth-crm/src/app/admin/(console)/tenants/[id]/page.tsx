@@ -22,6 +22,7 @@ import { roleCan } from "../../../_lib/platform-authz";
 import { platformCtx } from "../../../_lib/platform-session";
 import { at } from "../../../_lib/strings";
 import { loadConnectorMatrix, loadTenantSummary } from "../../../_lib/view";
+import { TenantAuditPanel } from "@/lib/audit/ui/platform-panel";
 import { TenantConfigTab } from "./_components/config-tab";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -185,9 +186,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
             <DataTable rows={audit} columns={auditCols} rowKey={(a) => a.id} minWidth={760} caption="Tenant audit events" rowClassName={(a) => (a.supportSessionId ? "bg-warn-soft/50" : "")} />
           </Card>
         ) : (
-          <Card><CardHeader title="Tenant audit events" sub="Rows written inside a support session carry its id." /><CardBody>
-            <Link href={`/admin/audit?tenant=${tenant.id}`} className="text-[13px] font-medium text-accent hover:underline">Open this tenant in the platform audit log</Link>
-          </CardBody></Card>
+          <TenantAuditPanel tenantSlug={tenant.id} workspaceIds={wsIds} />
         ) },
       ]} />
       <div className="mt-4">
