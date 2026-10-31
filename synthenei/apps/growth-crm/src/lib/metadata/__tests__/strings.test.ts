@@ -47,7 +47,7 @@ describe("fields namespace", () => {
   });
   it("lookup falls back to English for untranslated Tamil keys and fills placeholders", () => {
     expect(ft("created", { label: "Budget" }, "ta")).toBe("Field added: Budget");
-    expect(ft("edit", {}, "ta")).toBe((ta as Record<string, string>).edit);
+    expect(ft("edit", {}, "ta")).toBe((ta as unknown as Record<string, string>).edit);
     expect(ftAll("ta").created).toBe(en2.created);
     expect(ft("no_such_key")).toBe("no_such_key");
   });
