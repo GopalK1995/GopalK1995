@@ -807,6 +807,17 @@ Sources: `case-studies/takt-assets/figma-pack/README_FIGMA_BUILD_PACK.md`, `appe
 
 ---
 
+**T071 · Instagram + Facebook organic post metrics** (added 31 Oct 2026 at the owner's request; runs in Batch 4 after T036)
+- Goal: organic (non-ad) post performance for the tenant's connected Instagram business account and Facebook Page, shown beside the paid-ads numbers.
+- Owns: `src/lib/connectors/meta/organic/**`, `src/app/(app)/analytics/social/**`, `supabase/migrations/0021b_social_metrics.sql`, `supabase/tests/0021b*.test.sql`, `messages/en/social.json`, `messages/ta/social.json`, `cypress/e2e/social/**`, `docs/tasks/T071.md`. T071 is the only task writing a migration in this window; the file name `0021b` sorts between 0021 (T031) and 0022 (T041) so numbering stays unchanged.
+- Depends: T022 (connector framework), T036 (Meta OAuth, page and Instagram account selection).
+- Data model (all tables: tenant_id + workspace_id, RLS via `private.rls_table`, append-only metrics): `social_accounts` (platform instagram|facebook, external_id, display name, followers snapshot, integration_id); `social_posts` (account, external_id, kind feed|reel|story|carousel|video, caption, permalink, media_url, posted_at, status); `social_post_metrics_daily` (post, day, impressions, reach, likes, comments, shares, saves, video_views, link_clicks, engagement_rate computed); `social_account_metrics_daily` (account, day, followers, follower_delta, profile_views, reach, website_clicks).
+- Sync: scheduled job daily 06:30 IST plus manual "Refresh now" through the connector framework; posts fetched incrementally (since last post), metrics re-fetched for posts younger than 30 days then weekly; stories only while live (24 h window), recorded as captured. Respect Meta rate limits with backoff; metrics unavailable for a post are stored as null, never zero. Token expiry sets `needs_attention`.
+- UI (Takt rules, no KPI-strip + table + rail shape, no card wall): a Social page under Analytics with one organising device: a post timeline strip (one mark per post on a date axis, mark height = reach, colour by kind, direct labels) above a ledger table of posts with sortable columns; account trend (followers, reach) as one shared-axis Recharts chart; each post opens a sheet with its daily curve and the paid-boost link if the post was promoted. States: empty, loading, error naming the source, partial ("3 of 5 posts synced"), not-connected ("Connect Instagram"), needs-vendor-approval (before Meta grants the insights permissions), permission-denied.
+- Accept: fixture-tested mappers for the Graph API insights responses (units, nulls, story expiry); metrics never shown as live without credentials and the availability gate; consent/PII: no commenter names or text stored (counts only); real sessions never read demo data; demo mode shows labelled sample data.
+- Tests: Unit: insights mappers incl. nulls and rate-limit backoff, engagement-rate math, story window, dedupe on re-sync. pgTAP: RLS isolation on all four tables. Cypress `social/timeline.cy.ts`, `social/not-connected.cy.ts`, `social/needs-approval.cy.ts` (fixture API base).
+- Size L · Monday N.
+
 ### Batch 5: Connector breadth + AI gateway (T041–T050)
 
 **T041 · DB: performance and hardening (0022)**
