@@ -2,6 +2,7 @@
 import { ZodError } from "zod";
 import { AuthzError } from "../authz/engine";
 import { DbError } from "../db/errors";
+import { serializeRow } from "./serialize";
 
 export type ApiCode = "unauthorized" | "forbidden" | "not_found" | "conflict" | "invalid" | "rate_limited" | "error";
 export const STATUS: Record<ApiCode, number> = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, error: 500 };
@@ -51,7 +52,7 @@ export function toApiError(e: unknown): ApiError {
     switch (e.code) {
       case "denied": return new ApiError("forbidden", "Your key is not allowed to do this.");
       case "not_found": return new ApiError("not_found", "Resource not found.");
-      case "conflict": return new ApiError("conflict", "The record changed since you read it.", { extra: e.current !== undefined ? { current: e.current } : {} });
+      case "conflict": return new ApiError("conflict", "The record changed since you read it.", { extra: e.current && typeof e.current === "object" ? { current: serializeRow(e.current as Record<string, unknown>) } : {} });
       case "unique": return new ApiError("conflict", "A record with these values already exists.");
       case "invalid": return new ApiError("invalid", "A value was rejected by the database.");
       default: return new ApiError("error", "Something went wrong on our side.");

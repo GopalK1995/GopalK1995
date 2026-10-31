@@ -20,7 +20,8 @@ export interface ApiCtx {
   authorize(rec: Omit<RecordRef, "workspaceId">, perm?: string): void;
 }
 export interface RouteSpec {
-  resource: ScopeResource;
+  /** `me` needs only a valid key (no scope, no permission). */
+  resource: ScopeResource | "me";
   action: ApiAction;
   /** Takes a JSON object body (POST, PATCH, and DELETE-with-body are the only methods that read one). */
   body?: "required" | "optional";
@@ -88,14 +89,18 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
 
       const url = new URL(req.url);
       const params = (await routeCtx?.params) ?? {};
-      const permission = permissionFor(spec.resource, spec.action, spec.objectParam ? params[spec.objectParam] : undefined);
-      if (!permission) throw new ApiError("not_found", "Resource not found.");
-      if (!scopeAllows(auth.key.scopes, spec.resource, spec.action)) {
-        throw new ApiError("forbidden", `This key needs the ${spec.resource}:${spec.action === "read" ? "read" : "write"} scope.`, { extra: { reason: "scope" } });
-      }
       const p = auth.principal;
-      const d = decide(p, permission);
-      if (!d.allow) throw new ApiError("forbidden", "Your key is not allowed to do this.", { extra: { reason: d.reason } });
+      let permission = "me";
+      if (spec.resource !== "me") {
+        const perm = permissionFor(spec.resource, spec.action, spec.objectParam ? params[spec.objectParam] : undefined);
+        if (!perm) throw new ApiError("not_found", "Resource not found.");
+        permission = perm;
+        if (!scopeAllows(auth.key.scopes, spec.resource, spec.action)) {
+          throw new ApiError("forbidden", `This key needs the ${spec.resource}:${spec.action === "read" ? "read" : "write"} scope.`, { extra: { reason: "scope" } });
+        }
+        const d = decide(p, permission);
+        if (!d.allow) throw new ApiError("forbidden", "Your key is not allowed to do this.", { extra: { reason: d.reason } });
+      }
 
       const { raw, json } = await readBody(req, spec.body);
       const ws = auth.key.workspaceId;
@@ -143,4 +148,4 @@ async function problemJson(e: ApiError, requestId: string): Promise<Record<strin
 }
 
 /** Offline-test helper: the permission a route would require. */
-export const routePermission = (spec: Pick<RouteSpec, "resource" | "action">, objectKey?: string) => permissionFor(spec.resource, spec.action, objectKey);
+export const routePermission = (resource: ScopeResource, action: ApiAction, objectKey?: string) => permissionFor(resource, action, objectKey);
