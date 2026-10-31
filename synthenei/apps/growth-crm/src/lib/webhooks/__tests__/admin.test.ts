@@ -74,7 +74,7 @@ describe("endpoint lifecycle", () => {
 describe("replay", () => {
   const store = (eventExists: boolean): WebhookStore => ({
     event: async () => (eventExists ? ({ occurred_at: "2026-11-01T11:59:00Z" } as never) : null),
-    insertDelivery: async (d) => ({ id: 77, createdAt: "x", endpointId: d.endpointId, eventId: d.eventId, eventType: d.eventType, attempt: 1, status: "pending", responseStatus: null, responseMs: null, responseExcerpt: null, nextAttemptAt: null }),
+    insertDelivery: async (d: { endpointId: string; eventId: string | null; eventType: string }) => ({ id: 77, createdAt: "x", endpointId: d.endpointId, eventId: d.eventId, eventType: d.eventType, attempt: 1, status: "pending", responseStatus: null, responseMs: null, responseExcerpt: null, nextAttemptAt: null }),
   } as unknown as WebhookStore);
   const deliveries = { webhook_deliveries: [{ id: 5, created_at: "2026-11-01T12:00:00Z", endpoint_id: "ep-1", event_id: "100", event_type: "lead.updated", attempt: 7, status: "dead", response_status: null, response_ms: null, response_excerpt: null, next_attempt_at: null }, { id: 6, created_at: "2026-11-01T12:01:00Z", endpoint_id: "ep-1", event_id: null, event_type: "webhook.test", attempt: 1, status: "dead", response_status: null, response_ms: null, response_excerpt: null, next_attempt_at: null }] };
 

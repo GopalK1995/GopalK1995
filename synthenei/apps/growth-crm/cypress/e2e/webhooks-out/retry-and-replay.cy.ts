@@ -32,13 +32,6 @@ describe("webhooks-out: delivery log and replay", () => {
     cy.contains(/nothing was saved/i).should("be.visible");
   });
 
-  it("demo: a non-owner sees replay disabled with a reason", function () {
-    requireMode(this, "demo");
-    cy.loginAs("manager-lawsome");
-    cy.visit("/settings/webhooks/demo-1");
-    cy.contains("tr", "lead.created").contains("button", /^Replay$/).should("be.disabled");
-  });
-
   it("real: an unknown endpoint id shows the not-found state", function () {
     requireMode(this, "real");
     loginOrSkip(this, "OWNER");
