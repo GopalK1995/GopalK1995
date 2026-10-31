@@ -1,0 +1,14 @@
+{
+  "_review": true,
+  "pageTitle": "API விசைகள்",
+  "createKey": "விசையை உருவாக்கு",
+  "revoke": "ரத்து செய்",
+  "rotate": "மாற்று",
+  "copy": "விசையை நகலெடு",
+  "copied": "நகலெடுக்கப்பட்டது",
+  "statusActive": "செயலில்",
+  "statusRevoked": "ரத்து செய்யப்பட்டது",
+  "statusExpired": "காலாவதியானது",
+  "emptyTitle": "இன்னும் API விசைகள் இல்லை",
+  "cancel": "ரத்து"
+}
