@@ -4,3 +4,4 @@ import "./events";
 import "./agent";
 import "./maintenance";
 import "@/lib/notify/handler"; // T027: notify.event (notification rules -> in-app rows + queued email intents)
+import "@/lib/webhooks/handler"; // T024: webhook.deliver (outbound webhooks) + webhook.housekeeping
