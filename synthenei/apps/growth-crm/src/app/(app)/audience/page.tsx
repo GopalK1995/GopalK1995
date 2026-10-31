@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { vocabFor } from "@/lib/vertical";
 import { segLeads, type SegLead } from "../campaigns/_lib/marketing";
 import { SegmentBuilder } from "./_components/segment-builder";
+import { RealAudience } from "./_components/real-audience";
 
 export const metadata = { title: "Audience" };
 const SIZE_ORDER = ["Solo", "2–5", "6–20", "21–50", "50+"];
@@ -19,7 +20,9 @@ const SIZE_ORDER = ["Solo", "2–5", "6–20", "21–50", "50+"];
 type Seg = { id: string; name: string; rule: string; test: (l: SegLead) => boolean };
 
 export default async function Audience() {
-  const { ds, now, active } = await pageCtx();
+  const ctx = await pageCtx();
+  if (!ctx.session.demo) return <RealAudience ctx={ctx} />;
+  const { ds, now, active } = ctx;
   const v = vocabFor(active.tenant), a = v.au, hosp = v.id === "hospitality";
   const [leads, accounts, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.campaigns()]);
   const seg = segLeads(leads, accounts, now, hosp);

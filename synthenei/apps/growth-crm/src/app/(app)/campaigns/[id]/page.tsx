@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, Pause, Pencil, Play } from "lucide-react";
+import { ArrowLeft, Download, Pause, Play } from "lucide-react";
 import { maskName, pageCtx } from "@/lib/data/context";
 import { CHANNEL_LABEL, campaignStats, isDemo } from "@/lib/data/metrics";
 import { fmtDate, fmtDateY, inr, inrCompact, num, numCompact, pct, ratio } from "@/lib/format";
@@ -16,9 +16,11 @@ import { cn } from "@/lib/utils";
 import { vocabFor, cap } from "@/lib/vertical";
 import { CHANNEL_CHIP, allStats, dailyJoin, radarScores, shortName, sourceState, weekBuckets, inBucket, leadDay, DAY_MS } from "../_lib/marketing";
 import { RadarPicker, type RadarCampaign } from "../_components/radar-compare";
-import { ImportCsvDialog } from "../_components/dialogs";
+import { ImportCsvDialog, MetricsDayDialog } from "../_components/dialogs";
+import { EditCampaignDialog } from "./_components/edit-dialog";
+import { loadCampaign, loadCampaigns, loadDays, type CampaignView } from "../_lib/load";
 import { ActionButton } from "../_components/action";
-import { editCampaign, exportCampaignLeads, setCampaignStatus } from "../_actions";
+import { exportCampaignLeads, setCampaignStatus } from "../_actions";
 import { AttributionToggle, CampaignFunnel, NoteDialog, TrendPanel } from "./_components/detail-client";
 
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
@@ -27,8 +29,8 @@ const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const
 const VISIT_PER_CLICK: Record<string, number> = { linkedin: 0.81, meta: 0.74, google_ads: 0.9, whatsapp: 0.86, email: 0.88 };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { ds } = await pageCtx();
-  const c = await ds.campaign((await params).id);
+  const mctx = await pageCtx();
+  const c = await loadCampaign(mctx, (await params).id);
   return { title: c ? shortName(c.name) : "Campaign" };
 }
 
@@ -53,11 +55,12 @@ function BarList({ title, rows, total }: { title: string; rows: { label: string;
 
 export default async function CampaignDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { ds, now, masked, active } = await pageCtx();
+  const ctx = await pageCtx();
+  const { ds, now, masked, active } = ctx;
   const v = vocabFor(active.tenant), d_ = v.cd, hosp = v.id === "hospitality";
-  const c = await ds.campaign(id);
+  const c: CampaignView | null = await loadCampaign(ctx, id);
   if (!c) notFound();
-  const [campaigns, days, leads, deals, accounts, integrations, team] = await Promise.all([ds.campaigns(), ds.campaignDays(), ds.leads(), ds.deals(), ds.accounts(), ds.integrations(), ds.team()]);
+  const [campaigns, days, leads, deals, accounts, integrations, team] = await Promise.all([loadCampaigns(ctx), loadDays(ctx), ds.leads(), ds.deals(), ds.accounts(), ds.integrations(), ds.team()]);
   const owner = team.find((t) => t.id === c.ownerId)?.name;
   // Hospitality counts a booking (won deal) where legal counts a demo.
   const hospMap = <T extends { spend: number; won: number; leads: number; demos: number; costPerDemo: number; leadToDemo: number }>(x: T): T => (hosp ? { ...x, demos: x.won, costPerDemo: ratio(x.spend, x.won), leadToDemo: ratio(x.won, x.leads) } : x);
@@ -153,10 +156,11 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
         title={c.name}
         sub={<>{c.objective}. <span className="num">{fmtDateY(c.startDate + "T06:00:00Z")} – {c.endDate ? fmtDateY(c.endDate + "T06:00:00Z") : "ongoing"}</span>{owner ? ` · owner ${owner}` : ""}</>}
         actions={<>
-          <ActionButton can="editCampaigns" action={setCampaignStatus.bind(null, c.id, c.status === "paused" ? "live" : "paused")} disabled={c.status === "ended"}>{c.status === "paused" ? <><Play />Resume</> : <><Pause />Pause</>}</ActionButton>
-          <NoteDialog campaignId={c.id} />
+          <ActionButton can="editCampaigns" action={setCampaignStatus.bind(null, c.id, c.status === "paused" ? "live" : "paused", c.version)} disabled={c.status === "ended"}>{c.status === "paused" ? <><Play />Resume</> : <><Pause />Pause</>}</ActionButton>
+          <NoteDialog campaignId={c.id} version={c.version} />
+          <MetricsDayDialog campaignId={c.id} />
           <ImportCsvDialog campaigns={[{ id: c.id, name: c.name, channel: c.channel }]} campaignId={c.id} />
-          <ActionButton can="editCampaigns" variant="primary" action={editCampaign.bind(null, c.id)}><Pencil />Edit</ActionButton>
+          <EditCampaignDialog c={{ id: c.id, name: c.name, objective: c.objective, budget: c.budget, startDate: c.startDate, endDate: c.endDate, version: c.version }} />
         </>}>
         <div className="mt-3 flex max-w-md items-center gap-3">
           <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>

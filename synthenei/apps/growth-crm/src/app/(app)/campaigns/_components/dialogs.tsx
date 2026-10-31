@@ -1,9 +1,9 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { createCampaign, importCampaignCsv } from "../_actions";
+import { createCampaign } from "../_actions";
 import { MktGate, notify } from "./action";
 import { useVocab } from "@/components/shell/providers";
 
@@ -12,44 +12,8 @@ const lbl = "mb-1 block text-[12px] font-medium text-ink-2";
 
 
 
-/** CSV import with a column-mapping preview (spec 3b). Rows for unknown campaigns are rejected server-side. */
-export function ImportCsvDialog({ campaigns, campaignId }: { campaigns: { id: string; name: string; channel: string }[]; campaignId?: string }) {
-  const fixed = campaigns.find((c) => c.id === campaignId);
-  const v = useVocab().cd;
-  const [platform, setPlatform] = useState<string>(fixed?.channel ?? v.defaultChannel);
-  const [pending, start] = useTransition();
-  const p = v.platforms.find((x) => x.key === platform) ?? v.platforms[0];
-  return (
-    <Dialog>
-      <MktGate can="importCsv"><DialogTrigger asChild><Button><Upload />{campaignId ? "Import daily metrics" : "Import results CSV"}</Button></DialogTrigger></MktGate>
-      <DialogContent title={campaignId ? `Import daily metrics: ${fixed?.name ?? ""}` : "Import campaign results"} description="Upload a platform export. You will see the column mapping before anything is written.">
-        <div className="space-y-4">
-          <div>
-            <label className={lbl} htmlFor="imp-platform">Platform template</label>
-            <select id="imp-platform" className={field} value={platform} onChange={(e) => setPlatform(e.target.value)} disabled={!!fixed}>
-              {v.platforms.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
-            </select>
-          </div>
-          <div className="rounded-sm border border-line bg-paper px-3 py-2 text-[12px] text-ink-2">
-            <div className="font-medium text-ink">Expected columns</div>
-            <div className="mt-0.5 font-mono text-[11px] leading-5 text-ink-3">{p.cols}</div>
-            <div className="mt-1.5">Campaign is matched on <span className="font-mono text-[11px]">utm_campaign</span> or the exact campaign name. Unmatched rows are listed and skipped.</div>
-          </div>
-          <div>
-            <label className={lbl} htmlFor="imp-file">File (.csv, max 5 MB)</label>
-            <input id="imp-file" type="file" accept=".csv,text/csv" className="block w-full text-[12px] text-ink-2 file:mr-3 file:h-8 file:rounded-sm file:border file:border-line-strong file:bg-surface file:px-3 file:text-[12px] file:text-ink" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
-            <DialogClose asChild>
-              <Button variant="primary" disabled={pending} onClick={() => start(async () => notify(await importCampaignCsv(p.label, campaignId)))}>Preview mapping</Button>
-            </DialogClose>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+export { ImportCsvDialog } from "./import-dialog";
+export { MetricsDayDialog } from "./metrics-dialog";
 
 const CH_ABBR: Record<string, string> = { linkedin: "li", whatsapp: "wa", email: "em", meta: "meta", google_ads: "gads", referral: "ref" };
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "");

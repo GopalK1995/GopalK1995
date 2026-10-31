@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/toast";
 import { useSession } from "@/components/shell/providers";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { canMkt, type MktAction } from "../_lib/perm";
-import type { ActionResult } from "../_actions";
+import type { ActionResult } from "@/lib/actions/result";
 
 export function useMktCan(action: MktAction) {
   const { role, support } = useSession();
@@ -27,12 +27,12 @@ export function MktGate({ can, children }: { can: MktAction; children: ReactElem
   );
 }
 
-export function notify(r: ActionResult) {
-  toast(r.message, r.detail);
+export function notify(r: ActionResult<unknown>) {
+  toast(r.message, r.sub);
 }
 
 /** Button that runs a (bound) server action and toasts the result. */
-export function ActionButton({ action, can, children, ...p }: { action: () => Promise<ActionResult>; can: MktAction; children: ReactNode } & Omit<ButtonProps, "onClick" | "action">) {
+export function ActionButton({ action, can, children, ...p }: { action: () => Promise<ActionResult<unknown>>; can: MktAction; children: ReactNode } & Omit<ButtonProps, "onClick" | "action">) {
   const [pending, start] = useTransition();
   return (
     <MktGate can={can}>

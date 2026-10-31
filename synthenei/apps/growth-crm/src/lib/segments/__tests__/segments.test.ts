@@ -56,7 +56,7 @@ describe("segment compiler", () => {
 });
 
 describe("live evaluation over the request client (RLS decides visibility)", () => {
-  const f = (compileRules([{ field: "district", values: ["Madurai", "Trichy"] }]) as { ok: true; filters: never[] }).filters;
+  const f = (compileRules([{ field: "district", values: ["Madurai", "Trichy"] }]) as unknown as { ok: true; filters: never[] }).filters;
   it("counts with bound IN filters, scoped to the workspace, hiding deleted rows", async () => {
     const { db, calls } = mockDb([{ data: null, error: null, count: 42 } as never]);
     expect(await countSegment(db, "ws-1", f)).toBe(42);

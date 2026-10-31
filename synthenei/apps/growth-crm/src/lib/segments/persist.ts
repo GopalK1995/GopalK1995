@@ -4,7 +4,8 @@
 import { okResult, type ActionResult } from "@/lib/actions/result";
 import { DbError } from "@/lib/db/errors";
 import type { CampaignInput, CampaignRow } from "@/lib/db/repo/types";
-import { compileRules, normalizeRules, type CustomFieldRef, type SegmentRule } from "./compile";
+import { compileRules, normalizeRules, type SegmentRule } from "./compile";
+import type { CustomFieldRef } from "./fields";
 import type { MetricRow } from "./metrics-csv";
 import type { SegmentInput, SegmentRow } from "./repo";
 import type { CreateCampaignInput, MetricsRowInput } from "./schemas";

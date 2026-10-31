@@ -17,6 +17,9 @@ import type { CampaignStats } from "@/lib/data/metrics";
 import { CHANNEL_CHIP, campaignChannels, allStats, kpiSeries, radarScores, shortName, sourceState } from "./_lib/marketing";
 import { RadarPicker, type RadarCampaign } from "./_components/radar-compare";
 import { ImportCsvDialog, NewCampaignDialog } from "./_components/dialogs";
+import { loadCampaigns, loadDays } from "./_lib/load";
+import { EmptyState } from "@/components/ui/states";
+import { tc } from "./_lib/strings";
 
 export const metadata = { title: "Campaigns" };
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
@@ -24,13 +27,22 @@ const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const
 const money = (n: number) => (Number.isFinite(n) ? inr(n) : "–");
 
 export default async function Campaigns() {
-  const { ds, now, active } = await pageCtx();
+  const ctx = await pageCtx();
+  const { ds, now, active } = ctx;
   const v = vocabFor(active.tenant), m = v.mk, hosp = v.id === "hospitality";
   const CHANNELS = campaignChannels(hosp);
   const [campaigns, days, leads, deals, integrations, syncRuns, accounts, acts] = await Promise.all([
-    ds.campaigns(), ds.campaignDays(), ds.leads(), ds.deals(), ds.integrations(), ds.syncRuns(), ds.accounts(), ds.activities(),
+    loadCampaigns(ctx), loadDays(ctx), ds.leads(), ds.deals(), ds.integrations(), ds.syncRuns(), ds.accounts(), ds.activities(),
   ]);
   // Hospitality counts a booking (won deal) where legal counts a demo; the rest of the page reads s.demos unchanged.
+  if (!ctx.session.demo && campaigns.length === 0) {
+    return (
+      <>
+        <PageHeader eyebrow="Marketing" title="Campaigns" sub={m.sub} actions={<NewCampaignDialog districts={[]} yyyymm={dayKey(now).slice(0, 7).replace("-", "")} />} />
+        <EmptyState title="No campaigns yet" body={tc(v)("emptyCampaigns")} />
+      </>
+    );
+  }
   const stats = allStats(campaigns, days, leads, deals).map((s) => (hosp ? { ...s, demos: s.won, costPerDemo: ratio(s.spend, s.won), leadToDemo: ratio(s.won, s.leads) } : s));
   const src = sourceState(integrations, CHANNELS);
   const k = kpiSeries(days, leads, acts, now, hosp ? deals : undefined);

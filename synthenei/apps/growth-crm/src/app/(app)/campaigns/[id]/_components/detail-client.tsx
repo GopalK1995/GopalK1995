@@ -75,7 +75,7 @@ export function CampaignFunnel({ steps }: { steps: { key: string; label: string;
   );
 }
 
-export function NoteDialog({ campaignId }: { campaignId: string }) {
+export function NoteDialog({ campaignId, version }: { campaignId: string; version?: number }) {
   const notePh = useVocab().cd.notePh;
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
@@ -88,7 +88,7 @@ export function NoteDialog({ campaignId }: { campaignId: string }) {
           className="w-full rounded-sm border border-line-strong bg-surface p-2.5 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-ring" />
         <div className="mt-3 flex justify-end gap-2">
           <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
-          <DialogClose asChild><Button variant="primary" disabled={pending} onClick={() => start(async () => notify(await addCampaignNote(campaignId, text)))}>Save note</Button></DialogClose>
+          <DialogClose asChild><Button variant="primary" disabled={pending} onClick={() => start(async () => notify(await addCampaignNote(campaignId, text, version)))}>Save note</Button></DialogClose>
         </div>
       </DialogContent>
     </Dialog>
