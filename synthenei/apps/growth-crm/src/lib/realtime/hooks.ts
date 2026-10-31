@@ -39,7 +39,6 @@ function useJoin(topic: string | null, authorize: Authorize | undefined, h: Join
       handle = j; joined.current = j;
     });
     return () => { cancelled = true; handle?.leave(); joined.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hub, topic, allowed, h.presence]);
   return joined;
 }
