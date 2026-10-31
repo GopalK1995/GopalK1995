@@ -30,7 +30,7 @@ export interface WebhookStore {
   creatorHoldsPii(e: EndpointRow): Promise<boolean>;
 }
 
-const PII_ROLES = new Set<string>(SYSTEM_ROLES.filter((r) => (r.grants["pii.read"] ?? "none") !== "none").map((r) => r.key));
+const PII_ROLES = new Set<string>(SYSTEM_ROLES.filter((r) => r.grants["pii.read"] !== undefined).map((r) => r.key));
 
 export function supabaseWebhookStore(db: SupabaseClient): WebhookStore {
   return {
