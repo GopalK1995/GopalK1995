@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { bearerToken, generateKey, hashKey, maskedKey, parseKey, randomBase62, verifyKey } from "../keys";
 import { BOT_JWT_TTL_SEC, mintBotJwt, verifyBotJwt } from "../jwt";
 
