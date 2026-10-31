@@ -164,5 +164,7 @@
   "map.transform_unknown": "Unknown transform.",
   "map.stage_map_required": "Add a stage map as JSON.",
   "map.duplicate": "That field is mapped twice.",
-  "csvNote": "CSV import is available from the Import button on Leads."
+  "csvNote": "CSV import is available from the Import button on Leads.",
+  "blocked.not_shipped": "This connector is not built yet.",
+  "chip.not_shipped": "Not available"
 }

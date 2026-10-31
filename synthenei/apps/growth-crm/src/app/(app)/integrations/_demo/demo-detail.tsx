@@ -14,10 +14,6 @@ import { FlowDiagram } from "../_components/flow-diagram";
 import { ConnectButton, RunSyncButton } from "../_components/client-actions";
 import type { SyncRun } from "@/lib/data/types";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return { title: `Integration · ${id}` };
-}
 /** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
 const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;
 const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
@@ -27,8 +23,7 @@ const CRM_OWNED = /stage|value|amount|owner|score|plan/i;
 /** Steps that need the client's account access; everything else is our setup work. */
 const CLIENT_STEP = /^(verify|approve|authorise|grant|register|request|connect|install|link|admin|workspace admin|entra|each rep|rep connects|create (a|an) (service|api|webhook))/i;
 
-export default async function IntegrationDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function DemoIntegrationDetail({ id }: { id: string }) {
   const { ds, now, masked, active } = await pageCtx();
   const it = await ds.integration(id);
   if (!it) notFound();

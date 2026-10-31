@@ -3,21 +3,20 @@ import { pageCtx } from "@/lib/data/context";
 import { can } from "@/lib/auth/roles";
 import { fmtDateTime, relTime } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/card";
-import { CsvImportButton } from "./_components/client-actions";
+import { CsvImportButton } from "../_components/client-actions";
 import { StatusChip } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/misc";
 import { DataTable } from "@/components/ui/data-table";
-import { CATEGORIES, STATUS_ORDER, metaFor, statusLabel } from "./_components/meta";
-import { IntegrationGrid, type GridItem } from "./_components/integration-grid";
+import { CATEGORIES, STATUS_ORDER, metaFor, statusLabel } from "../_components/meta";
+import { IntegrationGrid, type GridItem } from "../_components/integration-grid";
 import type { SyncRun } from "@/lib/data/types";
 import { vocabFor } from "@/lib/vertical";
 
-export const metadata = { title: "Integrations" };
 /** Sample runs are simulated: neutral, never green. Only a real CSV import would read "Success". */
 const RUN_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;
 const RUN_LABEL = { success: "Simulated", partial: "Simulated · partial", failed: "Simulated · failed" } as const;
 
-export default async function Integrations() {
+export async function DemoIntegrationsList() {
   const { ds, now, role, support, active } = await pageCtx();
   const v = vocabFor(active.tenant);
   const [integrations, runs] = await Promise.all([ds.integrations(), ds.syncRuns()]);
