@@ -34,7 +34,7 @@ export function rowFromField(f: Omit<FieldDef, "id" | "objectTypeId" | "position
 
 const label = z.object({ en: z.string().trim().min(1, "Enter a label").max(80), ta: z.string().trim().max(80).optional().or(z.literal("")) });
 const choice = z.object({
-  key: z.string().regex(FIELD_KEY_RE, "Use lowercase letters, numbers and underscores"),
+  key: z.string().regex(/^[a-z0-9][a-z0-9_]{0,40}$/, "Use lowercase letters, numbers and underscores"),
   label, color: z.enum(FIELD_COLORS as [string, ...string[]]).optional(), archived: z.boolean().optional(),
 });
 const roles = z.array(z.string().min(1).max(60)).max(30).optional();
