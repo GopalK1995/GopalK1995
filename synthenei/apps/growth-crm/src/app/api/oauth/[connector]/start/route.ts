@@ -1,6 +1,7 @@
 // GET /api/oauth/[connector]/start?ws=<uuid>[&conn=<connection id>]
 // Requires integrations.manage (support sessions blocked). Sets a signed, httpOnly cookie holding {state, PKCE verifier, ws, uid}
 // for 10 minutes and redirects to the vendor. The one-time state hash is stored in oauth_states (service role).
+import "@/lib/connectors/all";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireActive } from "@/lib/auth/server";
 import { AuthzError } from "@/lib/authz";

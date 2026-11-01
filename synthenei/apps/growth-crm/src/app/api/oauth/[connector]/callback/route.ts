@@ -1,6 +1,7 @@
 // GET /api/oauth/[connector]/callback?code&state
 // Verifies the signed cookie + state + user + workspace, consumes the one-time state, exchanges the code (PKCE verifier from the
 // cookie), puts the tokens in the Vault and flips the connection. The code, tokens and verifier are never logged or put in a URL.
+import "@/lib/connectors/all";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireActive } from "@/lib/auth/server";
 import { AuthzError } from "@/lib/authz";

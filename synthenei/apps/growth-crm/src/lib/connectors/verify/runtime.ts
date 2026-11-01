@@ -1,5 +1,6 @@
 // Supabase wiring for the inbound receiver and its queue consumer. Service role only (inbound webhooks are one of the three
 // sanctioned users of serviceDb, CONTRACTS C6); the Vault is read through the service-role wrappers and never logged.
+import "@/lib/connectors/all";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Db } from "@/lib/db/client";

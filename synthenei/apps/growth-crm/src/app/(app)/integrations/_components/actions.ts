@@ -2,6 +2,7 @@
 // Integration mutations. Every action: zod-validates input, calls assertCan("integrations.manage") (support sessions are
 // blocked by the catalogue), has a demo branch that never touches Supabase, and relies on RLS as the second line.
 // Credentials are passed once to the Vault through the framework and never come back in any result.
+import "@/lib/connectors/all";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireActive } from "@/lib/auth/server";

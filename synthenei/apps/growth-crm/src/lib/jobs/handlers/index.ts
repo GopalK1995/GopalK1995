@@ -4,3 +4,6 @@ import "./events";
 import "./agent";
 import "./maintenance";
 import "@/lib/notify/handler"; // T027: notify.event (notification rules -> in-app rows + queued email intents)
+import "@/lib/connectors/core/jobs"; // T022: connector.scan|sync|push|refresh
+import "@/lib/connectors/verify/process"; // T023: connector_inbound
+import "@/lib/connectors/all"; // registers every connector module (mock is built in)

@@ -1,5 +1,6 @@
 // Loads the real integrations screens: connector_catalog + connector_availability (this environment) + this workspace's
 // connections. Request client, so RLS is the second line. Never reads a secret: only the fact that a Vault id exists.
+import "@/lib/connectors/all";
 import { buildHospitalityIntegrations } from "@/lib/data/mock/hospitality-integrations";
 import { buildIntegrations } from "@/lib/data/mock/integrations";
 import { dbForRequest, type Db } from "@/lib/db/client";
