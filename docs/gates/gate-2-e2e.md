@@ -24,3 +24,7 @@ T025 code on build/v1 broke `next build`: `src/app/(app)/settings/api-keys/_comp
 
 ## Security
 No role-escalation or tenant-leak failure found. The `/contacts` 403 was an over-deny. The demo principal fix only adds grants the real seed already gives that role (viewer-in-support gets viewer grants).
+
+## Update after merging origin/build/v1 (second pass)
+Merged 9 further commits cleanly (no conflicts). Typecheck clean, lint 0 errors (97 pre-existing warnings), Vitest 70 files / 1020 tests passing. No further app or spec changes were needed: all 16 failing tests were already addressed above.
+Unverified (Cypress not run in this pass): every spec fix above, especially ops/queue (skips without Supabase env), i18n Tamil (skips without CYPRESS_TAMIL_UI=1), and the demo merge-target and audit-grant app changes. The integrator should rerun the demo-mode e2e suite on the merged build. Shell/nav files were not touched (integ1 owns them).
