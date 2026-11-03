@@ -13,7 +13,7 @@ import { from } from "@/lib/db/query";
 import { serviceDb } from "@/lib/db/service";
 import { createEndpoint, deleteEndpoint, getEndpoint, pingEndpoint, replayDelivery, rotateSecret, updateEndpoint } from "@/lib/webhooks/admin";
 import { splitEventTypes } from "@/lib/webhooks/options";
-import { checkUrl, endpointInput, endpointPatch, filterError, idInput, optionsOf, replayInput } from "@/lib/webhooks/schemas";
+import { checkUrl, endpointInput, endpointPatch, filterError, idInput, isDemoId, optionsOf, replayInput } from "@/lib/webhooks/schemas";
 import { wh } from "./_lib/strings";
 import type { IssuedSecret, TestOutcome } from "./_lib/types";
 
@@ -76,6 +76,7 @@ export async function updateEndpointAction(raw: unknown): Promise<ActionResult> 
     const p = endpointPatch.safeParse(raw);
     if (!p.success) return failResult("invalid", wh("invalidBody"), { issues: p.error.issues.map((i) => ({ path: i.path.join("."), message: wh(i.message) })) });
     const c = await gate();
+    if (!c.demo && isDemoId(String((p.data as { id?: string; endpointId?: string }).id ?? (p.data as { endpointId?: string }).endpointId))) return failResult("invalid", wh("invalidBody"));
     if (c.policyOff) return failResult("denied", wh("policyOff"));
     const d = p.data;
     if (d.includePii && !c.mayPii) return failResult("denied", wh("piiNotAllowed"));
@@ -100,6 +101,7 @@ export async function deleteEndpointAction(raw: unknown): Promise<ActionResult> 
     const p = idInput.safeParse(raw);
     if (!p.success) return failResult("invalid", wh("invalidBody"));
     const c = await gate();
+    if (!c.demo && isDemoId(String((p.data as { id?: string; endpointId?: string }).id ?? (p.data as { endpointId?: string }).endpointId))) return failResult("invalid", wh("invalidBody"));
     if (c.demo) return okResult(wh("deleted"), { sub: wh("demoNotSaved") });
     const req = await dbForRequest();
     const cur = await getEndpoint(req, c.wsUuid, p.data.id);
@@ -115,6 +117,7 @@ export async function rotateSecretAction(raw: unknown): Promise<ActionResult<Iss
     const p = idInput.safeParse(raw);
     if (!p.success) return failResult("invalid", wh("invalidBody"));
     const c = await gate();
+    if (!c.demo && isDemoId(String((p.data as { id?: string; endpointId?: string }).id ?? (p.data as { endpointId?: string }).endpointId))) return failResult("invalid", wh("invalidBody"));
     if (c.policyOff) return failResult("denied", wh("policyOff"));
     if (c.demo) return okResult<IssuedSecret>(wh("rotated"), { sub: wh("demoNotSaved") });
     const req = await dbForRequest();
@@ -131,6 +134,7 @@ export async function testEndpointAction(raw: unknown): Promise<ActionResult<Tes
     const p = idInput.safeParse(raw);
     if (!p.success) return failResult("invalid", wh("invalidBody"));
     const c = await gate();
+    if (!c.demo && isDemoId(String((p.data as { id?: string; endpointId?: string }).id ?? (p.data as { endpointId?: string }).endpointId))) return failResult("invalid", wh("invalidBody"));
     if (c.demo) return okResult<TestOutcome>(wh("testSimulated"), { data: { ok: true, status: 200, ms: 0, why: null, simulated: true } });
     const cur = await getEndpoint(await dbForRequest(), c.wsUuid, p.data.id);
     if (!cur) return failResult("not_found", wh("notFound"));
@@ -145,6 +149,7 @@ export async function replayDeliveryAction(raw: unknown): Promise<ActionResult> 
     const p = replayInput.safeParse(raw);
     if (!p.success) return failResult("invalid", wh("invalidBody"));
     const c = await gate({ owner: true });
+    if (!c.demo && isDemoId(String((p.data as { id?: string; endpointId?: string }).id ?? (p.data as { endpointId?: string }).endpointId))) return failResult("invalid", wh("invalidBody"));
     if (c.demo) return okResult(wh("replayed"), { sub: wh("demoNotSaved") });
     const req = await dbForRequest();
     const cur = await getEndpoint(req, c.wsUuid, p.data.endpointId);

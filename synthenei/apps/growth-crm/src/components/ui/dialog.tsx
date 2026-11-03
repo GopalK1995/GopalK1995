@@ -11,7 +11,7 @@ export function DialogContent({ title, description, children, className }: { tit
   return (
     <D.Portal>
       <D.Overlay className="fixed inset-0 z-50 bg-navy-950/45 data-[state=open]:animate-[fade_150ms_ease-out]" />
-      <D.Content className={cn("fixed left-1/2 top-1/2 z-50 w-[calc(100vw-32px)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-surface p-5 shadow-pop focus:outline-none data-[state=open]:animate-[pop_180ms_ease-out]", className)}>
+      <D.Content className={cn("fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-lg overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-surface p-5 shadow-pop focus:outline-none data-[state=open]:animate-[pop_180ms_ease-out]", className)}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <D.Title className="text-[15px] font-semibold text-ink">{title}</D.Title>

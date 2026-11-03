@@ -5,10 +5,15 @@ describe("integrations: support sessions are blocked", () => {
     it(`${mode}: management controls are disabled with a reason`, () => {
       cy.loginAs("super");
       cy.visit("/admin/support");
-      cy.get(`input[type=radio][name=mode][value=${mode}]`).check({ force: true });
+      // Type the reason first: the "ok" counter only appears once React has hydrated, so the radio change below is not lost.
       cy.get("textarea[name=reason]").type("T022 verification: a support session must not change integrations.");
-      cy.get("input[name=reason2]").then(($i) => { if ($i.length) cy.wrap($i).type("T022 verification second reason line"); });
+      cy.contains("ok").should("exist");
+      cy.get(`input[type=radio][name=mode][value=${mode}]`).check();
+      // The second reason only exists in read_write mode.
+      if (mode === "read_write") cy.get("input[name=reason2]").type("T022 verification second reason line");
+      else cy.get("input[name=reason2]").should("not.exist");
       cy.get("form button[type=submit]").first().click();
+      cy.location("pathname").should("eq", "/");
       cy.visit("/integrations");
       cy.get("body").then(($b) => {
         if ($b.text().includes("Showcase")) { cy.contains("button", "How to connect").should("have.attr", "disabled"); return; }
