@@ -10,7 +10,8 @@ describe("inbox: no cross-tenant drafts", () => {
         cy.contains("தமிழ்").should("not.exist");
       }
     });
-    cy.get("body").invoke("text").should("not.match", /[஀-௿]/);
+    // Scope to the visible inbox UI: body text also contains Next's inline scripts and flight data.
+    cy.get("main").invoke("text").should("not.match", /[஀-௿]/);
   });
   it("hospitality workspace never shows legal words in the inbox", () => {
     cy.loginAs("owner-shola");

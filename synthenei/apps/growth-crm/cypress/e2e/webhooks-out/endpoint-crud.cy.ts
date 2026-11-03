@@ -1,5 +1,6 @@
 // Outbound webhooks: endpoint management. Written, NOT run in light mode.
 import { addEndpointViaUi, echoUrl, loginOrSkip, requireMode, stamp } from "./_helpers";
+import { clickLinkUntilPath } from "../../support/retry-click";
 
 describe("webhooks-out: endpoint CRUD", () => {
   it("demo: shows a labelled sample list, saves nothing and can open the delivery log", function () {
@@ -8,7 +9,7 @@ describe("webhooks-out: endpoint CRUD", () => {
     cy.visit("/settings/webhooks");
     cy.contains(/demo workspace/i).should("be.visible");
     cy.contains("hooks.example.com").should("be.visible");
-    cy.contains("tr", "hooks.example.com").contains("a", /delivery log/i).click();
+    clickLinkUntilPath(() => cy.contains("tr", "hooks.example.com").contains("a", /delivery log/i), /\/settings\/webhooks\/demo-1$/);
     cy.contains(/delivery log for hooks\.example\.com/i).should("be.visible");
   });
 

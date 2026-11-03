@@ -1,13 +1,14 @@
 // Outbound webhooks: delivery log states, retries and owner-only replay. Written, NOT run in light mode.
 // Retry timing (30 s, 2 m, 10 m, 1 h, 6 h, 24 h), auto-disable and idempotent redelivery are covered by unit tests with a fake transport.
 import { loginOrSkip, requireMode } from "./_helpers";
+import { clickLinkUntilPath, clickUntil } from "../../support/retry-click";
 
 describe("webhooks-out: delivery log and replay", () => {
   it("demo: the log shows delivered, retrying and gave-up rows with status, latency and next try", function () {
     requireMode(this, "demo");
     cy.loginAs("owner-lawsome");
     cy.visit("/settings/webhooks");
-    cy.contains("tr", "hooks.example.com").contains("a", /delivery log/i).click();
+    clickLinkUntilPath(() => cy.contains("tr", "hooks.example.com").contains("a", /delivery log/i), /\/settings\/webhooks\/demo-1$/);
     cy.contains("tr", "deal.won").within(() => { cy.contains(/delivered/i); cy.contains("200"); cy.contains("182 ms"); });
     cy.contains("tr", "lead.stage_changed").within(() => { cy.contains(/retrying/i); cy.contains("503"); });
     cy.contains("tr", "lead.created").contains(/gave up/i);
@@ -27,7 +28,7 @@ describe("webhooks-out: delivery log and replay", () => {
     requireMode(this, "demo");
     cy.loginAs("owner-lawsome");
     cy.visit("/settings/webhooks/demo-1");
-    cy.contains("tr", "lead.created").contains("button", /^Replay$/).click();
+    clickUntil(() => cy.contains("tr", "lead.created").contains("button", /^Replay$/), ($b) => $b.find("[role=dialog]").length > 0);
     cy.get("[role=dialog]").contains("button", /replay delivery/i).click();
     cy.contains(/nothing was saved/i).should("be.visible");
   });
