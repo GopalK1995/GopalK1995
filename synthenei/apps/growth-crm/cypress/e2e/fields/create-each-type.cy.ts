@@ -37,7 +37,7 @@ describe("custom fields: create each type", () => {
     cy.get("[role=option]").contains("Single choice").click();
     cy.get("[role=dialog]").within(() => {
       cy.contains("button", "Add option").click();
-      cy.get("input[value='']").first().type("Hot");
+      cy.get("fieldset input").first().type("Hot");
       cy.contains("button", "Add field").click();
     });
     cy.contains("Demo workspace: nothing was saved").should("exist");

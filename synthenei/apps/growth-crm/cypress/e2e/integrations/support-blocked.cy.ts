@@ -14,11 +14,15 @@ describe("integrations: support sessions are blocked", () => {
       else cy.get("input[name=reason2]").should("not.exist");
       cy.get("form button[type=submit]").first().click();
       cy.location("pathname").should("eq", "/");
-      cy.visit("/integrations");
-      cy.get("body").then(($b) => {
-        if ($b.text().includes("Showcase")) { cy.contains("button", "How to connect").should("have.attr", "disabled"); return; }
-        cy.contains("Not available in a support session").should("exist");
-      });
+      if (mode === "read_only") {
+        // A read-only support session acts as Viewer; the role matrix gives Viewer no access to integrations: the 403 page.
+        cy.request({ url: "/integrations", failOnStatusCode: false }).its("status").should("eq", 403);
+      } else {
+        // Owner-equivalent: the list is open, and "How to connect" lives on a connector detail page. It must be disabled.
+        cy.visit("/integrations");
+        cy.get("main a[href^='/integrations/']").first().click();
+        cy.contains("button", "How to connect").should("have.attr", "disabled");
+      }
       cy.visit("/admin/support");
       cy.contains("button", "End now").click();
     });
