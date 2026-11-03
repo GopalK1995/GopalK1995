@@ -18,7 +18,7 @@ export const endpointInput = z.object({
 export type EndpointInput = z.infer<typeof endpointInput>;
 
 /** A database uuid, or a demo-fixture id ("demo-1"). Demo ids are only honoured for demo sessions: the actions refuse them otherwise (isDemoId). */
-export const endpointId = z.union([z.string().uuid(), z.string().regex(/^demo-d{1,3}$/)]);
+export const endpointId = z.union([z.string().uuid(), z.string().regex(/^demo-\d{1,3}$/)]);
 export const isDemoId = (id: string) => id.startsWith("demo-");
 export const endpointPatch = endpointInput.partial().extend({ id: endpointId, active: z.boolean().optional() });
 export const idInput = z.object({ id: endpointId });
