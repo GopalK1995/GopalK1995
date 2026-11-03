@@ -7,3 +7,4 @@ import "@/lib/notify/handler"; // T027: notify.event (notification rules -> in-a
 import "@/lib/connectors/core/jobs"; // T022: connector.scan|sync|push|refresh
 import "@/lib/connectors/verify/process"; // T023: connector_inbound
 import "@/lib/connectors/all"; // registers every connector module (mock is built in)
+import "@/lib/webhooks/handler"; // T024: webhook.deliver (outbound webhooks) + webhook.housekeeping
