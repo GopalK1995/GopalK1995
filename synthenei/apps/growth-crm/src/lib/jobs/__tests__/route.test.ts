@@ -24,7 +24,7 @@ describe("/api/jobs/tick", () => {
     const m = await import("@/app/api/jobs/tick/route");
     expect(m.runtime).toBe("nodejs");
     expect(m.maxDuration).toBe(300);
-  });
+  }, 30_000); // first import now loads every job handler
   it("is 404 in demo mode and when Supabase is not configured", async () => {
     env.demoMode = true;
     expect((await call("POST", "Bearer tick-secret-aaaaaaaaaaaaaaaa")).status).toBe(404);
