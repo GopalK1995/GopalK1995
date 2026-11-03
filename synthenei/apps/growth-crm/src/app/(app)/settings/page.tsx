@@ -43,7 +43,9 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         <>
           <TabBar tabs={allowed.map((v) => ({ value: v, label: LABEL[v] ?? v }))} current={tab} />
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="outline-none">
-            {tab === "users" && <UsersTab wsName={active.ws.name} tenantName={active.tenant.name} rows={members(active.ws.id, now)} />}
+            {tab === "users" && (session.demo ? <UsersTab wsName={active.ws.name} tenantName={active.tenant.name} rows={members(active.ws.id, now)} /> : (
+              <Card><CardBody><p className="text-[13px] text-ink-2">Members, roles and teams now live in <Link href="/settings/roles" className="font-medium text-accent underline">Roles &amp; access</Link>.</p></CardBody></Card>
+            ))}
             {tab === "branding" && (
               <BrandingTab tenantName={active.tenant.name} workspaceCount={tenantWs.length} defaultHue={active.tenant.hue}
                 primaryOwnerName={userById(active.tenant.primaryOwnerId)?.name ?? "the primary owner"} />
@@ -54,7 +56,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             )}
             {tab === "privacy" && <Privacy q={sp.q} />}
             {tab === "config" && <ConfigTab />}
-            {tab === "audit" && <Audit actor={sp.actor} kind={sp.kind} owner={role === "owner"} />}
+            {tab === "audit" && (session.demo ? <Audit actor={sp.actor} kind={sp.kind} owner={role === "owner"} /> : <AuditTab sp={sp} />)}
           </div>
         </>
       )}

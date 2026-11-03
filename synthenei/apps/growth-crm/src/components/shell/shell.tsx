@@ -1,4 +1,5 @@
 "use client";
+import { SyncStatusChip } from "@/components/realtime";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
@@ -119,7 +120,7 @@ function GlobalSearch() {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, bell }: { children: ReactNode; /** Server-rendered <BellSlot/> from the layout. */ bell?: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const { role, support, tenant } = useSession();

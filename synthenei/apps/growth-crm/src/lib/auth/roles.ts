@@ -24,7 +24,7 @@ export const PAGE_ACCESS: Record<string, Record<Role, Access | null>> = Object.f
 );
 export const HOME_FOR: Record<Role, string> = { owner: "/", sales_manager: "/", viewer: "/", sales_rep: "/sales", marketing: "/campaigns", data: "/data-health" };
 
-const OPEN_PATHS = ["/forbidden", "/profile", "/no-workspace"];
+const OPEN_PATHS = ["/forbidden", "/profile", "/no-workspace", "/notifications", "/settings/notifications"];
 /** Default deny: a path that is not in the matrix is not reachable. */
 export function accessFor(role: Role, pathname: string): Access | null {
   if (OPEN_PATHS.includes(pathname)) return "F";

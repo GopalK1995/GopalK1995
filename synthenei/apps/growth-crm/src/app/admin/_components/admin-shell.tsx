@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/tenants", label: "Tenants", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/connectors", label: "Connectors", icon: Plug },
+  { href: "/admin/ops", label: "Ops", icon: Gauge },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin/support", label: "Support sessions", icon: LifeBuoy },
 ];

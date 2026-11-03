@@ -1,6 +1,7 @@
 // Per-request page context: session + active workspace + workspace-scoped data source + role scoping.
 // Reps see only their own records (spec 10); viewers get masked personal data.
 import { requireActive } from "../auth/server";
+import { can } from "../auth/roles";
 import { getEffectiveConfig } from "../config/resolve";
 import { stageList } from "../config/types";
 import { getDataSource } from "./source";
@@ -8,7 +9,9 @@ import type { Conversation, Deal, Lead, Task } from "./types";
 
 export async function pageCtx() {
   const { session, active } = await requireActive();
-  const base = getDataSource(active.ws, { demo: session.demo });
+  // Real sessions get unmasked emails/IPs only when the role holds pii.read (T012); support sessions go through the overlay.
+  const piiRead = can("seePersonalData", { role: active.role, support: active.support });
+  const base = getDataSource(active.ws, { demo: session.demo, piiRead });
   // Tenant config drives forecasts and stage order: deals carry the configured win probability (0-1), so the
   // pipeline board, funnel and weighted forecast all use the same numbers.
   const cfg = await getEffectiveConfig(active.tenant.id);

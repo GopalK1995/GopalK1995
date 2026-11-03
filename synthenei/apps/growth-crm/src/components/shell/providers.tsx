@@ -2,6 +2,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 import type { DealStage, Role } from "@/lib/data/types";
 import { DEAL_STAGES } from "@/lib/data/metrics";
+import { RealtimeProvider } from "@/components/realtime";
+import { RealtimeProvider } from "@/components/realtime";
 import { TipProvider } from "@/components/ui/tooltip";
 import { MotionConfig } from "motion/react";
 import { FONT_STACKS, fontsFor, vocabFor, type TenantConfigOverrides, type Vertical, type Vocab } from "@/lib/vertical";
@@ -50,7 +52,9 @@ export function Providers({ session, children }: { session: ShellCtx; children: 
   return (
     <SessionCtx.Provider value={session}>
       <BrandCtx.Provider value={{ brand, setBrand, reset }}>
-        <MotionConfig reducedMotion="user"><TipProvider delayDuration={200}>{children}</TipProvider></MotionConfig>
+        <MotionConfig reducedMotion="user"><TipProvider delayDuration={200}>
+          <RealtimeProvider wsId={session.ws.id} me={{ id: session.uid, name: session.name }} demo={session.demo}>{children}</RealtimeProvider>
+        </TipProvider></MotionConfig>
       </BrandCtx.Provider>
     </SessionCtx.Provider>
   );

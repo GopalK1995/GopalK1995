@@ -1,5 +1,6 @@
 import { requireActive } from "@/lib/auth/server";
 import { Providers, type ShellCtx } from "@/components/shell/providers";
+import { BellSlot } from "@/components/collab/bell-slot";
 import { AppShell } from "@/components/shell/shell";
 import { FONT_STACKS, fontsFor, verticalOf } from "@/lib/vertical";
 import { TENANTS, WORKSPACES } from "@/lib/tenancy";
@@ -25,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <style>{`:root{--brand-h:${active.tenant.hue};${fonts}}`}</style>
-      <Providers session={ctx}><AppShell>{children}</AppShell></Providers>
+      <Providers session={ctx}><AppShell bell={<BellSlot />}>{children}</AppShell></Providers>
     </>
   );
 }
