@@ -1,6 +1,6 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, KeyRound, Plug, ScrollText, Settings, ShieldCheck, SquareKanban, Users, type LucideIcon,
+  Bell, BellRing, KeyRound, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
@@ -20,7 +20,8 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { href: "/settings/notifications", label: "Notification settings", icon: BellRing },
     { href: "/settings/roles", label: "Roles & access", icon: ShieldCheck, perm: "members.manage" },
     { href: "/settings/audit", label: "Audit log", icon: ScrollText, perm: "audit.read" },
-    { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" }] },
+    { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" },
+    { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" }] },
 ];
 const holds = (role: Role, perm?: string) => !perm || !!SYSTEM_ROLES.find((r) => r.key === role)?.grants[perm];
 export const navFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => NAV.map((g) => ({ ...g, items: g.items.filter((i) => accessFor(role, i.href) && holds(role, i.perm) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!))) })).filter((g) => g.items.length);

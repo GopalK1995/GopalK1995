@@ -57,6 +57,8 @@ export interface Lead {
   potentialValue: number; tags: string[];
   /** Hospitality (wg): trip type text is `title`; stay specifics here. */
   stay?: StayInfo;
+  /** Row version for optimistic concurrency (real sessions only). */
+  version?: number;
 }
 
 export type ActivityKind =
@@ -72,6 +74,8 @@ export interface Deal {
   wonAt?: string; lostReason?: string;
   /** Hospitality (wg): a booking. seats = nights; plan is unused (always "Practice"). */
   stay?: BookingStay;
+  /** Row version for optimistic concurrency (real sessions only). */
+  version?: number;
 }
 
 export interface Campaign {

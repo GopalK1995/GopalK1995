@@ -1,6 +1,7 @@
 // Pure mappers: camelCased DB rows (see src/lib/db/map.ts) -> domain types in src/lib/data/types.ts.
 // No I/O here so they are unit-testable. Unknown or missing columns degrade to honest empty values, never to invented data.
 import type {
+  Deal, DealStage, Lead, LeadStage, LeadStatus,
   Activity, ActivityKind, AuditEntry, ConsentEntry, Conversation, Ga4Channel, Ga4Day, Ga4Page, Holiday, Integration,
   IntegrationCategory, IntegrationStatus, Message, Role, SyncRun, TeamMember,
 } from "../types";
@@ -148,4 +149,45 @@ export function auditEntry(r: Row, piiRead: boolean): AuditEntry {
 
 export function holidays(dates: unknown): Holiday[] {
   return (Array.isArray(dates) ? dates : []).map((d) => ({ date: s(d).slice(0, 10), name: "Holiday" })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ---- leads / deals (real sessions): table columns -> domain types ----
+const iso = (v: unknown, d = ""): string => { const x = sn(v); return x ? new Date(x).toISOString() : d; };
+const LEAD_STAGES: readonly string[] = ["new", "contacted", "qualified", "demo_booked", "demo_done", "proposal", "won", "lost"];
+const DEAL_STAGE_KEYS: readonly string[] = ["discovery", "demo_scheduled", "demo_done", "proposal", "negotiation", "won", "lost"];
+const STATUS_STAGE: Record<string, LeadStage> = { new: "new", contacted: "contacted", qualified: "qualified", nurturing: "contacted", disqualified: "lost", converted: "won" };
+/** pipeline_stages rows -> id -> stage key. Unknown ids stay unmapped (callers fall back, never invent). */
+export function stageKeys(rows: Row[]): Map<string, string> { return new Map(rows.map((r) => [s(r.id), s(r.key)])); }
+
+export function lead(r: Row, keys: Map<string, string> = new Map(), piiRead = true): Lead {
+  const status = (s(r.status, "new") as LeadStatus);
+  const k = keys.get(s(r.stageId));
+  const stage = (k && LEAD_STAGES.includes(k) ? k : STATUS_STAGE[status] ?? "new") as LeadStage;
+  const utm = obj(r.utm);
+  const factors = Array.isArray(r.scoreFactors) ? (r.scoreFactors as Row[]) : [];
+  const email = s(r.email);
+  return {
+    id: s(r.id), name: s(r.fullName), title: s(r.roleTitle), accountId: s(r.accountId), email: piiRead || !email ? email : maskEmail(email), phone: piiRead ? s(r.phone) : s(r.phone).replace(/\d(?=\d{2})/g, "x"),
+    city: s(r.city), stage, ownerId: s(r.ownerId), status, channel: s(r.lastTouchChannel, "organic") as Lead["channel"], campaignId: sn(r.campaignId),
+    utm: { source: s(utm.source), medium: s(utm.medium), campaign: sn(utm.campaign) },
+    firstTouch: s(r.firstTouchChannel, "organic") as Lead["channel"], lastTouch: s(r.lastTouchChannel, "organic") as Lead["channel"],
+    createdAt: iso(r.createdAt), lastTouchAt: iso(r.lastTouchAt ?? r.createdAt),
+    firstResponseMins: r.firstResponseAt && r.createdAt ? Math.max(0, Math.round((new Date(s(r.firstResponseAt)).getTime() - new Date(s(r.createdAt)).getTime()) / 60000)) : null,
+    nextActionAt: r.nextStepAt ? iso(r.nextStepAt) : null, nextAction: null,
+    score: n(r.score), scoreFactors: factors.map((f) => ({ label: s(f.label ?? f.factor), points: n(f.points), detail: s(f.detail) })) as Lead["scoreFactors"],
+    consent: { followup: r.consentDemoFollowup === true, marketing: r.consentMarketing === true, whatsapp: r.consentWhatsapp === true, at: iso(r.updatedAt), noticeVersion: "" },
+    potentialValue: 0, tags: [], version: n(r.version, 1),
+  };
+}
+
+export function deal(r: Row, keys: Map<string, string> = new Map()): Deal {
+  const k = keys.get(s(r.stageId)) ?? "";
+  const plan = s(r.plan, "practice");
+  return {
+    id: s(r.id), name: s(r.name), accountId: s(r.accountId), leadId: s(r.leadId), ownerId: s(r.ownerId),
+    stage: (DEAL_STAGE_KEYS.includes(k) ? k : "discovery") as DealStage, value: n(r.valueInr), seats: n(r.seats, 1),
+    plan: (plan.charAt(0).toUpperCase() + plan.slice(1)) as Deal["plan"], probability: 0,
+    createdAt: iso(r.createdAt), expectedClose: s(r.expectedCloseOn), stageEnteredAt: iso(r.stageEnteredAt ?? r.createdAt),
+    wonAt: r.wonAt ? iso(r.wonAt) : undefined, lostReason: r.lostReason ? s(r.lostReason) : undefined, version: n(r.version, 1),
+  };
 }

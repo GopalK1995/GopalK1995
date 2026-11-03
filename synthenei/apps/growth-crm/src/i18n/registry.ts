@@ -15,6 +15,8 @@ import enApi from "../../messages/en/api.json";
 import enCollab from "../../messages/en/collab.json";
 import enIntegrations from "../../messages/en/integrations.json";
 import enCampaigns from "../../messages/en/campaigns.json";
+import enFields from "../../messages/en/fields.json";
+import enWebhooks from "../../messages/en/webhooks.json";
 import taCommon from "../../messages/ta/common.json";
 import taShell from "../../messages/ta/shell.json";
 import taAuth from "../../messages/ta/auth.json";
@@ -31,12 +33,20 @@ import taApi from "../../messages/ta/api.json";
 import taCollab from "../../messages/ta/collab.json";
 import taIntegrations from "../../messages/ta/integrations.json";
 import taCampaigns from "../../messages/ta/campaigns.json";
+import taFields from "../../messages/ta/fields.json";
+import taWebhooks from "../../messages/ta/webhooks.json";
 import type { Locale } from "./config";
 
-export type Messages = { [k: string]: string | Messages };
-export const BASE: Record<Locale, Messages> = {
+export type Messages = { [k: string]: string | boolean | Messages };
+/** Feature-task namespace files carry a `_review` marker; the Tamil review gate is tracked in review.json, so drop it from the tree. */
+const clean = (m: Messages): Messages => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith("_")));
+const RAW: Record<Locale, Messages> = {
   en: { common: enCommon, shell: enShell, auth: enAuth, errors: enErrors,
-    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns },
+    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks },
   ta: { common: taCommon, shell: taShell, auth: taAuth, errors: taErrors,
-    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns },
+    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks },
+};
+export const BASE: Record<Locale, Messages> = {
+  en: Object.fromEntries(Object.entries(RAW.en).map(([k, v]) => [k, clean(v as Messages)])),
+  ta: Object.fromEntries(Object.entries(RAW.ta).map(([k, v]) => [k, clean(v as Messages)])),
 };

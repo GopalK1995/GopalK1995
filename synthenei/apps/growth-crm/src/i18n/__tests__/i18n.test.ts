@@ -47,12 +47,13 @@ describe("locale resolution", () => {
 describe("Tamil drafts", () => {
   it("every ta key is flagged _review and has an en counterpart", () => {
     expect(review._review).toBe(true);
-    for (const ns of Object.keys(BASE.ta)) {
-      for (const k of Object.keys(BASE.ta[ns] as object)) {
-        expect(get(review.keys, `${ns}.${k}`)).toBe(true);
-        expect(get(BASE.en, `${ns}.${k}`)).toBeTypeOf("string");
-      }
-    }
+    // Walk the trees in parallel (keys may themselves contain dots, e.g. "chip.not_available").
+    const walk = (ta: unknown, rv: unknown, en: unknown, path: string) => {
+      if (ta && typeof ta === "object") {
+        for (const [k, v] of Object.entries(ta)) walk(v, (rv as Record<string, unknown> | undefined)?.[k], (en as Record<string, unknown> | undefined)?.[k], `${path}.${k}`);
+      } else { expect(rv, path).toBe(true); expect(en, path).toBeTypeOf("string"); }
+    };
+    for (const ns of Object.keys(BASE.ta)) walk(BASE.ta[ns], (review.keys as Record<string, unknown>)[ns], BASE.en[ns], ns);
   });
 });
 

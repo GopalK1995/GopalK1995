@@ -3,7 +3,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, type ReactN
 import type { DealStage, Role } from "@/lib/data/types";
 import { DEAL_STAGES } from "@/lib/data/metrics";
 import { RealtimeProvider } from "@/components/realtime";
-import { RealtimeProvider } from "@/components/realtime";
 import { TipProvider } from "@/components/ui/tooltip";
 import { MotionConfig } from "motion/react";
 import { FONT_STACKS, fontsFor, vocabFor, type TenantConfigOverrides, type Vertical, type Vocab } from "@/lib/vertical";

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { RecordCollab } from "@/components/collab/record-collab";
+import { PresenceFaces } from "@/components/realtime";
+import { recordTopic } from "@/lib/realtime/topics";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Lock, Mail, MessageCircle, Phone } from "lucide-react";
 import { pageCtx, maskName } from "@/lib/data/context";
@@ -19,6 +22,9 @@ import { LeadActions } from "./_components/lead-actions";
 import { EditLead } from "./_components/edit-lead";
 import { Timeline, type TimelineCat, type TimelineItem } from "./_components/timeline";
 import { AiPanel, type Suggestion } from "./_components/ai-panel";
+
+/** Presence topic for a record page; null when the workspace id is not a UUID (never throws into the page). */
+function topicFor(ws: string, type: string, id: string): string | null { try { return recordTopic(ws, type, id); } catch { return null; } }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { active } = await pageCtx();
@@ -101,6 +107,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         {" · "}{ld.district(account?.district ?? shortCity(lead.city))}
       </>}>
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {topicFor(active.ws.uuid, "lead", lead.id) && <PresenceFaces topic={topicFor(active.ws.uuid, "lead", lead.id)!} canRead />}
         <LeadStageBadge stage={lead.stage} />
         <ScoreWithFactors score={lead.score} factors={[...lead.scoreFactors].sort((a, b) => b.points - a.points)} />
         {owner ? <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={owner.name} size={20} />{owner.name}</span> : <Badge tone="warn">Unassigned</Badge>}
@@ -293,6 +300,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           </Card>
         </div>
       </div>
+      <div className="mt-6"><RecordCollab objectType="lead" objectId={lead.id} /></div>
     </>
   );
 }

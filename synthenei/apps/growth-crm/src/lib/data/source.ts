@@ -1,5 +1,6 @@
 // Data access layer. Screens depend ONLY on the DataSource interface, never on the mock module directly,
 // so a Supabase-backed source can replace the synthetic one without touching pages.
+import { deal as mapDeal, lead as mapLead, stageKeys } from "./supabase/mappers";
 import type {
   Account, Activity, AuditEntry, Campaign, CampaignDay, ConsentEntry, Conversation, Deal, Ga4Day, Ga4Page,
   Integration, Lead, PrivacyRequest, SyncRun, Task, TeamMember,
@@ -94,7 +95,10 @@ function supabaseSource(ws: Workspace, piiRead: boolean): DataSource {
   };
   const camel = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()), v])) as never;
   const byId = <T extends { id: string },>(get: () => Promise<T[]>) => async (id: string) => (await get()).find((x) => x.id === id) ?? null;
-  const leads = () => read<Lead>("leads", camel), accounts = () => read<Account>("accounts", camel), deals = () => read<Deal>("deals", camel);
+  const stages = async () => stageKeys(await read<Record<string, unknown>>("pipeline_stages", camel));
+  const leads = async () => { const k = await stages(); return read<Lead>("leads", (r) => mapLead(camel(r), k, piiRead)); };
+  const accounts = () => read<Account>("accounts", camel);
+  const deals = async () => { const k = await stages(); return read<Deal>("deals", (r) => mapDeal(camel(r), k)); };
   const tasks = () => read<Task>("tasks", camel), campaigns = () => read<Campaign>("campaigns", camel);
   const campaignDays = async (id?: string) => { const xs = await read<CampaignDay>("campaign_daily_metrics", camel); return id ? xs.filter((x) => x.campaignId === id) : xs; };
   const w = createWiredReads(ws.uuid, undefined, { piiRead });

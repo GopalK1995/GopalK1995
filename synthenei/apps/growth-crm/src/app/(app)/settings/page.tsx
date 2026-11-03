@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { AuditTab } from "./_components/audit-tab";
 import { ShieldAlert } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
 import { SETTINGS_TABS } from "@/lib/auth/roles";

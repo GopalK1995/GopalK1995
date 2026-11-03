@@ -169,6 +169,8 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
             <span className="hidden items-center gap-1.5 rounded-[4px] border border-line px-2 py-1 text-[11px] text-ink-3 md:inline-flex" title="All figures are synthetic sample data">
               <Database className="size-3" aria-hidden />Sample data · IST
             </span>
+            <SyncStatusChip />
+            {bell}
             <UserMenu />
           </div>
         </header>

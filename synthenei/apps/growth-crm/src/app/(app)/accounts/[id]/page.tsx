@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { RecordCollab } from "@/components/collab/record-collab";
+import { PresenceFaces } from "@/components/realtime";
+import { recordTopic } from "@/lib/realtime/topics";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, CalendarCheck2, FileText, Mail, MessageCircle, NotebookPen, Phone, Repeat2, Video, Globe, MapPin } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
@@ -28,6 +31,9 @@ const ICON: Partial<Record<ActivityKind, typeof Phone>> = {
   call: Phone, whatsapp_in: MessageCircle, whatsapp_out: MessageCircle, email_sent: Mail, email_open: Mail, email_click: Mail,
   demo_booked: CalendarCheck2, demo_done: Video, proposal_sent: FileText, stage_change: Repeat2, note: NotebookPen, page_view: Globe, form_submit: Globe,
 };
+
+/** Presence topic for a record page; null when the workspace id is not a UUID (never throws into the page). */
+function topicFor(ws: string, type: string, id: string): string | null { try { return recordTopic(ws, type, id); } catch { return null; } }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { ds, active } = await pageCtx();
@@ -102,7 +108,8 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           <MergeAccountDialog v={verdict("mergeAccount", ctx)} a={ea} targets={targets.length ? targets : [{ id: acc.id, name: acc.name, version: rec.version }]} />
           <DeleteAccountDialog v={verdict("deleteAccount", ctx)} a={ea} />
         </>}>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {topicFor(active.ws.uuid, "account", acc.id) && <PresenceFaces topic={topicFor(active.ws.uuid, "account", acc.id)!} canRead />}
           <Badge tone={STATUS_TONE[acc.status]}>{STATUS_LABEL[acc.status]}</Badge>
           {focus.map((c) => <Badge key={c} tone={!hosp && (c.includes("HC") || c === "Madurai Bench") ? "accent" : "neutral"}>{c}</Badge>)}
         </div>
@@ -243,6 +250,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           )}
         </StaggerItem>
       </Stagger>
+      <div className="mt-6"><RecordCollab objectType="account" objectId={acc.id} /></div>
     </>
   );
 }

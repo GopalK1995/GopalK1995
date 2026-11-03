@@ -184,3 +184,15 @@ describe("wired reads (mocked PostgREST)", () => {
     expect(has(calls[0], "eq", "workspace_id", WS)).toBe(true);
   });
 });
+
+describe("lead and deal mappers", () => {
+  const keys = m.stageKeys([{ id: "s1", key: "proposal" }, { id: "s2", key: "negotiation" }]);
+  it("deal takes the stage key from pipeline_stages and carries version", () => {
+    expect(m.deal({ id: "d1", name: "X", stageId: "s2", valueInr: "1200.50", seats: 3, plan: "chambers", version: 4 }, keys)).toMatchObject({ stage: "negotiation", value: 1200.5, seats: 3, plan: "Chambers", version: 4 });
+    expect(m.deal({ id: "d2", stageId: "unknown" }, keys).stage).toBe("discovery");
+  });
+  it("lead derives stage from the stage key, else from status, and masks without pii.read", () => {
+    expect(m.lead({ id: "l1", fullName: "A", stageId: "s1", status: "qualified", email: "a@b.in", version: 2 }, keys, true)).toMatchObject({ stage: "proposal", version: 2, email: "a@b.in" });
+    expect(m.lead({ id: "l2", status: "disqualified", email: "a@b.in" }, keys, false)).toMatchObject({ stage: "lost", email: "a***@b.in" });
+  });
+});
