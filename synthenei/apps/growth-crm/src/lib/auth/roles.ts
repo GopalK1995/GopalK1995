@@ -29,6 +29,8 @@ const OPEN_PATHS = ["/forbidden", "/profile", "/no-workspace", "/notifications",
 export function accessFor(role: Role, pathname: string): Access | null {
   if (OPEN_PATHS.includes(pathname)) return "F";
   if (pathname === "/") return PAGE_ACCESS["/"][role];
+  // /contacts is the people view of accounts: same page access as /accounts (it was missing from the matrix, so default-deny 403'd every role).
+  if (pathname === "/contacts" || pathname.startsWith("/contacts/")) return PAGE_ACCESS["/accounts"][role];
   const key = Object.keys(PAGE_ACCESS).filter((k) => k !== "/" && (pathname === k || pathname.startsWith(k + "/"))).sort((a, b) => b.length - a.length)[0];
   return key ? PAGE_ACCESS[key][role] : null;
 }

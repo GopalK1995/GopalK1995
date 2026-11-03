@@ -6,12 +6,19 @@ describe("settings: support sessions are blocked", () => {
     it(`${mode}: users, roles and teams are not manageable`, () => {
       cy.loginAs("super");
       cy.visit("/admin/support");
-      cy.get(`input[type=radio][name=mode][value=${mode}]`).check({ force: true });
+      // Type the reason first: the "ok" counter only appears once React has hydrated, so the radio change below is not lost.
       cy.get("textarea[name=reason]").type("T017 verification: a support session must not manage people.");
-      cy.get("input[name=reason2]").then(($i) => { if ($i.length) cy.wrap($i).type("T017 verification second reason line"); });
+      cy.contains("ok").should("exist");
+      cy.get(`input[type=radio][name=mode][value=${mode}]`).check();
+      // The second reason only exists in read_write mode.
+      if (mode === "read_write") cy.get("input[name=reason2]").type("T017 verification second reason line");
+      else cy.get("input[name=reason2]").should("not.exist");
       cy.get("form button[type=submit]").first().click();
-      cy.visit("/settings/roles");
-      cy.contains(/Support sessions cannot manage users, roles or teams/i).should("be.visible");
+      cy.location("pathname").should("eq", "/");
+      cy.visit("/settings/roles", { failOnStatusCode: false });
+      // read_only acts as Viewer, which cannot open settings at all (403 page); read_write reaches the page and gets the support reason.
+      if (mode === "read_only") cy.contains(/cannot open/i).should("be.visible");
+      else cy.contains(/Support sessions cannot manage users, roles or teams/i).should("be.visible");
       cy.contains("button", /^Invite$/).should("not.exist");
     });
   }

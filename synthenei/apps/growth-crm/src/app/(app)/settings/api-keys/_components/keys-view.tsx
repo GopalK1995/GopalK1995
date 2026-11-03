@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/ui/states";
 import { Field, Input } from "@/components/ui/form";
 import { Table, th, td } from "@/components/ui/misc";
 import { relTime } from "@/lib/format";
-import { maskedKey } from "@/lib/api/keys";
+// Local copy of lib/api/keys maskedKey: that module imports node:crypto and cannot be bundled into a client component.
+const maskedKey = (env: string, prefix: string): string => `sk_${env}_${prefix}_${"*".repeat(8)}`;
 import { createKey, revokeKey, rotateKey } from "../actions";
 import type { IssuedKey } from "../_lib/types";
 import type { KeyView } from "../_lib/view";

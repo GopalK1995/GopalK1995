@@ -10,7 +10,9 @@ describe("admin: platform roles", () => {
   it("a tenant user cannot open the console", () => {
     cy.loginAs("owner-lawsome");
     cy.visit("/admin/tenants", { failOnStatusCode: false });
-    cy.location("pathname").should("not.eq", "/admin/tenants");
+    // The 403 page is a rewrite, so the URL stays; assert the denial itself.
+    cy.contains("cannot open").should("exist");
+    cy.contains("Org-admin policy").should("not.exist");
   });
   const support = { email: String(Cypress.expose("REAL_SUPPORT_EMAIL") ?? ""), password: String(Cypress.expose("REAL_SUPPORT_PASSWORD") ?? "") };
   (support.email ? it : it.skip)("support role: policy editor is read only, no Suspend", () => {

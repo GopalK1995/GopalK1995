@@ -1,7 +1,9 @@
 // Staging only: emit a test event from the ops console and watch the drainer process it. Needs a platform-admin
 // session on staging; written but not run in light mode.
 describe("ops queue console", () => {
-  it("shows an emitted test event as processed within 20 s", () => {
+  // Real queues only exist with Supabase; in demo mode there is nothing to drain, so skip cleanly.
+  (Cypress.expose("NEXT_PUBLIC_SUPABASE_URL") ? it : it.skip)("shows an emitted test event as processed within 20 s", () => {
+    cy.loginAs("super");
     cy.visit("/admin/ops");
     cy.get("[data-testid=ops-queues]").should("be.visible");
     cy.get("[data-testid=ops-emit-test]").click();

@@ -6,6 +6,7 @@ import { MODULE_IDS } from "../config/types";
 import { isModuleEnabled } from "../vertical";
 import { AuthzError, decide } from "./engine";
 import { principalFromMyGrants, systemPrincipal } from "./principal";
+import { SYSTEM_ROLES } from "./catalog/system-roles";
 import type { Principal, RecordRef } from "./types";
 
 /** Cached per request. Demo sessions: built from the fixture roles. Real sessions: `authz.my_grants(ws)` RPC. */
@@ -28,7 +29,13 @@ export const loadPrincipal = cache(async (ws?: string): Promise<Principal> => {
       // Transitional: until migration 0013 is applied the RPC does not exist; fall back to the membership role.
     }
   }
-  return systemPrincipal(base);
+  const p = systemPrincipal(base);
+  // Demo/fallback: the legacy page matrix does not derive every seeded permission (audit.read, events.read, comments.*, ...), so the demo owner
+  // could not read the audit log while the real owner can. Fill in what the frozen seed grants this role; derived grants and the support overlay win.
+  const seeded = SYSTEM_ROLES.find((r) => r.key === p.roleKey);
+  const grants = { ...p.grants };
+  for (const [k, scope] of Object.entries(seeded?.grants ?? {})) if (!grants[k]) grants[k] = { scope };
+  return { ...p, grants };
 });
 
 /** For server actions and routes: throws AuthzError when denied, otherwise returns the principal. */
