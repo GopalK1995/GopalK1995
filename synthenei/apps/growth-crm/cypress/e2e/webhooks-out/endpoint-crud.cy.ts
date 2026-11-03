@@ -23,8 +23,9 @@ describe("webhooks-out: endpoint CRUD", () => {
   it("denied: a viewer sees the permission-denied state", function () {
     requireMode(this, "demo");
     cy.loginAs("viewer-lawsome");
-    cy.visit("/settings/webhooks");
-    cy.contains(/cannot manage webhooks/i).should("be.visible");
+    // A viewer is stopped before the page renders (403 "cannot open settings"); a role that reaches the page without webhooks.manage sees the permission state.
+    cy.visit("/settings/webhooks", { failOnStatusCode: false });
+    cy.contains(/cannot open|cannot manage webhooks|does not have it/i).should("be.visible");
     cy.contains("button", /add endpoint/i).should("not.exist");
   });
 

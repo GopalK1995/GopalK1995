@@ -17,9 +17,12 @@ export const endpointInput = z.object({
 });
 export type EndpointInput = z.infer<typeof endpointInput>;
 
-export const endpointPatch = endpointInput.partial().extend({ id: z.string().uuid(), active: z.boolean().optional() });
-export const idInput = z.object({ id: z.string().uuid() });
-export const replayInput = z.object({ endpointId: z.string().uuid(), deliveryId: z.number().int().positive() });
+/** A database uuid, or a demo-fixture id ("demo-1"). Demo ids are only honoured for demo sessions: the actions refuse them otherwise (isDemoId). */
+export const endpointId = z.union([z.string().uuid(), z.string().regex(/^demo-d{1,3}$/)]);
+export const isDemoId = (id: string) => id.startsWith("demo-");
+export const endpointPatch = endpointInput.partial().extend({ id: endpointId, active: z.boolean().optional() });
+export const idInput = z.object({ id: endpointId });
+export const replayInput = z.object({ endpointId: endpointId, deliveryId: z.number().int().positive() });
 
 export const optionsOf = (i: Pick<EndpointInput, "includePii" | "filters">): EndpointOptions => ({ pii: i.includePii, filters: i.filters });
 export const filterError = (i: Pick<EndpointInput, "filters">): string | null => validateFilters(i.filters);

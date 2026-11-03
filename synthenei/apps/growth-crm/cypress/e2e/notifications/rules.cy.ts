@@ -2,6 +2,7 @@ import { loginOrSkip } from "../comments/_helpers";
 
 describe("notification preferences and rules", () => {
   it("demo: saves quiet hours in IST", () => {
+    cy.loginAs("owner-lawsome");
     cy.visit("/settings/notifications");
     cy.contains("h2", /Quiet hours \(IST\)/i).should("be.visible");
     cy.contains("button", /Save quiet hours/i).click();
