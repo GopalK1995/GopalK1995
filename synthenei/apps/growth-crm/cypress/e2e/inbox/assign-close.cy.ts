@@ -1,5 +1,7 @@
 // Demo path runs everywhere. The real path needs staging users: CYPRESS_OWNER_EMAIL / CYPRESS_OWNER_PASSWORD.
 describe("inbox: assign and close", () => {
+  // The lead-context panel (assign / link / close) is a fixed column from the xl breakpoint; below it the same panel is in the Details dialog.
+  beforeEach(() => { cy.viewport(1440, 900); });
   it("demo owner assigns and closes; the showcase label stays", () => {
     cy.loginAs("owner-lawsome");
     cy.visit("/inbox");

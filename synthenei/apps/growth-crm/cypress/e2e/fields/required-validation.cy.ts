@@ -38,10 +38,11 @@ describe("custom fields: validation", () => {
     });
   });
 
-  it("rep without fields.manage gets the explained denied state, not a broken page", () => {
+  it("rep without fields.manage gets the explained no-access page, not a broken page", () => {
     cy.loginAs("rep-lawsome");
-    cy.visit("/settings/fields");
-    cy.contains("You cannot manage custom fields").should("exist");
+    // The role page matrix 403s /settings for a rep (middleware rewrite to the no-access page) before the page's own denied state.
+    cy.visit("/settings/fields", { failOnStatusCode: false });
+    cy.contains("cannot open").should("exist");
     cy.contains("button", "Add field").should("not.exist");
   });
 });

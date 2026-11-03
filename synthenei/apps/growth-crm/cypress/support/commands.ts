@@ -24,7 +24,13 @@ Cypress.Commands.add("loginAs", (persona: Persona) => {
       cy.get("form button").last().click();
     } else {
       cy.visit("/login");
-      cy.get(`button[data-persona="${persona}"]`).click();
+      // A click that lands before the page hydrates is a no-op on a cold dev server; click again while we are still on /login.
+      const pick = (tries: number): void => {
+        cy.get(`button[data-persona="${persona}"]`).click();
+        cy.wait(3000);
+        cy.location("pathname").then((path) => { if (tries > 0 && /\/login$/.test(path)) pick(tries - 1); });
+      };
+      pick(3);
     }
     cy.location("pathname", { timeout: 60000 }).should("not.match", /\/login$/);
   });

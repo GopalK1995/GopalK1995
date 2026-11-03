@@ -3,8 +3,10 @@
 describe("custom fields: personal data stays hidden", () => {
   it("a viewer cannot open the field editor", () => {
     cy.loginAs("viewer-lawsome");
-    cy.visit("/settings/fields");
-    cy.contains("You cannot manage custom fields").should("exist");
+    // The role page matrix 403s /settings for a viewer (middleware rewrite to the no-access page) before the page's own denied state.
+    cy.visit("/settings/fields", { failOnStatusCode: false });
+    cy.contains("cannot open").should("exist");
+    cy.contains("button", "Add field").should("not.exist");
   });
 
   it("the demo example phone (personal data) is not in the page source for a viewer", function () {

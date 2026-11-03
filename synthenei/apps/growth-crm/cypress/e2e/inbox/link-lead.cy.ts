@@ -1,5 +1,7 @@
 // Link a conversation to a lead. Real path: CYPRESS_OWNER_EMAIL / CYPRESS_OWNER_PASSWORD.
 describe("inbox: link to lead", () => {
+  // The lead-context panel (assign / link / close) is a fixed column from the xl breakpoint; below it the same panel is in the Details dialog.
+  beforeEach(() => { cy.viewport(1440, 900); });
   it("demo owner picks another record and links it", () => {
     cy.loginAs("owner-lawsome");
     cy.visit("/inbox");

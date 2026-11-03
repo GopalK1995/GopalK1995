@@ -12,8 +12,9 @@ describe("inbox: internal note", () => {
   });
   it("viewer cannot write a note", () => {
     cy.loginAs("viewer-lawsome");
-    cy.visit("/inbox");
-    cy.get("[data-cy=conversation-row]").first().click();
+    // A viewer holds no inbox page access: the role matrix returns the 403 no-access page, so no note control can exist.
+    cy.visit("/inbox", { failOnStatusCode: false });
+    cy.contains("cannot open").should("exist");
     cy.contains("button", "Add note").should("not.exist");
   });
   const email = Cypress.expose("OWNER_EMAIL") as string | undefined;

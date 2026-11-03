@@ -3,9 +3,12 @@ describe("inbox: no cross-tenant drafts", () => {
   it("hospitality workspace shows no Tamil draft toggle and no Tamil text in the inbox", () => {
     cy.loginAs("owner-kaveri");
     cy.visit("/inbox");
-    cy.get("[data-cy=conversation-row]").each(($row) => {
-      cy.wrap($row).click();
-      cy.contains("தமிழ்").should("not.exist");
+    // Re-query per index: opening a conversation re-renders the list, so a held row element goes stale.
+    cy.get("[data-cy=conversation-row]").its("length").then((n) => {
+      for (let i = 0; i < n; i++) {
+        cy.get("[data-cy=conversation-row]").eq(i).click();
+        cy.contains("தமிழ்").should("not.exist");
+      }
     });
     cy.get("body").invoke("text").should("not.match", /[஀-௿]/);
   });

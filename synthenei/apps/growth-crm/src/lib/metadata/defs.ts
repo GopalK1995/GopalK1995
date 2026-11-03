@@ -44,7 +44,7 @@ export const fieldInputSchema = z.object({
   objectKey: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
   key: z.string().regex(FIELD_KEY_RE, "Use lowercase letters, numbers and underscores (2 to 41 characters, starting with a letter)"),
   label, type: z.enum(FIELD_TYPES as unknown as [FieldType, ...FieldType[]]),
-  help: label.partial({ en: true }).optional(),
+  help: z.object({ en: z.string().trim().max(200).optional(), ta: z.string().trim().max(200).optional() }).optional(),
   section: z.string().trim().max(60).nullable().optional(),
   required: z.boolean().default(false), uniqueInWorkspace: z.boolean().default(false), isPii: z.boolean().default(false),
   isSearchable: z.boolean().default(false), isFilterable: z.boolean().default(false),
