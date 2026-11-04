@@ -3,7 +3,9 @@
 import { Globe, Mail, MessageCircle, Search, UserRoundPlus, CalendarDays } from "lucide-react";
 import type { Channel, DealStage, LeadStage } from "@/lib/data/types";
 import { CHANNEL_LABEL } from "@/lib/data/metrics";
-import { useVocab } from "@/components/shell/providers";
+import { useSession, useVocab } from "@/components/shell/providers";
+import { LEGACY_TONE, type BadgeTone } from "@/lib/config/stage-tone";
+import { prettyStageKey } from "@/lib/vertical";
 import { cn } from "@/lib/utils";
 import { Badge } from "./badge";
 
@@ -21,11 +23,12 @@ export function ChannelMark({ channel, withLabel = false, className }: { channel
   );
 }
 
-const LEAD_TONE: Record<LeadStage, "neutral" | "accent" | "success" | "danger" | "warn" | "outline"> = {
-  new: "outline", contacted: "neutral", qualified: "neutral", demo_booked: "accent", demo_done: "accent", proposal: "warn", won: "success", lost: "danger",
-};
-export const LeadStageBadge = ({ stage }: { stage: LeadStage }) => <Badge tone={LEAD_TONE[stage]}>{useVocab().leadStage[stage]}</Badge>;
-const DEAL_TONE: Record<DealStage, "neutral" | "accent" | "success" | "danger" | "warn" | "outline"> = {
-  discovery: "outline", demo_scheduled: "neutral", demo_done: "accent", proposal: "accent", negotiation: "warn", won: "success", lost: "danger",
-};
-export const DealStageBadge = ({ stage }: { stage: DealStage }) => <Badge tone={DEAL_TONE[stage]}>{useVocab().dealStage[stage]}</Badge>;
+/** Label and tone come from the tenant config (stage keys are data); unknown keys fall back to a readable key and a neutral tone. */
+function StageBadge({ kind, stage }: { kind: "lead" | "deal"; stage: string }) {
+  const v = useVocab(), session = useSession();
+  const labels = (kind === "lead" ? v.leadStage : v.dealStage) as Record<string, string>;
+  const tone = (session.tenant.stageTone?.[kind]?.[stage] ?? LEGACY_TONE[kind][stage] ?? "neutral") as BadgeTone;
+  return <Badge tone={tone}>{labels[stage] ?? prettyStageKey(stage)}</Badge>;
+}
+export const LeadStageBadge = ({ stage }: { stage: LeadStage }) => <StageBadge kind="lead" stage={stage} />;
+export const DealStageBadge = ({ stage }: { stage: DealStage }) => <StageBadge kind="deal" stage={stage} />;

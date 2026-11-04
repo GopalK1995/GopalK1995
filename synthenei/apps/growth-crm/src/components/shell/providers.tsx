@@ -11,7 +11,7 @@ import { FONT_STACKS, fontsFor, vocabFor, type TenantConfigOverrides, type Verti
 /** What client components know about the viewer: identity, active workspace and the role held there. */
 export interface ShellCtx {
   uid: string; name: string; email: string; demo: boolean; platformAdmin: boolean; role: Role;
-  ws: { id: string; name: string; region: string }; tenant: { id: string; name: string; product: string; hue: number; monogram: string; vertical: Vertical; workspaceCount: number; isPrimaryOwner: boolean; /** Effective tenant config for vocabFor()/fontsFor() on the client. */ config?: TenantConfigOverrides; /** Stage ids in the tenant's configured order. */ stageOrder?: { lead: string[]; deal: string[] } };
+  ws: { id: string; name: string; region: string }; tenant: { id: string; name: string; product: string; hue: number; monogram: string; vertical: Vertical; workspaceCount: number; isPrimaryOwner: boolean; /** Effective tenant config for vocabFor()/fontsFor() on the client. */ config?: TenantConfigOverrides; /** Stage ids in the tenant's configured order. */ stageOrder?: { lead: string[]; deal: string[] }; /** Badge tone per stage key (see lib/config/stage-tone.ts). */ stageTone?: { lead: Record<string, string>; deal: Record<string, string> } };
   workspaces: { id: string; name: string; tenantId: string; tenantName: string; monogram: string; role: Role }[];
   support: { mode: "read_only" | "read_write"; reason: string; admin: string; endsAt: number } | null;
   /** Enabled custom objects the viewer may read (sidebar entries), resolved on the server. */
@@ -25,7 +25,7 @@ export const useSession = () => {
 };
 
 /** Deal stage ids in the tenant's configured order (pipeline board columns). */
-export const useDealStages = (): DealStage[] => { const o = useSession().tenant.stageOrder?.deal; return (o && o.length === DEAL_STAGES.length ? o : DEAL_STAGES) as DealStage[]; };
+export const useDealStages = (): DealStage[] => { const o = useSession().tenant.stageOrder?.deal; return o && o.length ? o : DEAL_STAGES; };
 /** Industry vocabulary for the active tenant (client components). */
 export const useVocab = (): Vocab => vocabFor(useSession().tenant);
 

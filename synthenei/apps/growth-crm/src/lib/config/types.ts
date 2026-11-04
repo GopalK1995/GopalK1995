@@ -2,13 +2,20 @@
 // Everything here is JSON-safe, versioned (`v`) and validated by hand (no zod). Validators are allow-list based:
 // unknown keys are errors on write (`strict`) and silently dropped on read, so a stale or tampered document can
 // never put arbitrary content on a page. Pure module: importable from server, client and edge.
-import type { DealStage, FirmSize, LeadStage } from "../data/types";
+import { LEGACY_DEAL_STAGES, LEGACY_LEAD_STAGES, type FirmSize } from "../data/types";
 
 export const CONFIG_VERSION = 1 as const;
 export type PresetId = "legal" | "hospitality" | "blank";
 export const PRESET_IDS: PresetId[] = ["legal", "hospitality", "blank"];
-export const LEAD_STAGE_IDS: LeadStage[] = ["new", "contacted", "qualified", "demo_booked", "demo_done", "proposal", "won", "lost"];
-export const DEAL_STAGE_IDS: DealStage[] = ["discovery", "demo_scheduled", "demo_done", "proposal", "negotiation", "won", "lost"];
+/** Seeded (legacy) stage ids of the presets. A tenant may add more; these are only the preset's starting set. */
+export const LEAD_STAGE_IDS: string[] = [...LEGACY_LEAD_STAGES];
+export const DEAL_STAGE_IDS: string[] = [...LEGACY_DEAL_STAGES];
+export const STAGE_KEY_RE = /^[a-z][a-z0-9_]{1,31}$/;
+export const PIPELINE_KEY_RE = /^[a-z][a-z0-9_]{1,40}$/;
+/** A required-field reference: a core field of the record (see metadata/pipelines.ts) or `custom.<field key>`. */
+export const REQUIRED_FIELD_RE = /^(custom\.)?[a-z][a-z0-9_]{1,40}$/;
+export const MAX_STAGES_PER_PIPELINE = 20;
+export const MAX_EXTRA_PIPELINES = 8;
 export const FIRM_SIZE_IDS: FirmSize[] = ["Solo", "2–5", "6–20", "21–50", "50+"];
 export const CHANNEL_FAMILY_IDS = ["Paid social", "Search", "WhatsApp", "Email", "Referrals & events"] as const;
 export const FUNNEL_IDS = ["visit", "cta", "form", "lead", "qualified", "demo", "demo_done", "won"] as const;
@@ -42,7 +49,17 @@ export const CHART_CATALOGUE: { id: string; label: string }[] = [
 ];
 
 export interface Noun { one: string; many: string }
-export interface StageCfg { label: string; order: number; probability: number; color: StageColor; outcome: Outcome }
+export interface StageCfg {
+  label: string; order: number; probability: number; color: StageColor; outcome: Outcome;
+  /** Hours a record may sit in the stage before it is flagged (null/absent = the default). */
+  slaHours?: number | null;
+  /** Fields that must be filled before a record can move INTO this stage. */
+  requiredFields?: string[];
+  /** Retired: hidden from boards and pickers, kept so existing records still resolve. Never deleted. */
+  archived?: boolean;
+}
+/** An additional (non-default) deal pipeline. The default deal pipeline is `stages.deal`. */
+export interface PipelineCfg { name: string; order: number; archived?: boolean; stages: Record<string, StageCfg> }
 export interface BusinessHours { days: number[]; start: string; end: string }
 
 /** The full (effective) document. */
@@ -54,7 +71,9 @@ export interface TenantConfig {
     nav: { leads: string; accounts: string; sell: string };
     search: string; funnel: Record<string, string>; views: Record<string, string>;
   };
-  stages: { lead: Record<LeadStage, StageCfg>; deal: Record<DealStage, StageCfg> };
+  stages: { lead: Record<string, StageCfg>; deal: Record<string, StageCfg> };
+  /** Extra deal pipelines by key (demo/config layer; real workspaces keep them in the pipelines table). */
+  pipelines: Record<string, PipelineCfg>;
   taxonomies: {
     partySize: Record<FirmSize, string>; channelFamily: Record<string, string>;
     lost: [string, string][]; plans: string[]; interests: string[];
@@ -137,20 +156,34 @@ function strList(c: Ctx, path: string, v: unknown, maxItems: number, maxLen: num
   if (dup) c.err(path, `"${dup}" appears twice.`);
   return out.length === v.length ? out : undefined;
 }
-function stageOverrides(c: Ctx, path: string, v: unknown, ids: readonly string[]) {
+const STAGE_FIELDS = ["label", "order", "probability", "color", "outcome", "slaHours", "requiredFields", "archived"] as const;
+const REQUIRED_STAGE_FIELDS = ["label", "order", "probability", "color", "outcome"] as const;
+/** `known`: ids the preset already has (partial edits allowed). Any other id is a NEW stage and must be complete. */
+function stageOverrides(c: Ctx, path: string, v: unknown, known: readonly string[]) {
   const out: Record<string, Partial<StageCfg>> = {};
-  obj(c, path, v, ids, (id, sv) => {
+  if (!isObj(v)) { c.err(path, "Must be an object."); return out; }
+  if (Object.keys(v).length > MAX_STAGES_PER_PIPELINE) c.err(path, `At most ${MAX_STAGES_PER_PIPELINE} stages.`);
+  for (const id of Object.keys(v)) {
+    if (FORBIDDEN_KEYS.has(id)) continue;
+    if (!STAGE_KEY_RE.test(id)) { c.err(`${path}.${id}`, "Stage id: lowercase letters, digits, underscore (2 to 32 characters)."); continue; }
     const s: Partial<StageCfg> = {};
-    obj(c, `${path}.${id}`, sv, ["label", "order", "probability", "color", "outcome"], (k, x) => {
+    const before = c.issues.length;
+    obj(c, `${path}.${id}`, v[id], STAGE_FIELDS, (k, x) => {
       const p = `${path}.${id}.${k}`;
       if (k === "label") set(s, k, str(c, p, x, 32));
       else if (k === "order") set(s, k, int(c, p, x, 0, 50));
       else if (k === "probability") set(s, k, int(c, p, x, 0, 100));
       else if (k === "color") set(s, k, oneOf(c, p, x, STAGE_COLORS));
+      else if (k === "slaHours") { if (x === null) s.slaHours = null; else set(s, k, int(c, p, x, 1, 8760)); }
+      else if (k === "requiredFields") {
+        if (!Array.isArray(x) || x.length > 12 || x.some((f) => typeof f !== "string" || !REQUIRED_FIELD_RE.test(f))) c.err(p, "Up to 12 field keys.");
+        else s.requiredFields = [...new Set(x as string[])];
+      } else if (k === "archived") set(s, k, bool(c, p, x));
       else set(s, k, oneOf(c, p, x, ["open", "won", "lost"] as const));
     });
+    if (c.strict && !known.includes(id) && c.issues.length === before) for (const f of REQUIRED_STAGE_FIELDS) if (!(f in s)) c.err(`${path}.${id}.${f}`, `A new stage needs ${f}.`);
     out[id] = s;
-  });
+  }
   return out;
 }
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -160,7 +193,7 @@ export function validateOverrides(raw: unknown, opts: { strict?: boolean } = {})
   const c = new Ctx(opts.strict ?? true);
   const out: Record<string, unknown> = {};
   if (raw === undefined || raw === null) return { value: { v: CONFIG_VERSION }, issues: [] };
-  const top = ["v", "preset", "vocabulary", "stages", "taxonomies", "modules", "modulesLocked", "features", "branding", "dashboard", "data"];
+  const top = ["v", "preset", "vocabulary", "stages", "pipelines", "taxonomies", "modules", "modulesLocked", "features", "branding", "dashboard", "data"];
   obj(c, "config", raw, top, (k, x) => {
     switch (k) {
       case "v": if (x !== CONFIG_VERSION) c.err("config.v", `Unsupported config version (expected ${CONFIG_VERSION}).`); break;
@@ -180,6 +213,24 @@ export function validateOverrides(raw: unknown, opts: { strict?: boolean } = {})
         const o: Record<string, unknown> = {};
         obj(c, "stages", x, ["lead", "deal"], (kk, xx) => { o[kk] = stageOverrides(c, `stages.${kk}`, xx, kk === "lead" ? LEAD_STAGE_IDS : DEAL_STAGE_IDS); });
         out.stages = o; break;
+      }
+      case "pipelines": {
+        if (!isObj(x)) { c.err("pipelines", "Must be an object."); break; }
+        if (Object.keys(x).length > MAX_EXTRA_PIPELINES) c.err("pipelines", `At most ${MAX_EXTRA_PIPELINES} extra pipelines.`);
+        const o: Record<string, unknown> = {};
+        for (const key of Object.keys(x)) {
+          if (FORBIDDEN_KEYS.has(key)) continue;
+          if (!PIPELINE_KEY_RE.test(key)) { c.err(`pipelines.${key}`, "Pipeline key: lowercase letters, digits, underscore."); continue; }
+          const p: Record<string, unknown> = {};
+          obj(c, `pipelines.${key}`, x[key], ["name", "order", "archived", "stages"], (k, v) => {
+            if (k === "name") set(p, k, str(c, `pipelines.${key}.name`, v, 40));
+            else if (k === "order") set(p, k, int(c, `pipelines.${key}.order`, v, 0, 50));
+            else if (k === "archived") set(p, k, bool(c, `pipelines.${key}.archived`, v));
+            else p.stages = stageOverrides(c, `pipelines.${key}.stages`, v, []);
+          });
+          o[key] = p;
+        }
+        out.pipelines = o; break;
       }
       case "taxonomies": {
         const o: Record<string, unknown> = {};
@@ -273,21 +324,38 @@ export function validateOverrides(raw: unknown, opts: { strict?: boolean } = {})
   return { value: out as ConfigOverrides, issues: c.issues };
 }
 
+/** Rules for one pipeline's stages (shared by the default pipelines and the extra ones). */
+export function validateStages(path: string, st: Record<string, StageCfg>, legacyLocked: boolean): Issue[] {
+  const issues: Issue[] = [];
+  const ids = Object.keys(st), live = ids.filter((i) => !st[i].archived);
+  if (!live.some((i) => st[i].outcome === "won")) issues.push({ path, message: "At least one stage must count as won." });
+  if (!live.some((i) => st[i].outcome === "lost")) issues.push({ path, message: "At least one stage must count as lost." });
+  if (legacyLocked) {
+    if (st.won && (st.won.outcome !== "won" || st.won.archived)) issues.push({ path: `${path}.won.outcome`, message: "The Won stage always counts as won." });
+    if (st.lost && (st.lost.outcome !== "lost" || st.lost.archived)) issues.push({ path: `${path}.lost.outcome`, message: "The Lost stage always counts as lost." });
+  }
+  for (const i of ids) {
+    if (st[i].outcome === "won" && st[i].probability !== 100) issues.push({ path: `${path}.${i}.probability`, message: "A won stage is 100%." });
+    if (st[i].outcome === "lost" && st[i].probability !== 0) issues.push({ path: `${path}.${i}.probability`, message: "A lost stage is 0%." });
+  }
+  const labels = live.map((i) => st[i].label.toLowerCase());
+  if (new Set(labels).size !== labels.length) issues.push({ path, message: "Stage names must be different from each other." });
+  const orders = live.map((i) => st[i].order);
+  if (new Set(orders).size !== orders.length) issues.push({ path, message: "Stages need distinct positions." });
+  return issues;
+}
+
 /** Cross-field rules on the FULL effective config (after merge). */
 export function validateEffective(cfg: TenantConfig): Issue[] {
   const issues: Issue[] = [];
-  for (const kind of ["lead", "deal"] as const) {
-    const st = cfg.stages[kind] as Record<string, StageCfg>;
-    const ids = Object.keys(st);
-    if (!ids.some((i) => st[i].outcome === "won")) issues.push({ path: `stages.${kind}`, message: "At least one stage must count as won." });
-    if (!ids.some((i) => st[i].outcome === "lost")) issues.push({ path: `stages.${kind}`, message: "At least one stage must count as lost." });
-    if (st.won.outcome !== "won") issues.push({ path: `stages.${kind}.won.outcome`, message: "The Won stage always counts as won." });
-    if (st.lost.outcome !== "lost") issues.push({ path: `stages.${kind}.lost.outcome`, message: "The Lost stage always counts as lost." });
-    for (const i of ids) if (st[i].outcome === "won" && st[i].probability !== 100) issues.push({ path: `stages.${kind}.${i}.probability`, message: "A won stage is 100%." });
-    for (const i of ids) if (st[i].outcome === "lost" && st[i].probability !== 0) issues.push({ path: `stages.${kind}.${i}.probability`, message: "A lost stage is 0%." });
-    const labels = ids.map((i) => st[i].label.toLowerCase());
-    if (new Set(labels).size !== labels.length) issues.push({ path: `stages.${kind}`, message: "Stage names must be different from each other." });
-  }
+  for (const kind of ["lead", "deal"] as const) issues.push(...validateStages(`stages.${kind}`, cfg.stages[kind] as Record<string, StageCfg>, true));
+  const keys = Object.keys(cfg.pipelines ?? {});
+  if (keys.length > MAX_EXTRA_PIPELINES) issues.push({ path: "pipelines", message: `At most ${MAX_EXTRA_PIPELINES} extra pipelines.` });
+  const whole = keys.filter((k) => { const pc = cfg.pipelines[k]; return typeof pc.name === "string" && typeof pc.order === "number" && !!pc.stages && typeof pc.stages === "object"; });
+  for (const k of keys) if (!whole.includes(k)) issues.push({ path: `pipelines.${k}`, message: "A pipeline needs a name, a position and stages." });
+  const pnames = whole.filter((k) => !cfg.pipelines[k].archived).map((k) => cfg.pipelines[k].name.toLowerCase());
+  if (new Set(pnames).size !== pnames.length) issues.push({ path: "pipelines", message: "Pipeline names must be different from each other." });
+  for (const k of whole) issues.push(...validateStages(`pipelines.${k}.stages`, cfg.pipelines[k].stages, false));
   const t = cfg.dashboard.kpiTiles;
   const allowed = new Set([...TILE_CATALOGUE.filter((x) => x.base).map((x) => x.id), ...cfg.dashboard.catalogueExtra]);
   for (const id of t) if (!allowed.has(id)) issues.push({ path: "dashboard.kpiTiles", message: `Tile "${id}" is not in this tenant's catalogue.` });
@@ -295,4 +363,7 @@ export function validateEffective(cfg: TenantConfig): Issue[] {
   return issues;
 }
 
-export const stageList = <K extends string>(st: Record<K, StageCfg>) => (Object.keys(st) as K[]).sort((a, b) => st[a].order - st[b].order);
+/** Live (not archived) stage ids in board order. */
+export const stageList = <K extends string>(st: Record<K, StageCfg>) => (Object.keys(st) as K[]).filter((k) => !st[k].archived).sort((a, b) => st[a].order - st[b].order);
+/** Every stage id, archived ones last (labels and history still need them). */
+export const stageListAll = <K extends string>(st: Record<K, StageCfg>) => (Object.keys(st) as K[]).sort((a, b) => Number(!!st[a].archived) - Number(!!st[b].archived) || st[a].order - st[b].order);
