@@ -6,6 +6,7 @@ import { FONT_STACKS, fontsFor, verticalOf } from "@/lib/vertical";
 import { TENANTS, WORKSPACES } from "@/lib/tenancy";
 import { getEffectiveConfig } from "@/lib/config/resolve";
 import { stageList } from "@/lib/config/types";
+import { stageTones } from "@/lib/config/stage-tone";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, active } = await requireActive();
@@ -14,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const ctx: ShellCtx = {
     uid: session.uid, name: session.name, email: session.email, demo: session.demo, platformAdmin: session.platformAdmin, role: active.role,
     ws: { id: active.ws.id, name: active.ws.name, region: active.ws.region },
-    tenant: { id: active.tenant.id, name: active.tenant.name, product: active.tenant.product, hue: active.tenant.hue, monogram: active.tenant.monogram, vertical: verticalOf(active.tenant), workspaceCount: active.options ? active.options.filter((o) => o.tenant.id === active.tenant.id).length : WORKSPACES.filter((w) => w.tenantId === active.tenant.id).length, isPrimaryOwner: active.tenant.primaryOwnerId === session.uid, config: active.tenant.config, stageOrder: { lead: stageList(cfg.stages.lead), deal: stageList(cfg.stages.deal) } },
+    tenant: { id: active.tenant.id, name: active.tenant.name, product: active.tenant.product, hue: active.tenant.hue, monogram: active.tenant.monogram, vertical: verticalOf(active.tenant), workspaceCount: active.options ? active.options.filter((o) => o.tenant.id === active.tenant.id).length : WORKSPACES.filter((w) => w.tenantId === active.tenant.id).length, isPrimaryOwner: active.tenant.primaryOwnerId === session.uid, config: active.tenant.config, stageOrder: { lead: stageList(cfg.stages.lead), deal: stageList(cfg.stages.deal) }, stageTone: { lead: stageTones(cfg, "lead"), deal: stageTones(cfg, "deal") } },
     workspaces: active.options ? active.options.map((o) => ({ id: o.ws.id, name: o.ws.name, tenantId: o.tenant.id, tenantName: o.tenant.name, monogram: o.tenant.monogram, role: o.role })) : workspaces.map((m) => {
       const w = WORKSPACES.find((x) => x.id === m.ws)!; const t = TENANTS.find((x) => x.id === w.tenantId)!;
       return { id: w.id, name: w.name, tenantId: t.id, tenantName: t.name, monogram: t.monogram, role: m.role };

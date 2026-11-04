@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { deepMerge, diffOverrides } from "../src/lib/config/merge";
 import { presetConfig } from "../src/lib/config/presets";
 import { authorize, changedSections, type Actor } from "../src/lib/config/permissions";
-import { validateEffective, validateOverrides, type ConfigOverrides, type TenantConfig } from "../src/lib/config/types";
+import { DEAL_STAGE_IDS, LEAD_STAGE_IDS, stageList, stageListAll, validateEffective, validateOverrides, type ConfigOverrides, type TenantConfig } from "../src/lib/config/types";
+import { LEGACY_TONE, stageTone, stageTones } from "../src/lib/config/stage-tone";
 import { resolveEffective } from "../src/lib/config/resolve-pure";
 import { decodeCfgCookie, encodeCfgCookie } from "../src/lib/config/cookie-codec";
 import { csvColumns, csvTemplate } from "../src/lib/config/csv";
@@ -81,7 +82,6 @@ const edit = (c: TenantConfig, f: (x: TenantConfig) => void) => { const x = clon
     assert.ok(validateEffective(edit(legal, (x) => { x.stages.deal.proposal.label = x.stages.deal.discovery.label; })).length);
     assert.equal(validateEffective(edit(legal, (x) => { x.stages.deal.proposal.outcome = "won"; x.stages.deal.proposal.probability = 100; })).length, 0);
   });
-  await t("stage ids stay fixed: cannot add a stage id", () => assert.ok(validateOverrides({ stages: { deal: { vip: { label: "VIP" } } } }).issues.length));
   await t("merge: sparse overrides apply, arrays replace, unknown keys ignored", () => {
     const m = deepMerge(hosp, { vocabulary: { nav: { leads: "Requests" } }, taxonomies: { plans: ["A", "B"] }, nope: 1 });
     assert.equal(m.vocabulary.nav.leads, "Requests"); assert.equal(m.vocabulary.nav.accounts, hosp.vocabulary.nav.accounts); assert.deepEqual(m.taxonomies.plans, ["A", "B"]); assert.ok(!("nope" in m));
@@ -104,7 +104,7 @@ const edit = (c: TenantConfig, f: (x: TenantConfig) => void) => { const x = clon
       assert.equal(authorize(owner("shola-mist"), "shola-mist", hosp, edit(hosp, f), S).ok, true);
   });
   await t("perm: owner cannot edit another tenant", () => { const d = authorize(owner("lawsome"), "shola-mist", hosp, rename, S); assert.equal(d.ok, false); });
-  await t("perm: non-owner roles refused", () => { for (const role of ["sales_manager", "sales_rep", "marketing", "data", "viewer"] as const) assert.equal(authorize(owner("shola-mist", { role }), "shola-mist", hosp, rename, S).ok, false, role); });
+  await t("perm: non-owner roles refused", () => { for (const role of ["sales_rep", "marketing", "data", "viewer"] as const) /* sales_manager holds org.admin in the system grants (settings access) */ assert.equal(authorize(owner("shola-mist", { role }), "shola-mist", hosp, rename, S).ok, false, role); });
   await t("perm: support session refused for org actor", () => { for (const mode of ["read_only", "read_write"] as const) assert.equal(authorize(owner("shola-mist", { support: { mode } }), "shola-mist", hosp, rename, S).ok, false); });
   await t("perm: owner cannot change preset, tile catalogue, vertical features, module locks", () => {
     const cases: [string, (x: TenantConfig) => void][] = [["preset", (x) => { x.preset = "legal"; }], ["tileCatalogue", (x) => { x.dashboard.catalogueExtra = ["occupancy"]; }], ["verticalFeatures", (x) => { x.features.hearings = true; }], ["modulesLock", (x) => { x.modulesLocked = ["inbox"]; }]];
@@ -161,6 +161,72 @@ const edit = (c: TenantConfig, f: (x: TenantConfig) => void) => { const x = clon
     const h = csvColumns("leads", hosp); assert.ok(h.some((c) => c.name === "guest")); assert.ok(h.find((c) => c.name === "category")!.description.includes("Couples"));
     const l = csvColumns("leads", legal); assert.ok(l.some((c) => c.name === "firm")); assert.ok(l.find((c) => c.name === "category")!.description.includes("Civil"));
     for (const k of ["leads", "accounts", "campaigns"] as const) { const s = csvTemplate(k, hosp).split("\n"); assert.equal(s[0].split(",").length, csvColumns(k, hosp).length); }
+  });
+  // ---- T032: stages and pipelines are data
+  const vip = { label: "Site visit", order: 5, probability: 70, color: "accent", outcome: "open" } as const;
+  await t("stages: a new stage needs every field; a complete one is accepted; bad ids refused", () => {
+    assert.ok(validateOverrides({ stages: { deal: { vip: { label: "VIP" } } } }).issues.length, "partial new stage");
+    assert.equal(validateOverrides({ stages: { deal: { site_visit: vip } } }).issues.length, 0);
+    assert.ok(validateOverrides({ stages: { deal: { "Bad Id": vip } } }).issues.length, "id shape");
+    assert.equal(validateOverrides({ stages: { deal: { proposal: { probability: 55 } } } }).issues.length, 0, "partial edit of a seeded stage");
+    assert.ok(validateOverrides({ stages: { deal: { proposal: { requiredFields: ["Not A Key"] } } } }).issues.length);
+    assert.ok(validateOverrides({ stages: { deal: { proposal: { slaHours: 0 } } } }).issues.length);
+  });
+  await t("stages: a new stage survives merge, resolve and the sparse diff round trip", () => {
+    const after = edit(legal, (x) => { x.stages.deal.site_visit = { ...vip, order: 7 }; });
+    const sparse = diffOverrides(legal, after) as ConfigOverrides;
+    assert.deepEqual(Object.keys((sparse.stages as { deal: object }).deal), ["site_visit"]);
+    const eff = resolveEffective("lawsome", sparse);
+    assert.equal(eff.stages.deal.site_visit.label, "Site visit");
+    assert.equal(eff.stages.deal.discovery.label, legal.stages.deal.discovery.label);
+  });
+  await t("stages: archived stages leave stageList and the unique-name rule, keep their label", () => {
+    const x = edit(legal, (c) => { c.stages.deal.negotiation.archived = true; });
+    assert.equal(validateEffective(x).length, 0);
+    assert.ok(!stageList(x.stages.deal).includes("negotiation")); assert.ok(stageListAll(x.stages.deal).includes("negotiation"));
+    assert.equal(toVerticalOverrides(x).dealStage!["negotiation" as never], legal.stages.deal.negotiation.label);
+    assert.ok(validateEffective(edit(legal, (c) => { c.stages.deal.won.archived = true; })).length, "cannot archive Won");
+  });
+  await t("stages: a custom won stage may stand in; won stays 100; positions stay distinct", () => {
+    const x = edit(legal, (c) => { c.stages.deal.signed = { label: "Signed", order: 9, probability: 100, color: "success", outcome: "won" }; });
+    assert.equal(validateEffective(x).length, 0);
+    assert.ok(validateEffective(edit(legal, (c) => { c.stages.deal.signed = { label: "Signed", order: 9, probability: 90, color: "success", outcome: "won" }; })).length, "won must be 100");
+    assert.ok(validateEffective(edit(legal, (c) => { c.stages.deal.vip = { ...vip, order: 0 }; })).length, "positions must be distinct");
+  });
+  await t("pipelines: a second deal pipeline validates, merges, and names stay unique", () => {
+    const second = { name: "Renewals", order: 0, stages: { open: { label: "Open", order: 0, probability: 20, color: "neutral", outcome: "open" }, won: { label: "Renewed", order: 1, probability: 100, color: "success", outcome: "won" }, lost: { label: "Churned", order: 2, probability: 0, color: "danger", outcome: "lost" } } };
+    assert.equal(validateOverrides({ pipelines: { renewals: second } }).issues.length, 0);
+    assert.ok(validateOverrides({ pipelines: { "Bad Key": second } }).issues.length);
+    const after = edit(legal, (c) => { c.pipelines.renewals = clone(second) as never; });
+    assert.equal(validateEffective(after).length, 0);
+    const eff = resolveEffective("lawsome", diffOverrides(legal, after) as ConfigOverrides);
+    assert.equal(eff.pipelines.renewals.name, "Renewals"); assert.equal(eff.pipelines.renewals.stages.won.label, "Renewed");
+    assert.deepEqual(Object.keys(resolveEffective("lawsome", undefined).pipelines), []);
+    assert.ok(validateEffective(edit(after, (c) => { c.pipelines.again = clone(second) as never; })).length, "duplicate pipeline name");
+    assert.ok(validateEffective(edit(after, (c) => { delete (c.pipelines.renewals.stages as Record<string, unknown>).lost; })).length, "needs a lost stage");
+    const many = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`p${i}`, { ...clone(second), name: `P${i}` }]));
+    assert.ok(validateOverrides({ pipelines: many }).issues.length, "pipeline limit");
+  });
+  await t("pipelines: editing stages or pipelines is the stages section; owner may, viewer may not", () => {
+    const after = edit(legal, (c) => { c.pipelines.renewals = { name: "Renewals", order: 0, stages: { won: { ...legal.stages.deal.won }, lost: { ...legal.stages.deal.lost } } }; });
+    assert.deepEqual(changedSections(legal, after), ["stages"]);
+    assert.equal(authorize(owner("lawsome"), "lawsome", legal, after, L).ok, true);
+    assert.equal(authorize(owner("lawsome", { role: "viewer" }), "lawsome", legal, after, L).ok, false);
+  });
+  await t("vocab parity: seeded stages keep their ids, labels, order, colours and tones in every preset", () => {
+    for (const [cfg, p] of [[legal, PRESETS.legal], [hosp, PRESETS.hospitality]] as const) {
+      assert.deepEqual(stageList(cfg.stages.lead), LEAD_STAGE_IDS); assert.deepEqual(stageList(cfg.stages.deal), DEAL_STAGE_IDS);
+      for (const k of LEAD_STAGE_IDS) assert.equal(cfg.stages.lead[k].label, p.leadStage[k]);
+      for (const k of DEAL_STAGE_IDS) assert.equal(cfg.stages.deal[k].label, p.dealStage[k]);
+      for (const kind of ["lead", "deal"] as const) for (const [k, tone] of Object.entries(stageTones(cfg, kind))) assert.equal(tone, LEGACY_TONE[kind][k], `${kind}.${k}`);
+      for (const kind of ["lead", "deal"] as const) for (const s of Object.values(cfg.stages[kind])) { assert.equal(s.slaHours, null); assert.deepEqual(s.requiredFields, []); assert.equal(s.archived, false); }
+    }
+    assert.equal(vocabFor("lawsome").dealStage.proposal, "Proposal sent"); assert.equal(vocabFor("shola-mist").dealStage.proposal, "Advance pending");
+    assert.equal(vocabFor("shola-mist").dealStage.won, "Booked");
+  });
+  await t("stage tone follows a changed colour, keeps the legacy tone when untouched", () => {
+    assert.equal(stageTone("deal", "discovery", "neutral"), "outline"); assert.equal(stageTone("deal", "discovery", "danger"), "danger");
+    assert.equal(stageTone("deal", "site_visit", "accent"), "accent"); assert.equal(stageTone("deal", "unknown", undefined), "neutral");
   });
   const w = Math.max(...rows.map((r) => r[0].length));
   for (const [n, ok, m] of rows) console.log(`${ok ? "PASS" : "FAIL"}  ${n.padEnd(w)}  ${m}`);

@@ -38,7 +38,7 @@ const holds = (a: Extract<Actor, { kind: "org" }>, perm: string) =>
 export function changedSections(a: TenantConfig, b: TenantConfig): Section[] {
   const out: Section[] = [];
   const d = (s: Section, x: unknown, y: unknown) => { if (j(x) !== j(y)) out.push(s); };
-  d("preset", a.preset, b.preset); d("vocabulary", a.vocabulary, b.vocabulary); d("stages", a.stages, b.stages); d("taxonomies", a.taxonomies, b.taxonomies);
+  d("preset", a.preset, b.preset); d("vocabulary", a.vocabulary, b.vocabulary); d("stages", [a.stages, a.pipelines], [b.stages, b.pipelines]); d("taxonomies", a.taxonomies, b.taxonomies);
   d("modules", a.modules, b.modules); d("modulesLock", a.modulesLocked, b.modulesLocked); d("verticalFeatures", a.features, b.features); d("branding", a.branding, b.branding);
   d("dashboard", [a.dashboard.kpiTiles, a.dashboard.charts], [b.dashboard.kpiTiles, b.dashboard.charts]); d("tileCatalogue", a.dashboard.catalogueExtra, b.dashboard.catalogueExtra);
   d("targets", [a.data.slaHours, a.data.targetPerRepMonthly, a.data.businessHours], [b.data.slaHours, b.data.targetPerRepMonthly, b.data.businessHours]);

@@ -4,15 +4,19 @@
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 const BAD = new Set(["__proto__", "constructor", "prototype"]);
 
-export function deepMerge<T>(base: T, over: unknown): T {
+/** Maps whose keys are data (stage ids, extra pipeline keys): override keys the base lacks are ADDED (validated upstream). */
+const OPEN_PATH = /^(stages\.(lead|deal)|pipelines|pipelines\.[^.]+\.stages)$/;
+
+export function deepMerge<T>(base: T, over: unknown, path = ""): T {
   if (over === undefined) return base;
   if (!isObj(base)) return (Array.isArray(base) ? (Array.isArray(over) ? over : base) : typeof over === typeof base || base === null ? over : base) as T;
   if (!isObj(over)) return base;
   const out: Record<string, unknown> = { ...base };
-  const open = Object.keys(base).length === 0; // an empty base object is an open map (import column mappings)
+  const empty = Object.keys(base).length === 0; // an empty base object is an open map (import column mappings)
+  const keyed = OPEN_PATH.test(path); // stages and pipelines: new keys are allowed, existing ones merge leaf-wise
   for (const k of Object.keys(over)) {
-    if (BAD.has(k) || (!open && !(k in base))) continue;
-    out[k] = open ? over[k] : deepMerge((base as Record<string, unknown>)[k], over[k]);
+    if (BAD.has(k) || (!empty && !keyed && !(k in base))) continue;
+    out[k] = empty || (keyed && !(k in base)) ? over[k] : deepMerge((base as Record<string, unknown>)[k], over[k], path ? `${path}.${k}` : k);
   }
   return out as T;
 }

@@ -679,7 +679,9 @@ export function verticalOf(t: TenantLike): Vertical {
 export const vocabFor = (t: TenantLike): Vocab => resolveVocab(effectiveConfig(t));
 
 // ---------------------------------------------------------------- accessors (pages use these, not the tables)
-export const stageLabel = (t: TenantLike, kind: "lead" | "deal", key: string) => (kind === "lead" ? vocabFor(t).leadStage : vocabFor(t).dealStage)[key as never] as string;
+/** Stage keys are data: a key the vocabulary does not know (added after the preset was cut) shows as its readable key, never undefined. */
+export const prettyStageKey = (key: string) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+export const stageLabel = (t: TenantLike, kind: "lead" | "deal", key: string) => ((kind === "lead" ? vocabFor(t).leadStage : vocabFor(t).dealStage) as Record<string, string>)[key] ?? prettyStageKey(key);
 export const taxonomy = (t: TenantLike) => { const c = effectiveConfig(t); return { partySize: c.partySize, lostReasons: c.lost, plans: c.plans, channelFamily: c.channelFamily }; };
 export const isModuleEnabled = (t: TenantLike, module: ModuleKey) => effectiveConfig(t).modules[module] !== false;
 /** Module a pathname belongs to (undefined = not gated). */

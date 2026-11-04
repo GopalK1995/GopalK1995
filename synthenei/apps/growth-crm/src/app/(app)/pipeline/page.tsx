@@ -4,7 +4,10 @@ import { can, ROLE_LABEL } from "@/lib/auth/roles";
 import { dayKey, fmtDate, inr, inrCompact, num } from "@/lib/format";
 import { PageHeader } from "@/components/ui/misc";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { Board, type DealCard } from "./_components/board";
+import Link from "next/link";
+import { Board, type BoardStage, type DealCard } from "./_components/board";
+import { liveStages, pickPipeline } from "@/lib/metadata/pipelines";
+import { loadPipelines } from "@/lib/metadata/pipelines-load";
 import { DAY } from "../leads/_lib/sales";
 import { vocabFor } from "@/lib/vertical";
 import { PartialState } from "@/components/ui/states";
@@ -13,13 +16,21 @@ import { fill, pipelineLabels } from "./_lib/labels";
 import { DEFAULT_STAGE_MAX_DAYS } from "./_lib/stage-age";
 
 export const metadata = { title: "Pipeline" };
-type SP = { owner?: string; district?: string; close?: string; value?: string };
+type SP = { owner?: string; district?: string; close?: string; value?: string; pipeline?: string };
 
 export default async function PipelinePage({ searchParams }: { searchParams: Promise<SP> }) {
-  const { ds, now, role, scope, masked, support, active } = await pageCtx();
+  const ctx = await pageCtx();
+  const { ds, now, role, scope, masked, support, active } = ctx;
   const v = vocabFor(active.tenant), pl = v.pl;
   const BANDS = pl.bands.map(([value, label, lo, hi]) => ({ value, label, test: (x: number) => x >= lo && x < hi }));
   const sp = await searchParams;
+  // The board shows ONE pipeline: the requested one when it exists and is live, else the workspace default. Stages are its own.
+  const pipelines = await loadPipelines(ctx, "deal");
+  const pipe = pickPipeline(pipelines, sp.pipeline);
+  const defaultKey = pipelines.find((p) => p.isDefault)?.key ?? pipe?.key;
+  const stages = pipe ? liveStages(pipe) : [];
+  const stageMeta = new Map(stages.map((x) => [x.key, x]));
+  const boardStages: BoardStage[] = stages.map((x) => ({ key: x.key, label: v.dealStage[x.key] ?? x.name.en, probability: x.probability, outcome: x.outcome }));
   const labels = pipelineLabels(await getLocale(), { deal: v.n.deal.one, deals: v.n.deal.many });
   // Deals are the page: a failure there goes to error.tsx. Names are secondary: a failed source degrades to a partial state.
   const [dealsR, accountsR, leadsR, teamR] = await Promise.allSettled([ds.deals(), ds.accounts(), ds.leads(), ds.team()]);
@@ -31,7 +42,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
     { label: labels.partialOwners, status: teamR.status === "fulfilled" ? ("ok" as const) : ("failed" as const) },
   ];
   const failed = sources.filter((x) => x.status === "failed").length;
-  const deals = scope.deals(allDeals);
+  const deals = scope.deals(allDeals).filter((d) => (d.pipeline ?? defaultKey) === pipe?.key);
   const nowMs = new Date(now).getTime();
   const acc = new Map(accounts.map((a) => [a.id, a]));
 
@@ -48,14 +59,15 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
     return {
       id: d.id, name: d.name, firm: acc.get(d.accountId)?.name ?? d.name, contact: masked || !l ? null : `${l.name}, ${l.title}`, leadId: d.leadId,
       value: d.value, seats: d.seats, plan: d.plan, stayLine: d.stay ? `${d.seats} ${d.seats === 1 ? "night" : "nights"} · ${d.stay.rooms} ${d.stay.rooms === 1 ? "room" : "rooms"} · in ${fmtDate(d.stay.checkIn + "T06:00:00Z")}` : undefined, owner: team.find((t) => t.id === d.ownerId)?.name ?? "Unassigned",
-      version: (d as { version?: number }).version, slaDays: DEFAULT_STAGE_MAX_DAYS,
+      version: (d as { version?: number }).version, slaDays: stageMeta.get(d.stage)?.slaHours ? Math.max(1, Math.ceil((stageMeta.get(d.stage)?.slaHours ?? 0) / 24)) : DEFAULT_STAGE_MAX_DAYS,
       days: Math.max(0, Math.floor((nowMs - new Date(d.stageEnteredAt).getTime()) / DAY)),
       next: l?.nextActionAt ?? null, nextOverdue: !!l?.nextActionAt && l.nextActionAt < now,
-      stage: d.stage, close: d.wonAt ?? d.expectedClose, prob: d.probability, lostReason: d.lostReason,
+      stage: d.stage, close: d.wonAt ?? d.expectedClose, prob: (stageMeta.get(d.stage)?.probability ?? d.probability * 100) / 100, lostReason: d.lostReason,
     };
   }).sort((a, b) => b.value - a.value);
 
-  const t = pipelineTotals(filtered, now);
+  // Totals know two terminal keys; map by the stage's outcome so a pipeline with differently named terminal stages sums correctly.
+  const t = pipelineTotals(filtered.map((d) => { const m = stageMeta.get(d.stage); return m ? { ...d, probability: m.probability / 100, stage: m.outcome === "open" ? d.stage : m.outcome } : d; }), now);
   const months = [...new Set(deals.map((d) => (d.wonAt ?? d.expectedClose).slice(0, 7)))].sort();
   const monthLabel = (m: string) => new Date(`${m}-15T00:00:00Z`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
   const districts = [...new Set(deals.map((d) => acc.get(d.accountId)?.district).filter(Boolean) as string[])].sort();
@@ -74,10 +86,20 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       <PageHeader eyebrow={role === "sales_rep" ? pl.eyebrowRep : canMove ? pl.eyebrowAll : pl.eyebrowRO(v.role[role], masked)}
         title={pl.title}
         sub={pl.sub(num(t.openCount), inr(t.openValue), inrCompact(t.weighted), inrCompact(t.wonMonthValue), t.wonMonthCount)} />
+      {pipelines.filter((p) => !p.archived).length > 1 && (
+        <nav aria-label="Pipelines" className="mb-3 flex flex-wrap gap-1.5" data-testid="pipeline-switcher">
+          {pipelines.filter((p) => !p.archived).map((p) => {
+            const q = new URLSearchParams(Object.entries(sp).filter(([k, x]) => k !== "pipeline" && typeof x === "string") as [string, string][]);
+            if (!p.isDefault) q.set("pipeline", p.key);
+            const on = p.key === pipe?.key;
+            return <Link key={p.key} href={`/pipeline${q.size ? `?${q}` : ""}`} aria-current={on ? "page" : undefined} className={`inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium ${on ? "border-navy-900 bg-navy-900 text-navy-ink" : "border-line-strong bg-surface text-ink-2 hover:text-ink"}`}>{p.name.en}</Link>;
+          })}
+        </nav>
+      )}
       <div className="mb-4"><FilterBar filters={filters} /></div>
       {failed > 0 && <PartialState className="mb-4" done={sources.length - failed} total={sources.length} items={sources} noun={labels.partialNoun} />}
       {!canMove && <p role="note" className="mb-3 text-[13px] text-ink-2" data-testid="pipeline-readonly">{moveReason}</p>}
-      <Board key={JSON.stringify(sp)} deals={cards} canMove={canMove} canMoveReason={moveReason} masked={masked} today={dayKey(now)} labels={labels} />
+      <Board key={JSON.stringify(sp)} deals={cards} stages={boardStages} showEmpty={pipe?.isDefault !== false} canMove={canMove} canMoveReason={moveReason} masked={masked} today={dayKey(now)} labels={labels} />
       {canMove && <p className="mt-3 hidden text-[12px] text-ink-3 md:block">{pl.hint}</p>}
     </>
   );

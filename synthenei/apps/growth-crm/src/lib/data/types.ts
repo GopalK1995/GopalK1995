@@ -5,8 +5,12 @@ export type Role = "owner" | "sales_manager" | "sales_rep" | "marketing" | "data
 
 export type Channel = "linkedin" | "whatsapp" | "email" | "meta" | "google_ads" | "organic" | "referral" | "event";
 export type LeadStatus = "new" | "contacted" | "qualified" | "nurturing" | "disqualified" | "converted";
-export type LeadStage = "new" | "contacted" | "qualified" | "demo_booked" | "demo_done" | "proposal" | "won" | "lost";
-export type DealStage = "discovery" | "demo_scheduled" | "demo_done" | "proposal" | "negotiation" | "won" | "lost";
+/** Stage keys are data (pipeline_stages.key / tenant config), not a closed union. The legacy keys below are the seeded defaults. */
+export type LeadStage = string;
+export type DealStage = string;
+/** Seeded legacy keys (presets and the default pipelines). Code must not assume a tenant still has only these. */
+export const LEGACY_LEAD_STAGES: readonly LeadStage[] = ["new", "contacted", "qualified", "demo_booked", "demo_done", "proposal", "won", "lost"];
+export const LEGACY_DEAL_STAGES: readonly DealStage[] = ["discovery", "demo_scheduled", "demo_done", "proposal", "negotiation", "won", "lost"];
 export type City = string; // Tamil Nadu, Kerala, … per workspace
 export type PracticeArea = "Civil" | "Criminal" | "Family" | "Property" | "Corporate" | "Labour" | "Tax";
 export type FirmSize = "Solo" | "2–5" | "6–20" | "21–50" | "50+";
@@ -69,7 +73,10 @@ export interface Activity { id: string; leadId: string; kind: ActivityKind; at: 
 
 export interface Deal {
   id: string; name: string; accountId: string; leadId: string; ownerId: string;
-  stage: DealStage; value: number; seats: number; plan: "Practice" | "Chambers" | "Enterprise"; // plan keys per spec; prices are placeholders until LAWSOME shares pricing
+  stage: DealStage;
+  /** Key of the deal pipeline the stage belongs to; absent = the workspace default pipeline. */
+  pipeline?: string;
+  value: number; seats: number; plan: "Practice" | "Chambers" | "Enterprise"; // plan keys per spec; prices are placeholders until LAWSOME shares pricing
   probability: number; createdAt: string; expectedClose: string; stageEnteredAt: string;
   wonAt?: string; lostReason?: string;
   /** Hospitality (wg): a booking. seats = nights; plan is unused (always "Practice"). */

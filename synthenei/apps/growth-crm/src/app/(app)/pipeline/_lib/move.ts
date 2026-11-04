@@ -10,15 +10,15 @@ const DB_PLANS = ["practice", "chambers", "enterprise"] as const;
 export type MoveExtra = { won?: WonInput; lost?: LostInput };
 
 /** Columns a Won/Lost close writes alongside the stage. Plan is stored only when it is one of the DB's plan keys. */
-export function buildMovePatch(to: string, extra: MoveExtra | undefined, nowIso: string): Partial<DealInput> {
-  if (to === "won" && extra?.won) {
+export function buildMovePatch(to: string, extra: MoveExtra | undefined, nowIso: string, outcome: string = to): Partial<DealInput> {
+  if (outcome === "won" && extra?.won) {
     const w = extra.won, plan = w.plan.toLowerCase();
     return {
       wonAt: nowIso, valueInr: w.value, seats: w.seats, expectedCloseOn: w.start,
       ...((DB_PLANS as readonly string[]).includes(plan) ? { plan } : {}),
     } as Partial<DealInput>;
   }
-  if (to === "lost" && extra?.lost) {
+  if (outcome === "lost" && extra?.lost) {
     const comp = extra.lost.competitor?.trim().slice(0, 60);
     return { lostAt: nowIso, lostReason: extra.lost.reason, ...(comp ? { competitor: comp } : {}) } as Partial<DealInput>;
   }
@@ -27,7 +27,7 @@ export function buildMovePatch(to: string, extra: MoveExtra | undefined, nowIso:
 
 export async function persistMove(
   repo: Pick<ReturnType<typeof createDealsRepo>, "move">,
-  a: { ws: string; id: string; to: string; expectedVersion: number; extra?: MoveExtra; now?: Date },
+  a: { ws: string; id: string; to: string; /** what the target stage counts as (open, won, lost); defaults to the key for legacy callers */ outcome?: string; expectedVersion: number; extra?: MoveExtra; now?: Date },
 ): Promise<Deal> {
-  return repo.move(a.ws, a.id, a.to, a.expectedVersion, buildMovePatch(a.to, a.extra, (a.now ?? new Date()).toISOString()));
+  return repo.move(a.ws, a.id, a.to, a.expectedVersion, buildMovePatch(a.to, a.extra, (a.now ?? new Date()).toISOString(), a.outcome));
 }

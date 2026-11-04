@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type PointerEvent 
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DealStage } from "@/lib/data/types";
-import { useDealStages, useSession, useVocab } from "@/components/shell/providers";
+import { useSession, useVocab } from "@/components/shell/providers";
 import { fmtDate, inr, inrCompact, pct } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { DisabledReason } from "@/components/ui/disabled-reason";
@@ -26,23 +26,27 @@ import { StageAgeTicks } from "./stage-age";
 import { fill, type PipelineLabels } from "../_lib/labels";
 import { DEFAULT_STAGE_MAX_DAYS } from "../_lib/stage-age";
 
+/** One column of the chosen pipeline. `outcome` decides Won/Lost behaviour; keys are data, never compared to literals. */
+export type BoardStage = { key: string; label: string; probability: number; outcome: "open" | "won" | "lost" };
 export type DealCard = {
   id: string; name: string; firm: string; contact: string | null; leadId: string; value: number; seats: number; plan: string; stayLine?: string;
   owner: string; days: number; version?: number; slaDays?: number; next: string | null; nextOverdue: boolean; stage: DealStage; close: string; prob: number; lostReason?: string;
 };
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function Board({ deals, canMove, canMoveReason, masked, today, labels }: { deals: DealCard[]; canMove: boolean; canMoveReason?: string | null; masked: boolean; today: string; labels: PipelineLabels }) {
+export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason, masked, today, labels }: { deals: DealCard[]; stages: BoardStage[]; /** Empty state instead of empty columns (default pipeline only: a new pipeline shows its stages). */ showEmpty?: boolean; canMove: boolean; canMoveReason?: string | null; masked: boolean; today: string; labels: PipelineLabels }) {
   const router = useRouter();
-  const DEAL_STAGES = useDealStages();
-  const vv = useVocab(), pl = vv.pl, DEAL_STAGE_LABEL = vv.dealStage, PLANS = pl.plans, LOST_REASONS = vv.lost.map(([key, label]) => ({ key, label })), tenantName = useSession().tenant.name;
+  const DEAL_STAGES = useMemo(() => stages.map((x) => x.key), [stages]);
+  const meta = useMemo(() => Object.fromEntries(stages.map((x) => [x.key, x])) as Record<string, BoardStage>, [stages]);
+  const outcomeOf = (k: string) => meta[k]?.outcome ?? "open";
+  const vv = useVocab(), pl = vv.pl, DEAL_STAGE_LABEL = Object.fromEntries(stages.map((x) => [x.key, x.label])) as Record<string, string>, PLANS = pl.plans, LOST_REASONS = vv.lost.map(([key, label]) => ({ key, label })), tenantName = useSession().tenant.name;
   const [items, setItems] = useState(deals);
   const [animate, setAnimate] = useState(false); // layout animation only after a move the user caused
   const [conflict, setConflict] = useState<null | { owner: string }>(null);
   useEffect(() => { setItems(deals); setAnimate(false); }, [deals]);
   const [view, setView] = useState<"board" | "table">("board");
-  const [mStage, setMStage] = useState<DealStage>(() => DEAL_STAGES.find((s) => deals.some((d) => d.stage === s)) ?? "discovery");
-  const [dlg, setDlg] = useState<null | { kind: "won" | "lost"; card: DealCard }>(null);
+  const [mStage, setMStage] = useState<DealStage>(() => DEAL_STAGES.find((s) => deals.some((d) => d.stage === s)) ?? DEAL_STAGES[0] ?? "");
+  const [dlg, setDlg] = useState<null | { kind: "won" | "lost"; card: DealCard; to: string }>(null);
   const [err, setErr] = useState<string | null>(null);
   const [drag, setDrag] = useState<null | { id: string; x: number; y: number; ox: number; oy: number; w: number; over: DealStage | null }>(null);
   const start = useRef<{ id: string; x: number; y: number; ox: number; oy: number; w: number } | null>(null);
@@ -52,13 +56,13 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
   const [pending, startT] = useTransition();
   const reduce = useReducedMotion();
 
-  const byStage = useMemo(() => Object.fromEntries(DEAL_STAGES.map((s) => [s, items.filter((d) => d.stage === s)])) as Record<DealStage, DealCard[]>, [items]);
-  const prob: Record<DealStage, number> = { discovery: 0.1, demo_scheduled: 0.25, demo_done: 0.4, proposal: 0.6, negotiation: 0.8, won: 1, lost: 0 };
+  const byStage = useMemo(() => Object.fromEntries(DEAL_STAGES.map((s) => [s, items.filter((d) => d.stage === s)])) as Record<DealStage, DealCard[]>, [items, DEAL_STAGES]);
+  const prob = (k: string) => (meta[k]?.probability ?? 0) / 100;
 
   const commit = (card: DealCard, to: DealStage, extra?: Parameters<typeof moveDeal>[2]) => {
     const before = items;
     setAnimate(true); setConflict(null);
-    setItems((xs) => xs.map((d) => (d.id === card.id ? { ...d, stage: to, days: 0, prob: prob[to], ...(extra?.won ? { value: extra.won.value, seats: extra.won.seats, plan: extra.won.plan } : {}) } : d)));
+    setItems((xs) => xs.map((d) => (d.id === card.id ? { ...d, stage: to, days: 0, prob: prob(to), ...(extra?.won ? { value: extra.won.value, seats: extra.won.seats, plan: extra.won.plan } : {}) } : d)));
     startT(async () => {
       let r: Awaited<ReturnType<typeof moveDeal>>;
       try { r = await moveDeal(card.id, to, extra, card.version); }
@@ -77,7 +81,8 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
   const request = (card: DealCard, to: DealStage) => {
     if (to === card.stage) return;
     setErr(null);
-    if (to === "won" || to === "lost") setDlg({ kind: to, card });
+    const o = outcomeOf(to);
+    if (o === "won" || o === "lost") setDlg({ kind: o, card, to });
     else commit(card, to);
   };
 
@@ -116,7 +121,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
       <MenuContent>
         <MenuLabel>Move to</MenuLabel>
         {DEAL_STAGES.filter((s) => s !== card.stage).map((s) => (
-          <MenuItem key={s} onSelect={() => request(card, s)} className={s === "lost" ? "text-danger" : undefined}>{DEAL_STAGE_LABEL[s]}{s === "won" ? "…" : s === "lost" ? "…" : ""}</MenuItem>
+          <MenuItem key={s} onSelect={() => request(card, s)} className={outcomeOf(s) === "lost" ? "text-danger" : undefined}>{DEAL_STAGE_LABEL[s]}{outcomeOf(s) !== "open" ? "…" : ""}</MenuItem>
         ))}
       </MenuContent>
     </Menu>
@@ -139,9 +144,9 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={card.owner} size={20} /><span className="truncate">{card.owner.split(" ")[0]}</span></span>
         <span className="flex items-center gap-1.5">
-          {card.stage === "lost" && card.lostReason ? <span className="max-w-[120px] truncate text-[11px] text-ink-3" title={card.lostReason}>{card.lostReason}</span>
-            : card.stage !== "won" && <StageAgeTicks days={card.days} max={card.slaDays ?? DEFAULT_STAGE_MAX_DAYS} labels={labels} />}
-          {card.next && card.stage !== "won" && card.stage !== "lost" && (
+          {outcomeOf(card.stage) === "lost" && card.lostReason ? <span className="max-w-[120px] truncate text-[11px] text-ink-3" title={card.lostReason}>{card.lostReason}</span>
+            : outcomeOf(card.stage) !== "won" && <StageAgeTicks days={card.days} max={card.slaDays ?? DEFAULT_STAGE_MAX_DAYS} labels={labels} />}
+          {card.next && outcomeOf(card.stage) === "open" && (
             <span className={cn("inline-flex items-center gap-1 text-[11px] num", card.nextOverdue ? "font-medium text-danger" : "text-ink-3")} title="Next step date">
               <CalendarClock className="size-3" aria-hidden />{fmtDate(card.next)}
             </span>
@@ -161,17 +166,17 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[12px] num">
           <span className="font-medium text-ink">{inrCompact(sum)}</span>
-          {s !== "won" && s !== "lost" && <span className="text-ink-3" title={`Weighted at ${Math.round(prob[s] * 100)}%`}>wtd {inrCompact(sum * prob[s])}</span>}
+          {outcomeOf(s) === "open" && <span className="text-ink-3" title={`Weighted at ${Math.round(prob(s) * 100)}%`}>wtd {inrCompact(sum * prob(s))}</span>}
         </div>
       </div>
     );
   };
 
   // Stage conversion strip (M36), from each deal's current position.
-  const open = DEAL_STAGES.filter((s) => s !== "lost");
-  const reached = (i: number) => items.filter((d) => d.stage !== "lost" && open.indexOf(d.stage) >= i).length;
+  const open = DEAL_STAGES.filter((s) => outcomeOf(s) !== "lost");
+  const reached = (i: number) => items.filter((d) => outcomeOf(d.stage) !== "lost" && open.indexOf(d.stage) >= i).length;
 
-  if (!items.length) return <div className="rounded-md border border-line bg-surface p-4"><Empty title={pl.emptyTitle}>{pl.emptyHint}</Empty></div>;
+  if (!items.length && (showEmpty || !stages.length)) return <div className="rounded-md border border-line bg-surface p-4"><Empty title={pl.emptyTitle}>{pl.emptyHint}</Empty></div>;
 
   return (
     <div>
@@ -188,7 +193,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
         <div className="flex items-center gap-2">
           {view === "board" && (
             <span className="hidden items-center gap-1 md:inline-flex">
-              <span className="text-[12px] text-ink-3">7 stages</span>
+              <span className="text-[12px] text-ink-3">{DEAL_STAGES.length} stages</span>
               <Button size="icon" variant="secondary" aria-label="Scroll board left" onClick={() => scrollBoard(-1)}><ChevronLeft /></Button>
               <Button size="icon" variant="secondary" aria-label="Scroll board right to Won and Lost" onClick={() => scrollBoard(1)}><ChevronRight /></Button>
             </span>
@@ -219,7 +224,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
                   <td className={td}><DealStageBadge stage={d.stage} /></td>
                   <td className={tdNum}>{inr(d.value)}</td><td className={tdNum}>{d.seats}</td>
                   <td className={cn(td, "text-ink-2")}>{d.owner}</td>
-                  <td className={tdNum}>{d.stage === "won" || d.stage === "lost" ? "—" : d.days}</td>
+                  <td className={tdNum}>{outcomeOf(d.stage) !== "open" ? "—" : d.days}</td>
                   <td className={cn(td, "text-ink-2 num")}>{fmtDate(d.close)}</td>
                   <td className={td}>{moveMenu(d)}</td>
                 </tr>
@@ -236,7 +241,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
                 <section key={s} data-stage={s} aria-label={`${DEAL_STAGE_LABEL[s]}: ${pl.deals(byStage[s].length)}`}
                   className={cn("flex w-[248px] shrink-0 flex-col rounded-md border bg-paper-2/60 transition-colors duration-150",
                     drag?.over === s && dragged?.stage !== s ? "border-accent bg-accent-soft/50" : "border-line",
-                    s === "won" && "bg-success-soft/40", s === "lost" && "bg-paper/60")}>
+                    outcomeOf(s) === "won" && "bg-success-soft/40", outcomeOf(s) === "lost" && "bg-paper/60")}>
                   {columnHead(s)}
                   <ul className="flex min-h-24 flex-1 flex-col gap-2 px-2 pb-2">
                     {byStage[s].map((card) => (
@@ -296,7 +301,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
               e.preventDefault(); const f = new FormData(e.currentTarget);
               const won = { plan: String(f.get("plan")), seats: Number(f.get("seats")), value: Number(f.get("value")), start: String(f.get("start")) };
               if (!won.seats || won.seats < 1 || !won.value || won.value <= 0 || !won.start) { setErr(pl.wonErr); return; }
-              const card = dlg.card; setDlg(null); commit(card, "won", { won });
+              const card = dlg.card, to = dlg.to; setDlg(null); commit(card, to, { won });
             }}>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{pl.plan}</span>
@@ -321,7 +326,7 @@ export function Board({ deals, canMove, canMoveReason, masked, today, labels }: 
             <form className="space-y-3" onSubmit={(e) => {
               e.preventDefault(); const f = new FormData(e.currentTarget);
               const reason = String(f.get("reason") ?? ""); if (!reason) { setErr("Pick a reason."); return; }
-              const card = dlg.card; setDlg(null); commit(card, "lost", { lost: { reason, competitor: String(f.get("competitor") ?? "") } });
+              const card = dlg.card, to = dlg.to; setDlg(null); commit(card, to, { lost: { reason, competitor: String(f.get("competitor") ?? "") } });
             }}>
               <fieldset className="grid grid-cols-2 gap-2">
                 <legend className="mb-1 text-[12px] font-medium text-ink-2">Reason</legend>

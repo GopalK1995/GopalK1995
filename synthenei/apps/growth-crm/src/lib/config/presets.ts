@@ -2,21 +2,21 @@
 // PRESETS in vertical.ts (single source of truth, so a tenant with no overrides renders exactly as today).
 // This file adds what vertical.ts does not carry: stage metadata, taxonomy extras, dashboard and data defaults.
 import { MODULE_KEYS, PRESETS } from "../vertical";
-import type { DealStage, LeadStage } from "../data/types";
 import { CONFIG_VERSION, DEAL_STAGE_IDS, LEAD_STAGE_IDS, type FontKey, type BusinessHours, type ModuleId, type PresetId, type StageCfg, type StageColor, type TenantConfig } from "./types";
 
 export interface BrandDefaults { id: string; name: string; product: string; hue: number }
 
-const LEAD_META: Record<LeadStage, [number, StageColor, "open" | "won" | "lost"]> = {
+const LEAD_META: Record<string, [number, StageColor, "open" | "won" | "lost"]> = {
   new: [5, "neutral", "open"], contacted: [10, "info", "open"], qualified: [25, "info", "open"], demo_booked: [40, "accent", "open"],
   demo_done: [50, "accent", "open"], proposal: [65, "warn", "open"], won: [100, "success", "won"], lost: [0, "danger", "lost"],
 };
-const DEAL_META: Record<DealStage, [number, StageColor, "open" | "won" | "lost"]> = {
+const DEAL_META: Record<string, [number, StageColor, "open" | "won" | "lost"]> = {
   discovery: [10, "neutral", "open"], demo_scheduled: [25, "info", "open"], demo_done: [40, "info", "open"], proposal: [60, "warn", "open"],
   negotiation: [80, "warn", "open"], won: [100, "success", "won"], lost: [0, "danger", "lost"],
 };
-const stagesOf = <K extends string>(ids: K[], labels: Record<K, string>, meta: Record<K, [number, StageColor, "open" | "won" | "lost"]>) =>
-  Object.fromEntries(ids.map((id, order) => [id, { label: labels[id], order, probability: meta[id][0], color: meta[id][1], outcome: meta[id][2] } satisfies StageCfg])) as Record<K, StageCfg>;
+// Every optional stage field is present (null / empty / false) so a tenant override has a key to merge into.
+const stagesOf = (ids: string[], labels: Record<string, string>, meta: Record<string, [number, StageColor, "open" | "won" | "lost"]>) =>
+  Object.fromEntries(ids.map((id, order) => [id, { label: labels[id], order, probability: meta[id][0], color: meta[id][1], outcome: meta[id][2], slaHours: null, requiredFields: [], archived: false } satisfies StageCfg])) as Record<string, StageCfg>;
 
 const INTERESTS: Record<PresetId, string[]> = {
   legal: ["Civil", "Criminal", "Family", "Property", "Corporate", "Labour", "Tax"],
@@ -39,6 +39,7 @@ export function presetConfig(id: PresetId, tenant: BrandDefaults): TenantConfig 
     v: CONFIG_VERSION, preset: id,
     vocabulary: { n: clone(p.n), nav: clone(p.nav), search: p.search, funnel: clone(p.funnel), views: clone(p.views) },
     stages: { lead: stagesOf(LEAD_STAGE_IDS, p.leadStage, LEAD_META), deal: stagesOf(DEAL_STAGE_IDS, p.dealStage, DEAL_META) },
+    pipelines: {},
     taxonomies: { partySize: clone(p.partySize), channelFamily: clone(p.channelFamily), lost: clone(p.lost), plans: clone(p.plans), interests: [...INTERESTS[id]] },
     modules, modulesLocked: [],
     features: { ecourts: p.features.ecourts, hearings: p.features.hearings },

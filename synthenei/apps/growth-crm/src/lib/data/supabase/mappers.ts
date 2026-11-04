@@ -153,16 +153,18 @@ export function holidays(dates: unknown): Holiday[] {
 
 // ---- leads / deals (real sessions): table columns -> domain types ----
 const iso = (v: unknown, d = ""): string => { const x = sn(v); return x ? new Date(x).toISOString() : d; };
-const LEAD_STAGES: readonly string[] = ["new", "contacted", "qualified", "demo_booked", "demo_done", "proposal", "won", "lost"];
-const DEAL_STAGE_KEYS: readonly string[] = ["discovery", "demo_scheduled", "demo_done", "proposal", "negotiation", "won", "lost"];
 const STATUS_STAGE: Record<string, LeadStage> = { new: "new", contacted: "contacted", qualified: "qualified", nurturing: "contacted", disqualified: "lost", converted: "won" };
+/** pipelines rows -> id -> pipeline key (deals carry the key of the pipeline their stage belongs to). */
+export function pipelineKeys(rows: Row[]): Map<string, string> { return new Map(rows.map((r) => [s(r.id), s(r.key)])); }
 /** pipeline_stages rows -> id -> stage key. Unknown ids stay unmapped (callers fall back, never invent). */
 export function stageKeys(rows: Row[]): Map<string, string> { return new Map(rows.map((r) => [s(r.id), s(r.key)])); }
 
 export function lead(r: Row, keys: Map<string, string> = new Map(), piiRead = true): Lead {
   const status = (s(r.status, "new") as LeadStatus);
   const k = keys.get(s(r.stageId));
-  const stage = (k && LEAD_STAGES.includes(k) ? k : STATUS_STAGE[status] ?? "new") as LeadStage;
+  // Stage keys come from the lead pipeline. The six lead_status bucket keys keep their legacy funnel names (parity with the
+  // presets); any other key is a stage the workspace added and is passed through as is.
+  const stage: LeadStage = k && !(k in STATUS_STAGE) ? k : k && STATUS_STAGE[k] ? STATUS_STAGE[k] : STATUS_STAGE[status] ?? "new";
   const utm = obj(r.utm);
   const factors = Array.isArray(r.scoreFactors) ? (r.scoreFactors as Row[]) : [];
   const email = s(r.email);
@@ -180,12 +182,12 @@ export function lead(r: Row, keys: Map<string, string> = new Map(), piiRead = tr
   };
 }
 
-export function deal(r: Row, keys: Map<string, string> = new Map()): Deal {
+export function deal(r: Row, keys: Map<string, string> = new Map(), pipelines: Map<string, string> = new Map()): Deal {
   const k = keys.get(s(r.stageId)) ?? "";
   const plan = s(r.plan, "practice");
   return {
     id: s(r.id), name: s(r.name), accountId: s(r.accountId), leadId: s(r.leadId), ownerId: s(r.ownerId),
-    stage: (DEAL_STAGE_KEYS.includes(k) ? k : "discovery") as DealStage, value: n(r.valueInr), seats: n(r.seats, 1),
+    stage: (k || "discovery") as DealStage, ...(pipelines.get(s(r.pipelineId)) ? { pipeline: pipelines.get(s(r.pipelineId)) } : {}), value: n(r.valueInr), seats: n(r.seats, 1),
     plan: (plan.charAt(0).toUpperCase() + plan.slice(1)) as Deal["plan"], probability: 0,
     createdAt: iso(r.createdAt), expectedClose: s(r.expectedCloseOn), stageEnteredAt: iso(r.stageEnteredAt ?? r.createdAt),
     wonAt: r.wonAt ? iso(r.wonAt) : undefined, lostReason: r.lostReason ? s(r.lostReason) : undefined, version: n(r.version, 1),
