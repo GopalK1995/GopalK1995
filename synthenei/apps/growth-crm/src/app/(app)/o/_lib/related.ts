@@ -9,25 +9,14 @@ import { objectNoun } from "@/lib/metadata/labels";
 import { getObjectMeta } from "@/lib/metadata/meta";
 import { listObjectTypes } from "@/lib/metadata/repo";
 import { visibleFields } from "@/lib/metadata/access";
-import { objectUrl } from "@/lib/notify/urls";
 import { vocabFor } from "@/lib/vertical";
 import type { ObjectCtx } from "./ctx";
 import { objType } from "./ctx";
 import { DEMO_OBJECT_KEY, demoLinks, demoObject, demoRecords } from "./demo";
 import { displayTitle } from "./query";
 import * as repo from "./repo";
-import type { LinkRow, RelatedItem } from "./types";
-
-/** The other end of a link, seen from (type, id). Pure. */
-export function otherEnd(l: LinkRow, type: string, id: string): { direction: "from" | "to"; type: string; id: string } {
-  return l.fromType === type && l.fromId === id ? { direction: "to", type: l.toType, id: l.toId } : { direction: "from", type: l.fromType, id: l.fromId };
-}
-
-export function hrefFor(type: string, id: string): string | null {
-  if (type.startsWith("obj:")) return `/o/${type.slice(4)}/${id}`;
-  const u = objectUrl(type, id);
-  return u && !u.startsWith("/records/") ? u : null;
-}
+import { hrefFor, otherEnd } from "./links";
+import type { RelatedItem } from "./types";
 
 export async function loadRelated(ctx: ObjectCtx, recordId: string): Promise<RelatedItem[]> {
   const { active } = await requireActive();
