@@ -22,12 +22,12 @@ const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
 function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onNavigate?: () => void; layoutKey: string }) {
   const path = usePathname();
-  const { role, tenant } = useSession();
+  const { role, tenant, objects } = useSession();
   const v = useVocab();
   const reduce = useReducedMotion();
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
-      {navFor(role, tenant).map((g) => (
+      {navFor(role, tenant, objects).map((g) => (
         <div key={g.group}>
           {!collapsed && <div className="mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.08em] text-navy-ink-3">{navGroup(v, g.group)}</div>}
           <ul className="flex flex-col gap-0.5">

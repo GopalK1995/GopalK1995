@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/states";
 import { toast } from "@/components/ui/toast";
 import { th, td } from "@/components/ui/misc";
 import { PERMISSIONS } from "@/lib/authz/catalog";
-import type { Grant, Scope } from "@/lib/authz/types";
+import type { Grant, PermissionDef, Scope } from "@/lib/authz/types";
 import { cn } from "@/lib/utils";
 import { checkRoleAssignment, checkRoleGrants, scopeRank, type BaseRole, type GrantInput, type Violation } from "../roles/_lib/guards";
 import { createRole, deleteRole, explainAccess, updateRole } from "../roles/actions";
@@ -58,8 +58,10 @@ function buildConditions(row: Row, held?: HeldView): unknown {
   return out.length ? { all: out } : {};
 }
 
-export function RolesTab({ roles, held, baseRole, uid, canManage, customAllowed, demo }: {
+export function RolesTab({ roles, held, baseRole, uid, canManage, customAllowed, demo, objectPerms = [] }: {
   roles: RoleView[]; held: Record<string, HeldView>; baseRole: BaseRole; uid: string; canManage: boolean; customAllowed: boolean; demo: boolean;
+  /** obj:<key>.read|write|delete of the workspace's custom objects (T033), listed after the catalogue. */
+  objectPerms?: PermissionDef[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<{ role: RoleView | null; seed: RoleView | null } | null>(null);
@@ -115,9 +117,9 @@ export function RolesTab({ roles, held, baseRole, uid, canManage, customAllowed,
         <div className="label-caps zone-work pb-1 pt-3">{sa("systemRole")}</div>
         {table(system, true)}
       </Card>
-      <ExplainPanel roles={roles} />
+      <ExplainPanel roles={roles} objectPerms={objectPerms} />
       {editing && (
-        <RoleEditor key={editing.role?.id ?? `new-${editing.seed?.id ?? "blank"}`} role={editing.role} seed={editing.seed} held={held} baseRole={baseRole} uid={uid} demo={demo}
+        <RoleEditor key={editing.role?.id ?? `new-${editing.seed?.id ?? "blank"}`} role={editing.role} seed={editing.seed} held={held} baseRole={baseRole} uid={uid} demo={demo} objectPerms={objectPerms}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); router.refresh(); }} />
       )}
     </div>
@@ -144,8 +146,8 @@ function DeleteRole({ role, disabledReason, onDone }: { role: RoleView; disabled
   );
 }
 
-function RoleEditor({ role, seed, held, baseRole, uid, demo, onClose, onSaved }: {
-  role: RoleView | null; seed: RoleView | null; held: Record<string, HeldView>; baseRole: BaseRole; uid: string; demo: boolean; onClose: () => void; onSaved: () => void;
+function RoleEditor({ role, seed, held, baseRole, uid, demo, objectPerms, onClose, onSaved }: {
+  role: RoleView | null; seed: RoleView | null; held: Record<string, HeldView>; baseRole: BaseRole; uid: string; demo: boolean; objectPerms: PermissionDef[]; onClose: () => void; onSaved: () => void;
 }) {
   const readOnly = !!role?.isSystem;
   const source = role ?? seed;
@@ -156,7 +158,7 @@ function RoleEditor({ role, seed, held, baseRole, uid, demo, onClose, onSaved }:
   const [q, setQ] = useState("");
   const [err, setErr] = useState<{ message: string; conflict?: boolean } | null>(null);
   const [pending, start] = useTransition();
-  const defs = useMemo(() => PERMISSIONS.filter((p) => !p.platformOnly), []);
+  const defs = useMemo(() => [...PERMISSIONS.filter((p) => !p.platformOnly), ...objectPerms], [objectPerms]);
   const heldGrants = held as Record<string, Grant>;
   const actor = useMemo(() => ({ uid, baseRole, held: heldGrants }), [uid, baseRole, heldGrants]);
 
@@ -261,7 +263,7 @@ function RoleEditor({ role, seed, held, baseRole, uid, demo, onClose, onSaved }:
   );
 }
 
-function ExplainPanel({ roles }: { roles: RoleView[] }) {
+function ExplainPanel({ roles, objectPerms }: { roles: RoleView[]; objectPerms: PermissionDef[] }) {
   const [roleId, setRoleId] = useState(roles[0]?.id ?? "");
   const [perm, setPerm] = useState("leads.read");
   const [res, setRes] = useState<ExplainView | null>(null);
@@ -281,7 +283,7 @@ function ExplainPanel({ roles }: { roles: RoleView[] }) {
             <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className={cn(selectCls, "h-9 text-13")}>{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
           </label>
           <label className="flex flex-col gap-1 text-12 font-medium text-ink-2">{sa("explainPerm")}
-            <select value={perm} onChange={(e) => setPerm(e.target.value)} className={cn(selectCls, "h-9 text-13 font-mono")}>{PERMISSIONS.filter((p) => !p.platformOnly).map((p) => <option key={p.key} value={p.key}>{p.key}</option>)}</select>
+            <select value={perm} onChange={(e) => setPerm(e.target.value)} className={cn(selectCls, "h-9 text-13 font-mono")}>{[...PERMISSIONS.filter((p) => !p.platformOnly), ...objectPerms].map((p) => <option key={p.key} value={p.key}>{p.key}</option>)}</select>
           </label>
           <Button variant="primary" size="sm" disabled={pending || !roleId} onClick={run}>{sa("explainRun")}</Button>
         </div>

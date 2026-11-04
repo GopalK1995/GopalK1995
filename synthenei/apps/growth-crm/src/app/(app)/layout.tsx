@@ -6,11 +6,13 @@ import { FONT_STACKS, fontsFor, verticalOf } from "@/lib/vertical";
 import { TENANTS, WORKSPACES } from "@/lib/tenancy";
 import { getEffectiveConfig } from "@/lib/config/resolve";
 import { stageList } from "@/lib/config/types";
+import { loadNavObjects } from "./o/_lib/nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, active } = await requireActive();
   const cfg = await getEffectiveConfig(active.tenant.id);
   const workspaces = session.platformAdmin ? [{ ws: active.ws.id, role: active.role }] : session.memberships;
+  const objects = await loadNavObjects();
   const ctx: ShellCtx = {
     uid: session.uid, name: session.name, email: session.email, demo: session.demo, platformAdmin: session.platformAdmin, role: active.role,
     ws: { id: active.ws.id, name: active.ws.name, region: active.ws.region },
@@ -20,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       return { id: w.id, name: w.name, tenantId: t.id, tenantName: t.name, monogram: t.monogram, role: m.role };
     }),
     support: active.support ? { mode: active.support.mode, reason: active.support.reason, admin: active.support.admin, endsAt: active.support.endsAt } : null,
+    objects,
   };
   const f = fontsFor(active.tenant); // keys from the allow-list only; stacks are constants
   const fonts = `${FONT_STACKS[f.body] ? `--font-ui:${FONT_STACKS[f.body]};` : ""}${FONT_STACKS[f.heading] ? `--font-heading:${FONT_STACKS[f.heading]};` : ""}`;

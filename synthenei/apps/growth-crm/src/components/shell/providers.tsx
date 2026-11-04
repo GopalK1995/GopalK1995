@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, type ReactN
 import type { DealStage, Role } from "@/lib/data/types";
 import { DEAL_STAGES } from "@/lib/data/metrics";
 import { RealtimeProvider } from "@/components/realtime";
+import type { NavObject } from "./nav";
 import { TipProvider } from "@/components/ui/tooltip";
 import { MotionConfig } from "motion/react";
 import { FONT_STACKS, fontsFor, vocabFor, type TenantConfigOverrides, type Vertical, type Vocab } from "@/lib/vertical";
@@ -13,6 +14,8 @@ export interface ShellCtx {
   ws: { id: string; name: string; region: string }; tenant: { id: string; name: string; product: string; hue: number; monogram: string; vertical: Vertical; workspaceCount: number; isPrimaryOwner: boolean; /** Effective tenant config for vocabFor()/fontsFor() on the client. */ config?: TenantConfigOverrides; /** Stage ids in the tenant's configured order. */ stageOrder?: { lead: string[]; deal: string[] } };
   workspaces: { id: string; name: string; tenantId: string; tenantName: string; monogram: string; role: Role }[];
   support: { mode: "read_only" | "read_write"; reason: string; admin: string; endsAt: number } | null;
+  /** Enabled custom objects the viewer may read (sidebar entries), resolved on the server. */
+  objects?: NavObject[];
 }
 const SessionCtx = createContext<ShellCtx | null>(null);
 export const useSession = () => {

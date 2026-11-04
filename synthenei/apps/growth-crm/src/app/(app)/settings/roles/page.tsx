@@ -9,7 +9,9 @@ import { TeamsTab, type TeamView } from "../_components/teams-tab";
 import { checkRoleAssignment } from "./_lib/guards";
 import { sa } from "./_lib/strings";
 import { loadAccess, type AccessData } from "./_lib/view";
+import { loadObjectPermissionDefs } from "../../o/_lib/perms";
 import Link from "next/link";
+import type { PermissionDef } from "@/lib/authz/types";
 
 export const metadata = { title: "Users, roles and teams" };
 type SP = { tab?: string };
@@ -41,7 +43,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
       <TabBar tabs={TABS.map((v) => ({ value: v, label: labels[v] }))} current={tab} />
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="outline-none">
         {tab === "members" && <Members d={d} now={now} />}
-        {tab === "roles" && <Roles d={d} />}
+        {tab === "roles" && <Roles d={d} objectPerms={await loadObjectPermissionDefs()} />}
         {tab === "teams" && <Teams d={d} />}
       </div>
     </>
@@ -65,8 +67,8 @@ function Members({ d, now }: { d: AccessData; now: string }) {
   return <UsersTab rows={rows} wsName={d.wsName} tenantName={d.tenantName} roleOptions={options} activeOwners={d.activeOwners} canInvite={d.perms.invite} showRolesLink={false} />;
 }
 
-function Roles({ d }: { d: AccessData }) {
-  return <RolesTab roles={roleViews(d)} held={d.held} baseRole={d.baseRole} uid={d.uid} canManage={d.perms.roles} customAllowed={d.policy.allowCustomRoles} demo={d.demo} />;
+function Roles({ d, objectPerms }: { d: AccessData; objectPerms: PermissionDef[] }) {
+  return <RolesTab roles={roleViews(d)} held={d.held} baseRole={d.baseRole} uid={d.uid} canManage={d.perms.roles} customAllowed={d.policy.allowCustomRoles} demo={d.demo} objectPerms={objectPerms} />;
 }
 
 function Teams({ d }: { d: AccessData }) {

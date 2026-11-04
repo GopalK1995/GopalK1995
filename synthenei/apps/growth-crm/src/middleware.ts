@@ -68,7 +68,8 @@ export async function middleware(req: NextRequest) {
   const active = resolveHint(session, req.cookies.get(WS_COOKIE)?.value, support);
   if (!active) return NextResponse.redirect(new URL(session.platformAdmin ? "/admin" : "/login?error=no_profile", req.url));
   if (pathname === "/" && HOME_FOR[active.role] !== "/") return NextResponse.redirect(new URL(HOME_FOR[active.role], req.url));
-  if (!accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
+  // Custom-object pages (/o/<key>) are authorised per object by the page itself (obj:<key>.read through the authz engine); the legacy page matrix has no entry for them.
+  if (!pathname.startsWith("/o/") && !accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
   // Module switches (tenant config) are enforced here, server-side, as well as hidden in the nav.
   const mod = moduleForPath(pathname);
   // Demo sessions keep config in a signed cookie, which the edge can read; real sessions are checked in requireActive().

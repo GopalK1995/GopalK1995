@@ -1,11 +1,12 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, KeyRound, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, type LucideIcon,
+  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
 import { accessFor } from "@/lib/auth/roles";
 import { SYSTEM_ROLES } from "@/lib/authz/catalog/system-roles";
+import { iconFor } from "@/lib/layouts/icons";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: string; /** Extra permission the role must hold (same key the route asserts). Hidden when missing. */ perm?: string };
 export const NAV: { group: string; items: NavItem[] }[] = [
@@ -21,10 +22,24 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { href: "/settings/roles", label: "Roles & access", icon: ShieldCheck, perm: "members.manage" },
     { href: "/settings/audit", label: "Audit log", icon: ScrollText, perm: "audit.read" },
     { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" },
-    { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" }] },
+    { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" },
+    { href: "/settings/fields", label: "Custom fields", icon: ListPlus, perm: "fields.manage" },
+    { href: "/settings/objects", label: "Custom objects", icon: Boxes, perm: "objects.manage" },
+    { href: "/settings/layouts", label: "Layouts", icon: LayoutTemplate, perm: "layouts.manage" }] },
 ];
+
+/** An enabled custom object the viewer may read, resolved on the server (label already in the viewer's language, icon from the allow-list). */
+export type NavObject = { key: string; label: string; icon: string };
+export const OBJECTS_GROUP = "Records";
 const holds = (role: Role, perm?: string) => !perm || !!SYSTEM_ROLES.find((r) => r.key === role)?.grants[perm];
-export const navFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => NAV.map((g) => ({ ...g, items: g.items.filter((i) => accessFor(role, i.href) && holds(role, i.perm) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!))) })).filter((g) => g.items.length);
+export const navFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }, objects: NavObject[] = []) => {
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => accessFor(role, i.href) && holds(role, i.perm) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!))) })).filter((g) => g.items.length);
+  // Custom objects were filtered on the server by obj:<key>.read; they sit between the work groups and Admin.
+  if (!objects.length) return groups;
+  const group = { group: OBJECTS_GROUP, items: objects.map((o): NavItem => ({ href: `/o/${o.key}`, label: o.label, icon: iconFor(o.icon) })) };
+  const at = groups.findIndex((g) => g.group === "Admin");
+  return at < 0 ? [...groups, group] : [...groups.slice(0, at), group, ...groups.slice(at)];
+};
 /** Five bottom-bar items per role on mobile. */
 const MOBILE: Record<Role, string[]> = {
   owner: ["/", "/pipeline", "/leads", "/campaigns", "/settings"],
