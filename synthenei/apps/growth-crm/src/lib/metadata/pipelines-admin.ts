@@ -121,13 +121,11 @@ export async function saveStages(ctx: PipeCtx, pipelineKey: string, inputs: Stag
         const name = { ...cur.name, en: s.name.trim() };
         const same = name.en === cur.name.en && s.probability === cur.probability && s.color === cur.color && s.outcome === cur.outcome && s.slaHours === cur.slaHours
           && s.archived === cur.archived && JSON.stringify(s.requiredFields) === JSON.stringify(cur.requiredFields);
-        let version = cur.version;
         if (!same) {
-          const saved = await ctx.deps.updateStageGuarded(ctx.ws, cur.id, s.version ?? cur.version, writeOf(s, name, cur.position), cur.archived);
-          version = saved.version; changed.push(cur.key);
+          await ctx.deps.updateStageGuarded(ctx.ws, cur.id, s.version ?? cur.version, writeOf(s, name, cur.position), cur.archived);
+          changed.push(cur.key);
           if (s.archived && !cur.archived) archived.push(cur.key);
         }
-        void version;
         if (cur.position !== position) finalPos.push({ id: cur.id, position });
       } else {
         const key = keyFromName(s.name, taken); taken.add(key);

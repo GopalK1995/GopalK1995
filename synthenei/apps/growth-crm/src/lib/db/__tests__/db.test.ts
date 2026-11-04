@@ -104,6 +104,12 @@ describe("writes", () => {
     expect(calls[1].table).toBe("pipeline_stages");
     expect(has(calls[2], "eq", "version", 1)).toBe(true);
   });
+  it("deals.move looks the stage up in the deal's own pipeline and never lands in an archived stage", async () => {
+    const { db, calls } = mockDb([ok({ id: "d", tenant_id: "t", pipeline_id: "p2", version: 1 }), ok({ id: "s5" }), ok([{ id: "d", stage_id: "s5", version: 2 }])]);
+    await createDealsRepo(async () => db).move("w", "d", "won", 1, {});
+    expect(has(calls[1], "eq", "pipeline_id", "p2")).toBe(true);
+    expect(has(calls[1], "is", "archived_at", null)).toBe(true);
+  });
   it("tasks.complete only touches open tasks in the workspace", async () => {
     const { db, calls } = mockDb([ok(null)]);
     await createTasksRepo(async () => db).complete("w", ["a", "b"]);

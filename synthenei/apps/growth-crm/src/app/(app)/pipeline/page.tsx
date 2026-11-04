@@ -30,7 +30,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const defaultKey = pipelines.find((p) => p.isDefault)?.key ?? pipe?.key;
   const stages = pipe ? liveStages(pipe) : [];
   const stageMeta = new Map(stages.map((x) => [x.key, x]));
-  const boardStages: BoardStage[] = stages.map((x) => ({ key: x.key, label: v.dealStage[x.key] ?? x.name.en, probability: x.probability, outcome: x.outcome }));
+  const boardStages: BoardStage[] = stages.map((x) => ({ key: x.key, label: x.name.en, probability: x.probability, outcome: x.outcome }));
   const labels = pipelineLabels(await getLocale(), { deal: v.n.deal.one, deals: v.n.deal.many });
   // Deals are the page: a failure there goes to error.tsx. Names are secondary: a failed source degrades to a partial state.
   const [dealsR, accountsR, leadsR, teamR] = await Promise.allSettled([ds.deals(), ds.accounts(), ds.leads(), ds.team()]);

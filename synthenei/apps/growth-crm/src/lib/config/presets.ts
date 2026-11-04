@@ -2,7 +2,7 @@
 // PRESETS in vertical.ts (single source of truth, so a tenant with no overrides renders exactly as today).
 // This file adds what vertical.ts does not carry: stage metadata, taxonomy extras, dashboard and data defaults.
 import { MODULE_KEYS, PRESETS } from "../vertical";
-import { CONFIG_VERSION, DEAL_STAGE_IDS, LEAD_STAGE_IDS, type FontKey, type BusinessHours, type ModuleId, type PresetId, type StageCfg, type StageColor, type TenantConfig } from "./types";
+import { CONFIG_VERSION, DEAL_STAGE_IDS, LEAD_STAGE_IDS, type FontKey, type BusinessHours, type ModuleId, type PresetId, type StageCfg, type StageColor, type StageKind, type TenantConfig } from "./types";
 
 export interface BrandDefaults { id: string; name: string; product: string; hue: number }
 
@@ -17,6 +17,16 @@ const DEAL_META: Record<string, [number, StageColor, "open" | "won" | "lost"]> =
 // Every optional stage field is present (null / empty / false) so a tenant override has a key to merge into.
 const stagesOf = (ids: string[], labels: Record<string, string>, meta: Record<string, [number, StageColor, "open" | "won" | "lost"]>) =>
   Object.fromEntries(ids.map((id, order) => [id, { label: labels[id], order, probability: meta[id][0], color: meta[id][1], outcome: meta[id][2], slaHours: null, requiredFields: [], archived: false } satisfies StageCfg])) as Record<string, StageCfg>;
+
+/**
+ * Stage names the database seeds for every new workspace (seed_workspace_defaults, migrations 0007/0017). A real workspace
+ * whose stage still carries this name has not been renamed in the pipelines editor, so its vocabulary label applies; a
+ * different name is an edit and wins. Lead-bucket stages seeded by 0017 (default_pipeline) are included.
+ */
+export const DB_SEED_LABELS: Record<StageKind, Record<string, string>> = {
+  deal: { discovery: "Discovery", demo_scheduled: "Demo scheduled", demo_done: "Demo done", proposal: "Proposal sent", negotiation: "Negotiation", won: "Won", lost: "Lost" },
+  lead: { new: "New", contacted: "Contacted", qualified: "Qualified", nurturing: "Nurturing", disqualified: "Disqualified", converted: "Converted" },
+};
 
 const INTERESTS: Record<PresetId, string[]> = {
   legal: ["Civil", "Criminal", "Family", "Property", "Corporate", "Labour", "Tax"],

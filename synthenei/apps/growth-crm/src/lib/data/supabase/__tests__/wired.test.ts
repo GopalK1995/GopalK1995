@@ -195,4 +195,16 @@ describe("lead and deal mappers", () => {
     expect(m.lead({ id: "l1", fullName: "A", stageId: "s1", status: "qualified", email: "a@b.in", version: 2 }, keys, true)).toMatchObject({ stage: "proposal", version: 2, email: "a@b.in" });
     expect(m.lead({ id: "l2", status: "disqualified", email: "a@b.in" }, keys, false)).toMatchObject({ stage: "lost", email: "a***@b.in" });
   });
+  it("stage keys are data: a stage the workspace added passes through; the six status bucket keys keep their legacy funnel names", () => {
+    const k = m.stageKeys([{ id: "x1", key: "site_visit" }, { id: "x2", key: "converted" }, { id: "x3", key: "nurturing" }]);
+    expect(m.deal({ id: "d1", stageId: "x1" }, k).stage).toBe("site_visit");
+    expect(m.lead({ id: "l1", stageId: "x1", status: "contacted" }, k).stage).toBe("site_visit");
+    expect(m.lead({ id: "l2", stageId: "x2", status: "converted" }, k).stage).toBe("won");
+    expect(m.lead({ id: "l3", stageId: "x3", status: "nurturing" }, k).stage).toBe("contacted");
+  });
+  it("a deal carries the key of its pipeline when the pipelines are known", () => {
+    const p = m.pipelineKeys([{ id: "p9", key: "renewals" }]);
+    expect(m.deal({ id: "d1", stageId: "s2", pipelineId: "p9" }, keys, p).pipeline).toBe("renewals");
+    expect(m.deal({ id: "d2", stageId: "s2" }, keys, p).pipeline).toBeUndefined();
+  });
 });

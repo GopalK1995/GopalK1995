@@ -45,7 +45,7 @@ export async function moveDeal(dealId: string, to: DealStage, extra?: { won?: Wo
     const pipe = pipelines.find((p) => p.key === deal.pipeline) ?? pickPipeline(pipelines, null);
     const target = pipe?.stages.find((s) => s.key === to && !s.archived);
     if (!target) return failResult("invalid", "Unknown stage.");
-    const toLabel = v.dealStage[to] ?? target.name.en;
+    const toLabel = target.name.en;
     if (deal.stage === to) return failResult("invalid", `Already in ${toLabel}.`);
 
     let okMsg: string, okSub: string;
