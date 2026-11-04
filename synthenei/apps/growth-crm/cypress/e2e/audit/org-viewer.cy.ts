@@ -1,3 +1,5 @@
+import { clickLinkUntilSearchLacks } from "../../support/retry-click";
+
 // Org audit viewer (demo data). Real-mode paging and RLS are covered by the unit tests with a mocked client.
 describe("audit: org viewer", () => {
   beforeEach(() => { cy.loginAs("owner-lawsome"); cy.visit("/settings/audit"); });
@@ -16,7 +18,9 @@ describe("audit: org viewer", () => {
     cy.contains("button", "Apply filters").click();
     cy.contains("No events match these filters").should("be.visible");
     cy.location("search").should("contain", "action=");
-    cy.contains("a", "Clear filters").click();
+    // Bare-path <Link>; a click before hydration is a silent no-op, so assert the href then retry the click.
+    cy.contains("a", "Clear filters").should("have.attr", "href").and("not.include", "action=");
+    clickLinkUntilSearchLacks(() => cy.contains("a", "Clear filters"), "action=");
     cy.location("search").should("not.contain", "action=");
     cy.get("table").should("exist");
   });
