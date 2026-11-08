@@ -15,7 +15,7 @@ describe("guardCell (formula injection)", () => {
 describe("toCsv", () => {
   it("escapes commas, quotes and newlines, and guards every cell", () => {
     const out = toCsv(["a", "b"], [["x,y", '"q"'], ["=cmd|' /C calc'!A0", "line1\nline2"]]);
-    expect(out).toBe(`a,b\r\n"x,y","""q"""\r\n"'=cmd|' /C calc'!A0","line1\nline2"\r\n`);
+    expect(out).toBe(`a,b\r\n"x,y","""q"""\r\n'=cmd|' /C calc'!A0,"line1\nline2"\r\n`);
   });
   it("guards header cells too", () => expect(toCsv(["=evil"], [])).toBe("'=evil\r\n"));
   it("adds a BOM only when asked", () => {

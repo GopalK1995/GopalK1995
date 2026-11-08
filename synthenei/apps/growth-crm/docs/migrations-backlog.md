@@ -40,3 +40,27 @@ Items found while building T019 to T030 that need SQL. Nothing here has run on r
 - Archiving a stage or pipeline that still has records is checked in the app (RLS-limited count). A `before update of archived_at` trigger counting rows would make it exact.
 - `public.pipeline_stages.color` has no check constraint; the app accepts only the six `StageColor` tokens and falls back to the outcome's colour otherwise.
 - `POST /api/v1/deals/{id}/move` (src/lib/api/crud.ts) looks a stage up by `(tenant_id, key)` with `maybeSingle()`. With two pipelines that use the same key it errors; it must resolve the key inside the deal's `pipeline_id` (the same change T032 made to `deals.move` in the repo).
+
+## T034 needs (CSV / Excel import and export)
+No migration was written. Needed before real-mode import works:
+- Private bucket and storage RLS (path `<tenant uuid>/<workspace uuid>/<job uuid>/<file>`):
+```sql
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('imports', 'imports', false, 5242880)
+on conflict (id) do update set public = false, file_size_limit = 5242880;
+drop policy if exists imports_select on storage.objects;
+drop policy if exists imports_insert on storage.objects;
+create policy imports_select on storage.objects for select to authenticated using (
+  bucket_id = 'imports' and (storage.foldername(name))[2]::uuid in (select authz.ws_with('leads.import', 'own')));
+create policy imports_insert on storage.objects for insert to authenticated with check (
+  bucket_id = 'imports' and (storage.foldername(name))[2]::uuid in (select authz.ws_with('leads.import', 'own')));
+-- no update or delete policies: the job (service role) writes the error report
+```
+- Realtime and audit for `import_jobs` (progress broadcast, history audit):
+```sql
+create trigger z7_import_jobs_rt after insert or update or delete on public.import_jobs for each row execute function public.realtime_broadcast_row();
+create trigger trg_import_jobs_audit after insert or update or delete on public.import_jobs for each row execute function public.audit_row_change();
+```
+- Audit actions `export.csv` and `import.started` go through `audit_record` (the action pattern already allows them).
+- There is no `contacts.export` or `accounts.export`: those exports use `leads.export` plus the object's read permission.
+- Leads and contacts read through RLS need `pii.read`; a custom role with `leads.export` but no `pii.read` exports zero rows.

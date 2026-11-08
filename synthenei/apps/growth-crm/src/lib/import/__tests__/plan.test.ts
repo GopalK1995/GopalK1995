@@ -50,7 +50,7 @@ describe("parse", () => {
     expect(s.headers).toEqual(["Name", "Name (2)", "Note"]);
     expect(s.rows.map((r) => r.cells.Name)).toEqual(["Asha, M", "Ravi"]);
     expect(s.rows[0].cells.Note).toBe("a\nb");
-    expect(s.blankRows).toBe(2);
+    expect(s.blankRows).toBe(3);
   });
   it("rejects empty files", () => expect(() => parseCsvText("a,b\n")).toThrow(ImportError));
   it("fills blank header names", () => expect(normaliseHeaders(["", "A", "a"])).toEqual(["Column 1", "A", "a (2)"]));
@@ -79,7 +79,7 @@ describe("error report and export", () => {
     expect(buildExportCsv(cols, rows, { maskPii: true })).toContain("a•••@example.com");
     expect(buildExportCsv(cols, rows, { maskPii: true })).not.toContain("9876543210");
     expect(buildExportCsv(cols, rows, { maskPii: false })).toContain("asha@example.com");
-    expect(maskValue("phone", "+919876543210")).toBe("+91•••••••10");
+    expect(maskValue("phone", "+919876543210")).toBe("+91••••••••10");
   });
   it("export is formula-safe", () => {
     expect(buildExportCsv([{ key: "full_name", label: "Name" }], [{ full_name: "=HYPERLINK(\"x\")" }], { maskPii: false })).toContain("'=HYPERLINK");

@@ -32,3 +32,10 @@ export async function targetsOf(object: ImportObject, t: T): Promise<TargetField
 }
 
 export { isImportObject };
+
+/** Tenant uuid of the active workspace (Tenant carries only the slug in the session). */
+export async function tenantUuid(): Promise<string> {
+  const { active } = await requireActive();
+  const { tenantOfWorkspace } = await import("@/lib/metadata/repo");
+  return tenantOfWorkspace(active.ws.uuid);
+}

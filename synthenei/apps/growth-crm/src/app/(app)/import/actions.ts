@@ -27,7 +27,7 @@ import { planImport } from "@/lib/import/plan";
 import { importPath, pathBelongsTo } from "@/lib/import/storage";
 import { READ_PERM, SYSTEM_TARGETS, TABLE_OF, WRITE_PERM } from "@/lib/import/targets";
 import { isImportObject, jobModeOf, type ImportObject, type Mapping, type ParsedSheet } from "@/lib/import/types";
-import { importT, targetsOf, type T } from "./_lib/server";
+import { importT, targetsOf, tenantUuid, type T } from "./_lib/server";
 import type { ExportView, InspectView, JobView, PreviewView, UploadTicket } from "./types";
 
 type Row = Record<string, unknown>;
@@ -69,7 +69,7 @@ export async function startUpload(input: { object: string; fileName: string; siz
     if (!(input.size > 0) || input.size > MAX_FILE_BYTES) return failResult("invalid", t("tooBig", { mb: MAX_FILE_BYTES / 1024 / 1024 }));
     if (session.demo) return okResult("", { data: { jobId: "demo", demo: true } });
     const jobId = crypto.randomUUID();
-    const path = importPath(active.tenant.uuid, active.ws.uuid, jobId, input.fileName);
+    const path = importPath((await tenantUuid()), active.ws.uuid, jobId, input.fileName);
     const db = await dbForRequest();
     const ins = await from(db, "import_jobs").insert({ id: jobId, workspace_id: active.ws.uuid, object_type: object, storage_path: path, status: "uploaded" });
     if (ins.error) return failResult("error", t("uploadFailed"));
@@ -104,7 +104,7 @@ export async function inspectUpload(input: { jobId: string; object: string; demo
     const { session, active } = await requireActive();
     await guardImport(object);
     let sheet: ParsedSheet;
-    try { sheet = (await sheetOf(input.jobId, input.demoText ?? (session.demo ? SAMPLE_CSV[object] : undefined), session.demo, active.ws.uuid, active.tenant.uuid)).sheet; }
+    try { sheet = (await sheetOf(input.jobId, input.demoText ?? (session.demo ? SAMPLE_CSV[object] : undefined), session.demo, active.ws.uuid, (await tenantUuid()))).sheet; }
     catch (e) { return importError(t, e); }
     const targets = await targetsOf(object, t);
     let saved: Mapping = {};
@@ -129,7 +129,7 @@ export async function previewImport(input: { jobId: string; object: string; mapp
     const { session, active } = await requireActive();
     await guardImport(object);
     let sheet: ParsedSheet;
-    try { sheet = (await sheetOf(input.jobId, input.demoText ?? (session.demo ? SAMPLE_CSV[object] : undefined), session.demo, active.ws.uuid, active.tenant.uuid)).sheet; }
+    try { sheet = (await sheetOf(input.jobId, input.demoText ?? (session.demo ? SAMPLE_CSV[object] : undefined), session.demo, active.ws.uuid, (await tenantUuid()))).sheet; }
     catch (e) { return importError(t, e); }
     const targets = await targetsOf(object, t);
     const chk = checkMapping(m.data, targets, object);
@@ -163,12 +163,12 @@ export async function confirmImport(input: { jobId: string; object: string; mapp
     const db = await dbForRequest();
     const q = await from(db, "import_jobs").select("id,status,storage_path,object_type").eq("id", input.jobId).eq("workspace_id", active.ws.uuid).maybeSingle();
     const job = q.data as Row | null;
-    if (!job || job.object_type !== object || job.status !== "uploaded" || !pathBelongsTo(job.storage_path as string, active.tenant.uuid, active.ws.uuid)) return failResult("not_found", t("startFailed"));
+    if (!job || job.object_type !== object || job.status !== "uploaded" || !pathBelongsTo(job.storage_path as string, (await tenantUuid()), active.ws.uuid)) return failResult("not_found", t("startFailed"));
     const upd = await from(db, "import_jobs").update({ mapping, mode: jobModeOf(input.mode === "merge" ? "merge" : "skip"), status: "mapped" }).eq("id", input.jobId).eq("workspace_id", active.ws.uuid).eq("status", "uploaded").select("id").maybeSingle();
     if (upd.error || !upd.data) return failResult("error", t("startFailed"));
     await audit(actorFromPrincipal(p), { action: "import.started", summary: `Import started for ${object}`, object: { table: "import_jobs", id: input.jobId }, detail: { object, mode: input.mode, columns: Object.values(mapping).filter(Boolean).length } });
-    const payload: ImportRunPayload = { job_id: input.jobId, tenant_id: active.tenant.uuid, workspace_id: active.ws.uuid };
-    await enqueue("import", IMPORT_KIND.run, payload, { tenantId: active.tenant.uuid });
+    const payload: ImportRunPayload = { job_id: input.jobId, tenant_id: (await tenantUuid()), workspace_id: active.ws.uuid };
+    await enqueue("import", IMPORT_KIND.run, payload, { tenantId: (await tenantUuid()) });
     let sub: string | undefined;
     const kind = savedKind(object);
     if (input.remember && kind) {
@@ -216,7 +216,7 @@ export async function errorReportUrl(jobId: string): Promise<ActionResult<{ url:
     const db = await dbForRequest();
     const q = await from(db, "import_jobs").select("error_report_path").eq("id", jobId).eq("workspace_id", active.ws.uuid).maybeSingle();
     const path = (q.data as Row | null)?.error_report_path as string | undefined;
-    if (!path || !pathBelongsTo(path, active.tenant.uuid, active.ws.uuid)) return failResult("not_found", t("errorReportFailed"));
+    if (!path || !pathBelongsTo(path, (await tenantUuid()), active.ws.uuid)) return failResult("not_found", t("errorReportFailed"));
     const s = await db.storage.from(IMPORT_BUCKET).createSignedUrl(path, 60, { download: "import-problems.csv" });
     return s.data?.signedUrl ? okResult("", { data: { url: s.data.signedUrl } }) : failResult("error", t("errorReportFailed"));
   });
