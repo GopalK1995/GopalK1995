@@ -27,8 +27,10 @@ grant execute on function authz.is_bot_user(uuid) to authenticated, service_role
 
 -- True when the caller IS the bot user of the given agent (used by agent_runs policies so they do not depend on agents RLS).
 create or replace function authz.is_agent_bot(p_agent uuid) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select exists (select 1 from public.agents a where a.id = p_agent and a.bot_user_id = (select auth.uid()))
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  return exists (select 1 from public.agents a where a.id = p_agent and a.bot_user_id = (select auth.uid()));
+end
 $$;
 revoke all on function authz.is_agent_bot(uuid) from public, anon;
 grant execute on function authz.is_agent_bot(uuid) to authenticated, service_role;
