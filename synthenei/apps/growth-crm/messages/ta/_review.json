@@ -674,6 +674,15 @@
       "visDesc_private": true,
       "visDesc_team": true,
       "visDesc_workspace": true
+    },
+    "whatsapp": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "gate": true,
+      "optout.logged": true,
+      "block.window_closed": true,
+      "block.no_consent": true
     }
   }
 }

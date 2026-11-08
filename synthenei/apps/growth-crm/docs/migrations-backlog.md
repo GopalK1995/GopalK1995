@@ -74,3 +74,35 @@ create trigger trg_import_jobs_audit after insert or update or delete on public.
 - Audit actions `export.csv` and `import.started` go through `audit_record` (the action pattern already allows them).
 - There is no `contacts.export` or `accounts.export`: those exports use `leads.export` plus the object's read permission.
 - Leads and contacts read through RLS need `pii.read`; a custom role with `leads.export` but no `pii.read` exports zero rows.
+
+## T035 needs (WhatsApp Business, Cloud API)
+No migration was written. Needed before real-mode WhatsApp works (Lawsome DB is at 0021). All idempotent; the app tolerates the optional columns being absent.
+```sql
+-- 1. Tenant isolation: a phone number belongs to exactly one workspace, platform-wide (wa_numbers only has unique (workspace_id, phone_number_id)).
+create unique index if not exists wa_numbers_phone_number_id_unique on public.wa_numbers (phone_number_id);
+
+-- 2. Dedupe inbound messages by the WhatsApp message id (wamid). The connector also checks before insert; this makes it race-proof.
+create unique index if not exists messages_external_id_unique on public.messages (tenant_id, external_id) where external_id is not null;
+
+-- 3. Media by reference and failure detail (optional: the connector retries without these columns when they are missing).
+alter table public.messages
+  add column if not exists attachments  jsonb not null default '[]',   -- [{kind, media_id, mime, sha256, filename, size, bucket, path, status}]
+  add column if not exists error_code   text,                           -- vendor code (e.g. 131047) or a block reason (no_consent, window_closed ...)
+  add column if not exists error_detail text;                           -- fixed failure label, never message text or a recipient
+alter table public.messages drop constraint if exists messages_attachments_array;
+alter table public.messages add constraint messages_attachments_array check (jsonb_typeof(attachments) = 'array');
+
+-- 4. Private bucket for inbound media. Path: <tenant uuid>/<workspace uuid>/<connection uuid>/<message uuid>. Written by the service role only.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('wa-media', 'wa-media', false, 16777216)
+on conflict (id) do update set public = false, file_size_limit = 16777216;
+drop policy if exists wa_media_read on storage.objects;
+create policy wa_media_read on storage.objects for select to authenticated
+  using (bucket_id = 'wa-media' and (storage.foldername(name))[2]::uuid in (select public.member_ws_ids()));
+```
+Also needed by the integrator:
+- The `connector.scan` job (every 15 min) drives the `templates` (every 6 h) and `dispatch` (every 15 min) streams, so sending can be up to 15 minutes late. For prompt sending enqueue `connector.sync` `{connection_id, stream: "dispatch", trigger: "manual"}` (dedupe key `wa-dispatch:<message id>`) right after the inbox inserts a `queued` outbound WhatsApp message, or add an AFTER INSERT trigger on `messages` that does it.
+- Confirm the event types `message.received|sent|status` and `consent.changed` are in `public.event_types`.
+- `public.audit_record` is granted to `authenticated` only, so the service-role paths (webhook, dispatch) rely on the row-change audit triggers on messages, conversations and consent_log plus the events above. A service-callable audit RPC would let the connector write explicit `whatsapp.*` audit rows.
+- One Meta app has ONE callback URL. Manual connections (the tenant's own Meta app) use `/api/hooks/whatsapp/<connection id>` as built. For platform-wide embedded signup a router is needed that maps `entry[].changes[].value.metadata.phone_number_id` to `wa_numbers.integration_id` and forwards to the same pipeline (`parseWebhook` + `connector.webhook.handle`); the signature secret is then `WHATSAPP_APP_SECRET`.
+- `consent_log.subject_ref` for a STOP from a number with no lead is the sha256 of the E.164 number; a lead created later for that number is NOT blocked by it (can_contact keys on lead_id). A subject_ref lookup when creating leads would close that.
