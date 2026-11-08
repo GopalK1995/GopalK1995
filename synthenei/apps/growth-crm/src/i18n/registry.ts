@@ -17,6 +17,7 @@ import enIntegrations from "../../messages/en/integrations.json";
 import enCampaigns from "../../messages/en/campaigns.json";
 import enFields from "../../messages/en/fields.json";
 import enWebhooks from "../../messages/en/webhooks.json";
+import enImports from "../../messages/en/imports.json";
 import taCommon from "../../messages/ta/common.json";
 import taShell from "../../messages/ta/shell.json";
 import taAuth from "../../messages/ta/auth.json";
@@ -42,7 +43,7 @@ export type Messages = { [k: string]: string | boolean | Messages };
 const clean = (m: Messages): Messages => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith("_")));
 const RAW: Record<Locale, Messages> = {
   en: { common: enCommon, shell: enShell, auth: enAuth, errors: enErrors,
-    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks },
+    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks, imports: enImports },
   ta: { common: taCommon, shell: taShell, auth: taAuth, errors: taErrors,
     leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks },
 };
