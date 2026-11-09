@@ -173,5 +173,7 @@
   "csvNote": "CSV import is available from the Import button on Leads.",
   "blocked.not_shipped": "This connector is not built yet.",
   "chip.not_shipped": "Not available",
-  "stepVendorAdmin": "Vendor admin"
+  "stepVendorAdmin": "Vendor admin",
+  "email.sandbox": "Use the sandbox key shown in the runbook. Nothing leaves this system and nothing is delivered.",
+  "mailchimp.sandbox": "Mailchimp has no sandbox. Connect a test audience in your own Mailchimp account."
 }

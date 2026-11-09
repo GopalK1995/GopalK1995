@@ -9,16 +9,17 @@ import { verify as meta } from "./meta";
 import { verify as razorpay } from "./razorpay";
 import { verify as slack } from "./slack";
 import { verify as standard } from "./standard";
+import { verify as svix } from "./svix";
 import { verify as zoho } from "./zoho";
 import type { Verifier } from "./util";
 
-export type Scheme = "meta" | "razorpay" | "slack" | "calendly" | "calcom" | "google-pubsub" | "mailchimp" | "hubspot" | "zoho" | "standard";
-export const VERIFIERS: Record<Scheme, Verifier> = { meta, razorpay, slack, calendly, calcom, "google-pubsub": googlePubsub, mailchimp, hubspot, zoho, standard };
+export type Scheme = "meta" | "razorpay" | "slack" | "calendly" | "calcom" | "google-pubsub" | "mailchimp" | "hubspot" | "zoho" | "standard" | "svix";
+export const VERIFIERS: Record<Scheme, Verifier> = { meta, razorpay, slack, calendly, calcom, "google-pubsub": googlePubsub, mailchimp, hubspot, zoho, standard, svix };
 
 const SCHEME_OF: Record<string, Scheme> = {
   whatsapp: "meta", "meta-ads": "meta", razorpay: "razorpay", slack: "slack", calendly: "calendly", "cal-com": "calcom",
   gmail: "google-pubsub", "google-calendar": "google-pubsub", mailchimp: "mailchimp", hubspot: "hubspot", "zoho-crm": "zoho",
-  zapier: "standard", make: "standard", mock: "standard",
+  resend: "svix", zapier: "standard", make: "standard", mock: "standard",
 };
 /** The verification scheme a connector declares, or undefined when it does not receive webhooks (receiver answers 404). */
 export const schemeFor = (connectorId: string): Scheme | undefined => SCHEME_OF[connectorId];
@@ -46,7 +47,7 @@ export function pickVerifyToken(raw: string | null): string | null {
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 /** Provider event id used for dedupe (before the connection prefix): the vendor's own id when it sends one, else a body hash. */
 export function providerEventId(scheme: Scheme, headers: Headers, raw: string): string {
-  const h = scheme === "razorpay" ? headers.get("x-razorpay-event-id") : scheme === "standard" ? headers.get("webhook-id") : null;
+  const h = scheme === "razorpay" ? headers.get("x-razorpay-event-id") : scheme === "standard" ? headers.get("webhook-id") : scheme === "svix" ? headers.get("svix-id") : null;
   if (h && h.length <= 200) return h;
   try {
     const j = JSON.parse(raw) as { event_id?: unknown; message?: { messageId?: unknown } };
@@ -57,7 +58,7 @@ export function providerEventId(scheme: Scheme, headers: Headers, raw: string): 
 }
 
 /** Headers kept in webhook_inbox.headers: allow-listed, never signatures or authorization. */
-const KEEP = ["content-type", "user-agent", "x-razorpay-event-id", "webhook-id", "webhook-timestamp", "x-slack-request-timestamp"];
+const KEEP = ["content-type", "user-agent", "x-razorpay-event-id", "webhook-id", "webhook-timestamp", "svix-id", "svix-timestamp", "x-slack-request-timestamp"];
 export function allowListedHeaders(h: Headers): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of KEEP) { const v = h.get(k); if (v) out[k] = v.slice(0, 200); }
