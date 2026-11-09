@@ -1,0 +1,18 @@
+{
+  "_review": "T037 Tamil draft: needs native review before launch.",
+  "name": "ரேசர்பே",
+  "showcase": "மாதிரி காட்சி",
+  "showcaseSub": "மாதிரி கேட்வே: இணைய அழைப்பு இல்லை, உண்மையான கட்டணம் உருவாகாது.",
+  "testMode": "சோதனை முறை",
+  "testModeSub": "ரேசர்பே சோதனை விசைகள்: உண்மையான பணம் நகராது.",
+  "liveMode": "நேரடி",
+  "paymentLinkCreate": "கட்டண இணைப்பை உருவாக்கு",
+  "paymentLinkCopy": "இணைப்பை நகலெடு",
+  "paymentLinkCopied": "இணைப்பு நகலெடுக்கப்பட்டது",
+  "status.created": "இணைப்பு உருவாக்கப்பட்டது",
+  "status.pending": "கட்டணம் நடைபெறுகிறது",
+  "status.paid": "செலுத்தப்பட்டது",
+  "status.failed": "கட்டணம் தோல்வி",
+  "status.refunded": "திருப்பி அளிக்கப்பட்டது",
+  "status.cancelled": "ரத்து செய்யப்பட்டது"
+}

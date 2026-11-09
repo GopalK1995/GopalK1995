@@ -76,6 +76,7 @@
   "sandbox.unsupported": "Not offered by the vendor",
   "mock.sandbox": "Use the test key shown in the runbook. Nothing leaves this system.",
   "meta-ads.sandbox": "Use a Meta test ad account and the Lead Ads Testing Tool. Test leads and sample spend only; nothing reaches real customers.",
+  "razorpay.sandbox": "Use Razorpay test keys (rzp_test_...) and its published test cards. No real money moves.",
   "whatsapp.sandbox": "Use Meta's test business number and up to 5 test recipients. Nothing reaches real customers.",
   "btnConnect": "Connect",
   "btnAuthorise": "Authorise on the vendor site",

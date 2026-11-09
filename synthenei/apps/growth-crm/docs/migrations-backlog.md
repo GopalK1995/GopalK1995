@@ -144,3 +144,29 @@ Also needed by the integrator:
 - Connection settings (`integrations.settings`, no editor yet): `consent_rules` ([{source: "field"|"checkbox", key, purpose}]) and `fx_to_inr` ({"USD": rate}) for non-INR ad accounts. Without a rate those rows are rejected, never converted with a guessed rate.
 - Facebook Login for Business needs a `config_id` on the authorize URL; the OAuth start route has no per-connector env hook, so it is not sent (classic Facebook Login scopes are used).
 - Offline conversions (`ads_management`, `deal.won` / booking paid) are not built: `connector.push` fan-out only routes lead-scoped events, and the card's permission is optional (docs/META-PERMISSIONS.md).
+## T037 needs (Razorpay, tenant payments)
+No migration was written. All idempotent; the connector tolerates the optional columns being absent (writes retry without them).
+```sql
+-- 1. Audit/event types the connector emits (also in src/lib/events/catalog/payment.ts). The catalogue is a superset of the SQL seed, so order does not matter.
+insert into public.event_types (type, domain, description, webhook_eligible, agent_eligible) values
+  ('payment.created', 'payment', 'A payment link or order was created', true, true),
+  ('payment.paid', 'payment', 'A payment was received', true, true),
+  ('payment.failed', 'payment', 'A payment attempt failed', true, true),
+  ('payment.cancelled', 'payment', 'A payment link was cancelled or expired', true, true),
+  ('payment.refunded', 'payment', 'A payment was fully refunded', true, true),
+  ('payment.refund_partial', 'payment', 'A payment was partly refunded', true, true),
+  ('payment.mismatch', 'payment', 'A payment event did not match the stored amount or account and was not applied', false, true)
+on conflict (type) do update set domain = excluded.domain, description = excluded.description,
+  webhook_eligible = excluded.webhook_eligible, agent_eligible = excluded.agent_eligible;
+
+-- 2. Optional detail columns on payments (refund total in minor units, vendor failure code). Never a message, card or customer detail.
+alter table public.payments
+  add column if not exists refunded_paise bigint not null default 0 check (refunded_paise >= 0),
+  add column if not exists failure_code   text;
+```
+Also needed by the integrator:
+- Nothing creates a payment link yet from the UI (no page in Owns): a server action should call `createPaymentRequest(deps, conn, gatewayOf(rt, conn, secrets), { dealId, ... })` (src/lib/connectors/razorpay/links.ts) behind `deals.write` plus `integrations.read`, using `razorpayRuntime()` for deps. `src/components/payments/*` has the mode badge and status chip only.
+- Connection setting `paid_stage_key` (stage key in the deal's own pipeline, e.g. the hospitality "Booked" stage) decides the stage move on payment; unset = payment recorded, deal untouched. Optional setting `account_id` (acc_...) makes the webhook refuse events for any other Razorpay account. A settings editor for both is not built.
+- Webhook URL for the tenant to paste into Razorpay: `/api/hooks/razorpay/<connection id>`; events to tick: payment_link.paid / partially_paid / expired / cancelled, payment.authorized / captured / failed, order.paid, refund.created / processed / failed.
+- A connector_availability row for `razorpay` per environment (gate none; test keys work immediately).
+- Webhook-driven refund matching relies on the payment entity carrying the CRM reference in `notes` (Razorpay copies payment link and order notes onto the payment). A refund for a payment whose notes lack it and whose link id differs from the stored external id cannot be matched (rejected as unknown_payment).
