@@ -683,6 +683,23 @@
       "optout.logged": true,
       "block.window_closed": true,
       "block.no_consent": true
+    },
+    "razorpay": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "testMode": true,
+      "testModeSub": true,
+      "liveMode": true,
+      "paymentLinkCreate": true,
+      "paymentLinkCopy": true,
+      "paymentLinkCopied": true,
+      "status.created": true,
+      "status.pending": true,
+      "status.paid": true,
+      "status.failed": true,
+      "status.refunded": true,
+      "status.cancelled": true
     }
   }
 }
