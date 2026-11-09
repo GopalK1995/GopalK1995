@@ -21,6 +21,7 @@ import enImports from "../../messages/en/imports.json";
 import enObjects from "../../messages/en/objects.json";
 import enWhatsapp from "../../messages/en/whatsapp.json";
 import enRazorpay from "../../messages/en/razorpay.json";
+import enEmail from "../../messages/en/email.json";
 import taCommon from "../../messages/ta/common.json";
 import taShell from "../../messages/ta/shell.json";
 import taAuth from "../../messages/ta/auth.json";
@@ -42,6 +43,7 @@ import taWebhooks from "../../messages/ta/webhooks.json";
 import taObjects from "../../messages/ta/objects.json";
 import taWhatsapp from "../../messages/ta/whatsapp.json";
 import taRazorpay from "../../messages/ta/razorpay.json";
+import taEmail from "../../messages/ta/email.json";
 import type { Locale } from "./config";
 
 export type Messages = { [k: string]: string | boolean | Messages };
@@ -49,9 +51,9 @@ export type Messages = { [k: string]: string | boolean | Messages };
 const clean = (m: Messages): Messages => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith("_")));
 const RAW: Record<Locale, Messages> = {
   en: { common: enCommon, shell: enShell, auth: enAuth, errors: enErrors,
-    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks, objects: enObjects, imports: enImports, whatsapp: enWhatsapp, razorpay: enRazorpay },
+    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks, objects: enObjects, imports: enImports, whatsapp: enWhatsapp, razorpay: enRazorpay, email: enEmail },
   ta: { common: taCommon, shell: taShell, auth: taAuth, errors: taErrors,
-    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks, objects: taObjects, whatsapp: taWhatsapp, razorpay: taRazorpay },
+    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks, objects: taObjects, whatsapp: taWhatsapp, razorpay: taRazorpay, email: taEmail },
 };
 export const BASE: Record<Locale, Messages> = {
   en: Object.fromEntries(Object.entries(RAW.en).map(([k, v]) => [k, clean(v as Messages)])),

@@ -133,3 +133,55 @@ Also needed by the integrator:
 - Webhook URL for the tenant to paste into Razorpay: `/api/hooks/razorpay/<connection id>`; events to tick: payment_link.paid / partially_paid / expired / cancelled, payment.authorized / captured / failed, order.paid, refund.created / processed / failed.
 - A connector_availability row for `razorpay` per environment (gate none; test keys work immediately).
 - Webhook-driven refund matching relies on the payment entity carrying the CRM reference in `notes` (Razorpay copies payment link and order notes onto the payment). A refund for a payment whose notes lack it and whose link id differs from the stored external id cannot be matched (rejected as unknown_payment).
+
+## T038 needs (Email outbound + Mailchimp)
+No migration was written. All idempotent. The connector tolerates the optional columns being absent (writes retry without them) and a missing suppression table (reads as empty with a logged warning; unsubscribes and complaints still hold through `consent_log`, which is what `can_contact` reads).
+```sql
+-- 1. Suppression list: hard bounces, spam complaints, unsubscribes, manual. One row per address per workspace. Written by the service role only.
+create table if not exists public.email_suppressions (
+  id           uuid primary key default gen_random_uuid(),
+  tenant_id    uuid not null references public.tenants(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  email        text not null check (email = lower(email)),
+  reason       text not null check (reason in ('hard_bounce','complaint','unsubscribe','manual')),
+  source       text not null,
+  lead_id      uuid references public.leads(id) on delete set null,
+  created_at   timestamptz not null default now(),
+  unique (workspace_id, email)
+);
+create index if not exists email_suppressions_ws_created on public.email_suppressions (workspace_id, created_at desc);
+alter table public.email_suppressions enable row level security;
+drop policy if exists email_suppressions_select on public.email_suppressions;
+create policy email_suppressions_select on public.email_suppressions for select to authenticated
+  using (workspace_id in (select public.member_ws_ids()));
+-- no insert/update/delete policy: only the service role (webhooks, jobs, the public unsubscribe endpoint) writes.
+drop trigger if exists trg_email_suppressions_audit on public.email_suppressions;
+create trigger trg_email_suppressions_audit after insert or update or delete on public.email_suppressions
+  for each row execute function public.audit_row_change();   -- 'email' is masked as [pii] by the generic function
+
+-- 2. Event types the connector emits (also in src/lib/events/catalog/email.ts).
+insert into public.event_types (type, domain, description, webhook_eligible, agent_eligible) values
+  ('email.bounced', 'email', 'An address hard-bounced and was suppressed', true, true),
+  ('email.complained', 'email', 'A recipient reported an email as spam; marketing consent was withdrawn', true, true),
+  ('email.unsubscribed', 'email', 'A recipient unsubscribed from email; marketing consent was withdrawn', true, true),
+  ('email.suppressed', 'email', 'An address was added to the suppression list by hand', false, true)
+on conflict (type) do update set domain = excluded.domain, description = excluded.description,
+  webhook_eligible = excluded.webhook_eligible, agent_eligible = excluded.agent_eligible;
+
+-- 3. Subject lines (without them the subject is read from a "Subject: ..." first line of the body, else a generic one) and the
+--    failure columns shared with T035 (messages.error_code / error_detail).
+alter table public.message_templates add column if not exists subject text;
+alter table public.messages
+  add column if not exists subject text,
+  add column if not exists error_code text,
+  add column if not exists error_detail text;
+-- Idempotent campaign recording: one stored message per provider message id (the connector also checks before inserting).
+create unique index if not exists messages_tenant_external_uidx on public.messages (tenant_id, external_id) where external_id is not null;
+```
+Also needed by the integrator:
+- Env: `EMAIL_UNSUBSCRIBE_SECRET` (32+ random chars) and `APP_BASE_URL` MUST be set before any tenant email goes out; without them every send is blocked as `no_unsubscribe` (mail that cannot be opted out of is never sent). Others: `RESEND_API_BASE` (stubs), `RESEND_API_KEY` + `EMAIL_FROM` + `EMAIL_REPLY_TO` (platform system mail only), `MAILCHIMP_CLIENT_ID` / `MAILCHIMP_CLIENT_SECRET` / `MAILCHIMP_API_BASE`.
+- `connector_availability` rows for `resend`, `email-smtp` (gate none) and `mailchimp` (gate needs_client_credentials until the Mailchimp app exists) per environment; catalogue rows if the Integrations list is DB-driven.
+- Platform system mail: `setEmailSender(platformEmailSender(process.env))` from `src/lib/connectors/email/platform.ts` replaces the stub in `src/lib/notify/email.ts` (not in T038's Owns).
+- Inbox: `channelFor("email")` in `inbox/_lib/channel.ts` should return `{ id: "email", live: true }` when a `resend` or `email-smtp` connection is connected; queued email rows are then sent by the `dispatch` stream within 5 minutes (or enqueue `connector.sync` for stream `dispatch` on insert).
+- Campaign sends: a server action should call `enqueueEmailCampaign({ connection_id, template_id, lead_ids, campaign_key }, tenantId)` (`src/lib/connectors/email/jobs.ts`) behind `messages.send_email`. Consent is decided per recipient at send time.
+- Resend webhook: in Resend add `<APP_BASE_URL>/api/hooks/resend/<connection id>` (shown on /settings/email) with delivered, bounced, complained events, then paste the `whsec_` secret on that page.

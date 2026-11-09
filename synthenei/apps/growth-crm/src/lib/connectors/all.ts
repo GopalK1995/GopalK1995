@@ -3,10 +3,12 @@
 import { registerConnector } from "./registry";
 import type { ConnectorDef } from "./core/types";
 import { razorpayConnector } from "./razorpay/connector";
+import { resendConnector, smtpConnector } from "./email";
+import { mailchimpConnector } from "./mailchimp";
 import { whatsappConnector } from "./whatsapp/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, resendConnector, smtpConnector, mailchimpConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

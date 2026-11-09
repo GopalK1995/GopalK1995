@@ -148,7 +148,9 @@ export type RefreshOutcome = { ok: true; refreshed: boolean } | { ok: false; rea
 export async function refreshIfNeeded(d: RuntimeDeps, conn: ConnectionRow, skewSec = 300): Promise<RefreshOutcome> {
   const def = getConnector(conn.connectorId);
   if (!def || def.auth !== "oauth2" || !def.oauth) return { ok: true, refreshed: false };
-  const exp = conn.tokenExpiresAt ? Date.parse(conn.tokenExpiresAt) : NaN;
+  // A token with no recorded expiry never expires (e.g. Mailchimp's): there is nothing to refresh.
+  if (!conn.tokenExpiresAt) return { ok: true, refreshed: false };
+  const exp = Date.parse(conn.tokenExpiresAt);
   if (!Number.isNaN(exp) && exp - nowOf(d).getTime() > skewSec * 1000) return { ok: true, refreshed: false };
   const secrets = await loadSecrets(d.vault, conn);
   const fail = async (msg: string) => { await d.store.updateConnection(conn.id, { status: "needs_attention", lastError: msg }); return { ok: false as const, reason: "needs_attention" as const }; };

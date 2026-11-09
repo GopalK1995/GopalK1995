@@ -320,7 +320,9 @@
       "mapAdd": true,
       "mapRemove": true,
       "mapSave": true,
-      "mapPreview": true
+      "mapPreview": true,
+      "email.sandbox": true,
+      "mailchimp.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -700,6 +702,31 @@
       "status.failed": true,
       "status.refunded": true,
       "status.cancelled": true
+    },
+    "email": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "title": true,
+      "sub": true,
+      "save": true,
+      "saved": true,
+      "fromName": true,
+      "fromEmail": true,
+      "replyTo": true,
+      "footer": true,
+      "domainTitle": true,
+      "domainCheck": true,
+      "suppressionTitle": true,
+      "suppressionEmpty": true,
+      "unsubscribe.title": true,
+      "unsubscribe.ready": true,
+      "unsubscribe.confirm": true,
+      "unsubscribe.doneTitle": true,
+      "unsubscribe.doneBody": true,
+      "unsubscribe.expiredTitle": true,
+      "unsubscribe.invalidTitle": true,
+      "demoNotSaved": true
     }
   }
 }
