@@ -2,10 +2,11 @@
 // ALL_CONNECTORS. The mock connector is built into registry.ts and is hidden in production by isUsableIn().
 import { registerConnector } from "./registry";
 import type { ConnectorDef } from "./core/types";
+import { razorpayConnector } from "./razorpay/connector";
 import { whatsappConnector } from "./whatsapp/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

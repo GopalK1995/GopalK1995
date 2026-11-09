@@ -106,3 +106,30 @@ Also needed by the integrator:
 - `public.audit_record` is granted to `authenticated` only, so the service-role paths (webhook, dispatch) rely on the row-change audit triggers on messages, conversations and consent_log plus the events above. A service-callable audit RPC would let the connector write explicit `whatsapp.*` audit rows.
 - One Meta app has ONE callback URL. Manual connections (the tenant's own Meta app) use `/api/hooks/whatsapp/<connection id>` as built. For platform-wide embedded signup a router is needed that maps `entry[].changes[].value.metadata.phone_number_id` to `wa_numbers.integration_id` and forwards to the same pipeline (`parseWebhook` + `connector.webhook.handle`); the signature secret is then `WHATSAPP_APP_SECRET`.
 - `consent_log.subject_ref` for a STOP from a number with no lead is the sha256 of the E.164 number; a lead created later for that number is NOT blocked by it (can_contact keys on lead_id). A subject_ref lookup when creating leads would close that.
+
+## T037 needs (Razorpay, tenant payments)
+No migration was written. All idempotent; the connector tolerates the optional columns being absent (writes retry without them).
+```sql
+-- 1. Audit/event types the connector emits (also in src/lib/events/catalog/payment.ts). The catalogue is a superset of the SQL seed, so order does not matter.
+insert into public.event_types (type, domain, description, webhook_eligible, agent_eligible) values
+  ('payment.created', 'payment', 'A payment link or order was created', true, true),
+  ('payment.paid', 'payment', 'A payment was received', true, true),
+  ('payment.failed', 'payment', 'A payment attempt failed', true, true),
+  ('payment.cancelled', 'payment', 'A payment link was cancelled or expired', true, true),
+  ('payment.refunded', 'payment', 'A payment was fully refunded', true, true),
+  ('payment.refund_partial', 'payment', 'A payment was partly refunded', true, true),
+  ('payment.mismatch', 'payment', 'A payment event did not match the stored amount or account and was not applied', false, true)
+on conflict (type) do update set domain = excluded.domain, description = excluded.description,
+  webhook_eligible = excluded.webhook_eligible, agent_eligible = excluded.agent_eligible;
+
+-- 2. Optional detail columns on payments (refund total in minor units, vendor failure code). Never a message, card or customer detail.
+alter table public.payments
+  add column if not exists refunded_paise bigint not null default 0 check (refunded_paise >= 0),
+  add column if not exists failure_code   text;
+```
+Also needed by the integrator:
+- Nothing creates a payment link yet from the UI (no page in Owns): a server action should call `createPaymentRequest(deps, conn, gatewayOf(rt, conn, secrets), { dealId, ... })` (src/lib/connectors/razorpay/links.ts) behind `deals.write` plus `integrations.read`, using `razorpayRuntime()` for deps. `src/components/payments/*` has the mode badge and status chip only.
+- Connection setting `paid_stage_key` (stage key in the deal's own pipeline, e.g. the hospitality "Booked" stage) decides the stage move on payment; unset = payment recorded, deal untouched. Optional setting `account_id` (acc_...) makes the webhook refuse events for any other Razorpay account. A settings editor for both is not built.
+- Webhook URL for the tenant to paste into Razorpay: `/api/hooks/razorpay/<connection id>`; events to tick: payment_link.paid / partially_paid / expired / cancelled, payment.authorized / captured / failed, order.paid, refund.created / processed / failed.
+- A connector_availability row for `razorpay` per environment (gate none; test keys work immediately).
+- Webhook-driven refund matching relies on the payment entity carrying the CRM reference in `notes` (Razorpay copies payment link and order notes onto the payment). A refund for a payment whose notes lack it and whose link id differs from the stored external id cannot be matched (rejected as unknown_payment).
