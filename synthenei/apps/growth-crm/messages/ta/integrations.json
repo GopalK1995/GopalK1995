@@ -17,6 +17,7 @@
   "chip.not_configured": "Synthan இன்னும் அமைக்கவில்லை",
   "chip.available": "இணைக்கப்படவில்லை",
   "chip.sandbox": "சோதனை",
+  "meta-ads.sandbox": "Meta சோதனை விளம்பரக் கணக்கு மற்றும் Lead Ads Testing Tool-ஐப் பயன்படுத்தவும். சோதனை லீட்கள் மட்டும்; உண்மையான வாடிக்கையாளர்களுக்கு எதுவும் செல்லாது.",
   "chip.needs_attention": "கவனம் தேவை",
   "chip.error": "பிழை",
   "chip.disconnected": "துண்டிக்கப்பட்டது",

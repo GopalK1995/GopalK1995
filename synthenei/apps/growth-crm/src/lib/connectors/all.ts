@@ -6,9 +6,10 @@ import { razorpayConnector } from "./razorpay/connector";
 import { resendConnector, smtpConnector } from "./email";
 import { mailchimpConnector } from "./mailchimp";
 import { whatsappConnector } from "./whatsapp/connector";
+import { metaAdsConnector } from "./meta-ads/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, resendConnector, smtpConnector, mailchimpConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector];
 
 let done = false;
 export function registerAllConnectors(): void {
