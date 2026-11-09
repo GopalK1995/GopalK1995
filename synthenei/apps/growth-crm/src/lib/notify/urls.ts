@@ -1,7 +1,7 @@
 // Where a notification or feed row links to. Always an in-app path (DB check: url ~ '^/[^/\\]').
 export function objectUrl(type: string | null, id: string | null): string | null {
   if (!type || !id) return null;
-  if (type.startsWith("obj:")) return `/records/${encodeURIComponent(type.slice(4))}/${id}`;
+  if (type.startsWith("obj:")) return `/o/${encodeURIComponent(type.slice(4))}/${id}`;
   switch (type) {
     case "lead": return `/leads/${id}`;
     case "account": return `/accounts/${id}`;

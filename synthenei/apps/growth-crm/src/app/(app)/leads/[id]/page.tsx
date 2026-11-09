@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RecordCustomFields } from "@/components/fields/record-custom-fields";
 import { RecordCollab } from "@/components/collab/record-collab";
 import { PresenceFaces } from "@/components/realtime";
 import { recordTopic } from "@/lib/realtime/topics";
@@ -300,6 +301,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           </Card>
         </div>
       </div>
+      <div className="mt-6"><RecordCustomFields object="lead" id={lead.id} ownerId={lead.ownerId || null} revalidate={`/leads/${lead.id}`} /></div>
       <div className="mt-6"><RecordCollab objectType="lead" objectId={lead.id} /></div>
     </>
   );

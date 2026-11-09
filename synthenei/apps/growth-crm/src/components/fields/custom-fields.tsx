@@ -16,6 +16,9 @@ import { authzTypeOf } from "@/lib/metadata/types";
 import { vocabFor } from "@/lib/vertical";
 import type { ObjectType } from "@/lib/authz";
 import type { Option } from "@/components/ui/controls";
+import { placeFields } from "@/lib/layouts/place";
+import type { DetailSpec } from "@/lib/layouts/spec";
+import { ot } from "@/lib/layouts/strings";
 import { CustomFieldsPanel } from "./custom-fields-panel";
 
 export interface CustomFieldsRecord {
@@ -24,8 +27,10 @@ export interface CustomFieldsRecord {
   custom: Record<string, unknown> | null | undefined;
 }
 
-export async function CustomFields({ object, record, readOnly = false, lookups, revalidate, title }: {
+export async function CustomFields({ object, record, readOnly = false, lookups, revalidate, title, layout }: {
   object: string; record: CustomFieldsRecord; readOnly?: boolean; lookups?: Record<string, Option[]>; revalidate?: string; title?: string;
+  /** A resolved (non-default) detail layout for the viewer: groups and orders the fields, and hides fields it does not place. */
+  layout?: DetailSpec | null;
 }) {
   const { session, active } = await requireActive();
   const locale = (await getLocale()) === "ta" ? "ta" : "en";
@@ -37,7 +42,7 @@ export async function CustomFields({ object, record, readOnly = false, lookups, 
     const prepared = prepareCustomFields({ defs: meta.fields, values: record.custom ?? {}, principal, objectKey: object, canWriteRecord });
     return (
       <CustomFieldsPanel
-        objectKey={object} recordId={record.id} version={record.version} fields={prepared.fields} values={prepared.values}
+        objectKey={object} recordId={record.id} version={record.version} fields={layout ? placeFields(prepared.fields, layout, ot("sectionDetails", {}, locale)) : prepared.fields} values={prepared.values}
         hiddenCount={prepared.hiddenCount} locale={locale} demo={session.demo === true} noun={noun}
         canManage={can(principal, "fields.manage")} revalidate={revalidate} lookups={lookups} title={title}
       />

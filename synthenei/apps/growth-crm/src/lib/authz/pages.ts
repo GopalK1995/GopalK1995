@@ -4,6 +4,10 @@ export const PAGE_PERMISSION: Record<string, string> = {
   "/contacts": "contacts.read", "/campaigns": "campaigns.read", "/audience": "segments.read", "/analytics": "analytics.read",
   "/inbox": "inbox.read", "/tasks": "tasks.read", "/ai": "ai.use", "/integrations": "integrations.read",
   "/data-health": "data_health.read", "/settings": "settings.read",
+  // Pages added after the legacy matrix. Longest prefix wins, so these are stricter than "/settings". Each page also asserts its own permission.
+  "/import": "leads.import",
+  "/settings/pipelines": "pipelines.manage", "/settings/objects": "objects.manage", "/settings/layouts": "layouts.manage",
+  "/settings/fields": "fields.manage", "/settings/email": "integrations.manage",
 };
 export const ALWAYS_ALLOWED_PAGES = ["/notifications", "/profile", "/forbidden", "/onboarding"];
 

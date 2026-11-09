@@ -11,13 +11,18 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { cn } from "@/lib/utils";
 import { vocabFor } from "@/lib/vertical";
 import { BAND_LABEL, VIEWS, bandOf, defaultView, isOpenLead, shortCity, type Band, type ViewKey } from "./_lib/sales";
+import { fieldFilterDefs } from "@/components/fields/field-column";
+import { loadListFields } from "@/lib/metadata/list-server";
+import { loadListCustom } from "@/lib/metadata/list-custom";
+import { matchesFilter } from "@/lib/metadata/filters";
+import { getLocale } from "@/i18n/server";
 import { LeadsTable, type LeadRow } from "./_components/leads-table";
 import { ImportDialog } from "./_components/import-dialog";
 import { CreateLead } from "./_components/create-lead";
 
 export const metadata = { title: "Leads" };
 const PAGE = 40;
-type SP = { view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
+type SP = { [custom: string]: string | undefined; view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const { ds, now, role, session, scope, masked, support, active, stageOrder } = await pageCtx();
@@ -25,6 +30,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const [all, accounts, team, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.team(), ds.campaigns()]);
   const visible = scope.leads(all);
+  // Custom fields: columns and filters for what this viewer may see; values are masked server-side before they reach the table.
+  const flocale = (await getLocale()) === "ta" ? "ta" : "en";
+  const cf = await loadListFields("lead").catch((e) => { console.error("[leads] custom fields unavailable", e); return null; });
+  const customDocs = cf && cf.fields.length ? await loadListCustom("lead", visible.map((l) => l.id)) : new Map<string, Record<string, unknown>>();
+  const customFilterDefs = cf ? fieldFilterDefs(cf.fields, flocale) : [];
+  const customCols = cf ? cf.fields.slice(0, 3) : [];
   const acc = new Map(accounts.map((a) => [a.id, a]));
   const nowMs = new Date(now).getTime();
   const slaBreached = (l: Lead) => (l.firstResponseMins ?? (nowMs - new Date(l.createdAt).getTime()) / 60e3) > SLA_MINUTES && (l.firstResponseMins !== null || l.stage === "new");
@@ -52,6 +63,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     if (sp.district && a?.district !== sp.district) return false;
     if (sp.owner && l.ownerId !== sp.owner) return false;
     if (sp.band && bandOf(l.score) !== sp.band) return false;
+    for (const fd of customFilterDefs) {
+      const v = sp[fd.key as keyof SP]; if (!v) continue;
+      const def = cf!.fields.find((f) => `custom.${f.key}` === fd.key)!;
+      if (!matchesFilter(def, { op: def.type === "multi_select" ? "contains" : "eq", value: v }, customDocs.get(l.id)?.[def.key])) return false;
+    }
     if (q) {
       const hay = (masked ? `${a?.name} ${l.city} ${a?.district}` : `${l.name} ${a?.name} ${l.city} ${a?.district} ${l.email}`).toLowerCase();
       const digits = q.replace(/\D/g, "");
@@ -82,6 +98,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       sla: slaBreached(l),
       consent: { wa: l.consent.whatsapp, email: l.consent.marketing },
       phone: masked ? null : l.phone,
+      ...(cf ? { custom: cf.maskRow({ custom: customDocs.get(l.id) ?? {} }).custom ?? {} } : {}),
     };
   });
 
@@ -94,6 +111,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     { key: "district", label: t.district, options: districts.map((d) => ({ value: d, label: d })) },
     ...(role === "sales_rep" ? [] : [{ key: "owner", label: "Owner", options: owners.map((o) => ({ value: o.id, label: o.name })) }]),
     { key: "band", label: "Score", options: (["hot", "warm", "cool"] as Band[]).map((b) => ({ value: b, label: BAND_LABEL[b] })) },
+    ...customFilterDefs,
   ];
   const viewHref = (k: ViewKey) => {
     const n = new URLSearchParams(Object.entries(sp).filter(([key, v]) => v && key !== "page" && key !== "view") as [string, string][]);
@@ -137,7 +155,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-col gap-3 p-3 sm:p-4">
           <FilterBar search={masked ? t.searchMasked : t.search} filters={filters} />
         </div>
-        <LeadsTable rows={rows} owners={owners.map((o) => ({ id: o.id, name: o.name }))} perms={perms} masked={masked} sort={sort}
+        <LeadsTable rows={rows} owners={owners.map((o) => ({ id: o.id, name: o.name }))} perms={perms} masked={masked} sort={sort} customCols={customCols} locale={flocale}
           allIds={filtered.map((l) => l.id)} empty={emptyMsg} />
         {pages > 1 && (
           <nav aria-label="Pages" className="flex items-center justify-between gap-2 border-t border-line px-4 py-3 text-[12px] text-ink-3">

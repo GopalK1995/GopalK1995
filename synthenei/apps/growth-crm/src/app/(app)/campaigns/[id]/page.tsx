@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download, Pause, Play } from "lucide-react";
+import { RecordCollab } from "@/components/collab/record-collab";
+import { PresenceFaces } from "@/components/realtime";
+import { recordTopic } from "@/lib/realtime/topics";
 import { maskName, pageCtx } from "@/lib/data/context";
 import { CHANNEL_LABEL, campaignStats, isDemo } from "@/lib/data/metrics";
 import { fmtDate, fmtDateY, inr, inrCompact, num, numCompact, pct, ratio } from "@/lib/format";
@@ -33,6 +36,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const c = await loadCampaign(mctx, (await params).id);
   return { title: c ? shortName(c.name) : "Campaign" };
 }
+
+/** Presence topic for a record page; null when the workspace id is not a UUID (never throws into the page). */
+function topicFor(ws: string, type: string, id: string): string | null { try { return recordTopic(ws, type, id); } catch { return null; } }
 
 /** Compact horizontal bars in HTML for small categorical breakdowns (sorted, counts printed). */
 function BarList({ title, rows, total }: { title: string; rows: { label: string; n: number }[]; total: number }) {
@@ -162,6 +168,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
           <ImportCsvDialog campaigns={[{ id: c.id, name: c.name, channel: c.channel }]} campaignId={c.id} />
           <EditCampaignDialog c={{ id: c.id, name: c.name, objective: c.objective, budget: c.budget, startDate: c.startDate, endDate: c.endDate, version: c.version }} />
         </>}>
+        {topicFor(active.ws.uuid, "campaign", c.id) && <div className="mt-3"><PresenceFaces topic={topicFor(active.ws.uuid, "campaign", c.id)!} canRead /></div>}
         <div className="mt-3 flex max-w-md items-center gap-3">
           <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
           <Meter value={s.spend} max={c.budget} tone={budgetUsed > 0.95 ? "warn" : "accent"} className="flex-1" />
@@ -282,6 +289,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
           </Card>
         </StaggerItem>
       </Stagger>
+      <div className="mt-6"><RecordCollab objectType="campaign" objectId={c.id} /></div>
       <p className="mt-6 text-[11px] text-ink-3"><StatusChip status="sample" className="mr-1.5" />Spend, impressions and clicks are sample rows shaped like a {CHANNEL_CHIP[c.channel]} export. {d_.foot(v.leadStage.demo_booked)}</p>
     </>
   );

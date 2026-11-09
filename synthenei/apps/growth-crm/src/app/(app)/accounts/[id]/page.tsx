@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RecordCustomFields } from "@/components/fields/record-custom-fields";
 import { RecordCollab } from "@/components/collab/record-collab";
 import { PresenceFaces } from "@/components/realtime";
 import { recordTopic } from "@/lib/realtime/topics";
@@ -252,6 +253,7 @@ export default async function AccountDetail({ params }: { params: Promise<{ id: 
           )}
         </StaggerItem>
       </Stagger>
+      <div className="mt-6"><RecordCustomFields object="account" id={acc.id} ownerId={rec.ownerId} revalidate={`/accounts/${acc.id}`} /></div>
       <div className="mt-6"><RecordCollab objectType="account" objectId={acc.id} /></div>
     </>
   );

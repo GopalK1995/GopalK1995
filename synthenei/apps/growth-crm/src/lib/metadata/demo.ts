@@ -33,3 +33,10 @@ export function demoObjects(): ObjectTypeDef[] {
 }
 
 export const demoObject = (key: string): ObjectTypeDef | null => demoObjects().find((o) => o.key === key) ?? null;
+
+/** Example values for the labelled example fields, so a demo record page shows something to read. Never saved. */
+export function demoCustomValues(objectKey: string): Record<string, unknown> {
+  const v: Record<string, unknown> = { example_source_note: "Example value", example_priority: "normal" };
+  if (objectKey === "lead" || objectKey === "deal") v.example_budget = 250000;
+  return v;
+}
