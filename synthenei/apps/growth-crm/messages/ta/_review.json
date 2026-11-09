@@ -320,7 +320,8 @@
       "mapAdd": true,
       "mapRemove": true,
       "mapSave": true,
-      "mapPreview": true
+      "mapPreview": true,
+      "meta-ads.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -683,6 +684,28 @@
       "optout.logged": true,
       "block.window_closed": true,
       "block.no_consent": true
+    },
+    "metaAds": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "gate": true,
+      "pickPageTitle": true,
+      "pickPageHelp": true,
+      "webhookHelp": true,
+      "err.page_taken": true,
+      "err.ig_taken": true,
+      "err.page_not_managed": true,
+      "err.ad_account_not_available": true,
+      "err.token_rejected": true,
+      "err.not_configured": true,
+      "block.window_closed": true,
+      "block.text_too_long": true,
+      "block.empty_text": true,
+      "block.no_recipient": true,
+      "insights.currencyNote": true,
+      "insights.synced": true,
+      "consent.note": true
     }
   }
 }
