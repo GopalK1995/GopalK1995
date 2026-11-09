@@ -106,3 +106,41 @@ Also needed by the integrator:
 - `public.audit_record` is granted to `authenticated` only, so the service-role paths (webhook, dispatch) rely on the row-change audit triggers on messages, conversations and consent_log plus the events above. A service-callable audit RPC would let the connector write explicit `whatsapp.*` audit rows.
 - One Meta app has ONE callback URL. Manual connections (the tenant's own Meta app) use `/api/hooks/whatsapp/<connection id>` as built. For platform-wide embedded signup a router is needed that maps `entry[].changes[].value.metadata.phone_number_id` to `wa_numbers.integration_id` and forwards to the same pipeline (`parseWebhook` + `connector.webhook.handle`); the signature secret is then `WHATSAPP_APP_SECRET`.
 - `consent_log.subject_ref` for a STOP from a number with no lead is the sha256 of the E.164 number; a lead created later for that number is NOT blocked by it (can_contact keys on lead_id). A subject_ref lookup when creating leads would close that.
+
+## T036 needs (Meta Lead Ads, Instagram DMs, Ads Insights)
+No migration was written. Needed before real-mode Meta works. All idempotent. Ad account details reuse the existing `ad_accounts` table (platform `meta`); campaigns reuse `campaigns` (`external_ids->>'meta'`); metrics reuse `campaign_daily_metrics` (0019 columns `integration_id`, `external_campaign_id`).
+```sql
+-- 1. Tenant isolation: a Facebook Page / Instagram account belongs to exactly one workspace, platform-wide.
+create table if not exists public.meta_assets (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references public.tenants(id) on delete cascade,
+  workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  integration_id uuid references public.integrations(id) on delete set null,   -- null = released (connection disconnected / re-selected)
+  platform       text not null check (platform in ('facebook_page', 'instagram')),
+  external_id    text not null,
+  name           text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  constraint meta_assets_asset_unique unique (platform, external_id)
+);
+create index if not exists meta_assets_workspace on public.meta_assets (workspace_id);
+create index if not exists meta_assets_integration on public.meta_assets (integration_id);
+alter table public.meta_assets enable row level security;
+-- Read for members of the workspace; writes are service role only (the connector).
+drop policy if exists meta_assets_read on public.meta_assets;
+create policy meta_assets_read on public.meta_assets for select to authenticated using (workspace_id in (select public.member_ws_ids()));
+
+-- 2. Dedupe Instagram DMs by the message id (mid). Shared with T035 (same index; skip if already applied).
+create unique index if not exists messages_external_id_unique on public.messages (tenant_id, external_id) where external_id is not null;
+
+-- 3. Lookups used by the webhook path.
+create index if not exists leads_ig_igsid on public.leads (workspace_id, (external_ids->>'instagram_igsid')) where external_ids ? 'instagram_igsid';
+create index if not exists campaigns_meta_external on public.campaigns (workspace_id, (external_ids->>'meta')) where external_ids ? 'meta';
+```
+Also needed by the integrator:
+- Webhooks: the per-connection URL `/api/hooks/meta-ads/<connection id>` works for a tenant's own Meta app. One platform Meta app has ONE callback URL: a router that maps `entry[].changes[].value.page_id` (leadgen) / `entry[].id` (instagram) to `meta_assets.integration_id` and forwards to the same pipeline is needed for the shared app (signature secret = `META_APP_SECRET`). Until then the callback URL of the app must be `/api/hooks/meta-ads/<connection id>` (one connection per app).
+- UI for selection: call `listMetaAssets` / `selectMetaAssets` (src/lib/connectors/meta-ads/assets.ts) from a server action (permission `integrations.manage`) after the OAuth callback returns `connected=1`; show the returned `verifyToken` once. Until the selection runs no stream or webhook does anything.
+- Inbox: `channelFor("instagram")` should be live when a meta-ads connection with an Instagram account is connected; show `messages.error_code` (`window_closed`, `text_too_long`, `empty_text`, `no_recipient`) with the `metaAds` strings (`block.*`). The dispatcher takes queued Instagram messages every 15 min; enqueue `connector.sync {connection_id, stream: "dispatch"}` after an insert for prompt sending.
+- Connection settings (`integrations.settings`, no editor yet): `consent_rules` ([{source: "field"|"checkbox", key, purpose}]) and `fx_to_inr` ({"USD": rate}) for non-INR ad accounts. Without a rate those rows are rejected, never converted with a guessed rate.
+- Facebook Login for Business needs a `config_id` on the authorize URL; the OAuth start route has no per-connector env hook, so it is not sent (classic Facebook Login scopes are used).
+- Offline conversions (`ads_management`, `deal.won` / booking paid) are not built: `connector.push` fan-out only routes lead-scoped events, and the card's permission is optional (docs/META-PERMISSIONS.md).

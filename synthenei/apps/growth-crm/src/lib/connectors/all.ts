@@ -3,9 +3,10 @@
 import { registerConnector } from "./registry";
 import type { ConnectorDef } from "./core/types";
 import { whatsappConnector } from "./whatsapp/connector";
+import { metaAdsConnector } from "./meta-ads/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, metaAdsConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

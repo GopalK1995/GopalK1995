@@ -1,0 +1,23 @@
+{
+  "_review": "T036 draft. English is final; Tamil needs native review.",
+  "name": "Meta (Lead Ads, Instagram, Ads)",
+  "showcase": "Showcase",
+  "showcaseSub": "Sandbox gateway: sample leads and sample spend only.",
+  "gate": "Needs Meta business verification and app review for live",
+  "pickPageTitle": "Choose the Page, Instagram account and ad account",
+  "pickPageHelp": "Only Pages you manage are listed. A Page or Instagram account can belong to one workspace only.",
+  "webhookHelp": "Paste the callback URL and this verify token into the Meta app webhook settings, and subscribe to leadgen (Page) and messages (Instagram).",
+  "err.page_taken": "This Page is already connected to another workspace",
+  "err.ig_taken": "This Instagram account is already connected to another workspace",
+  "err.page_not_managed": "You do not manage this Page",
+  "err.ad_account_not_available": "This ad account is not available to you",
+  "err.token_rejected": "Meta rejected the access token. Reconnect to continue.",
+  "err.not_configured": "The Meta app is not configured on this deployment",
+  "block.window_closed": "Not sent: Instagram allows replies only within 24 hours of the person last writing",
+  "block.text_too_long": "Not sent: Instagram text is limited to 1000 bytes",
+  "block.empty_text": "Not sent: the message is empty",
+  "block.no_recipient": "Not sent: no Instagram recipient on this conversation",
+  "insights.currencyNote": "Ad accounts not in INR need a conversion rate in the connection settings; rows without one are skipped, never converted with a guess.",
+  "insights.synced": "{count} campaign-days synced",
+  "consent.note": "Consent is recorded only when the form answer or ticked checkbox says so. Nothing is assumed."
+}
