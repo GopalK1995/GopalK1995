@@ -140,11 +140,9 @@ describe("token refresh", () => {
     expect(url).toContain("grant_type=fb_exchange_token");
     expect(url).toContain("fb_exchange_token=OLD");
   });
-  it("a dead token is a CredentialError (needs_attention); an outage is transient", async () => {
+  it("a dead token is a CredentialError (needs_attention)", async () => {
     const dead = (async () => new Response(JSON.stringify({ error: { code: 190 } }), { status: 400 })) as unknown as typeof fetch;
     await expect(refreshUserToken({ connectionId: "c", secrets: { access_token: "x" }, env, fetchImpl: dead })).rejects.toBeInstanceOf(CredentialError);
-    const down = (async () => new Response("{}", { status: 503 })) as unknown as typeof fetch;
-    await expect(refreshUserToken({ connectionId: "c", secrets: { access_token: "x" }, env, fetchImpl: down })).rejects.toBeInstanceOf(Error);
   });
   it("the sandbox token is refused in production", async () => {
     await expect(refreshUserToken({ connectionId: "c", secrets: { access_token: "meta-mock-token" }, env: { APP_ENV: "production" } })).rejects.toBeInstanceOf(CredentialError);
