@@ -8,9 +8,11 @@ import { ot } from "@/lib/layouts/strings";
 import type { ObjectCtx } from "./ctx";
 import { demoLayouts } from "./demo";
 
+/** What the resolver needs; system objects (lead, account...) build this without a full ObjectCtx. */
+export type LayoutCtx = Pick<ObjectCtx, "demo" | "locale" | "object" | "fields" | "wsUuid" | "roleKey" | "tenantId">;
 export interface LoadedLayout<S> { spec: S; source: LayoutScope | "default" }
 
-async function load(ctx: ObjectCtx, kind: LayoutKind): Promise<LoadedLayout<DetailSpec | ListSpec>> {
+async function load(ctx: LayoutCtx, kind: LayoutKind): Promise<LoadedLayout<DetailSpec | ListSpec>> {
   const primary = ctx.object.primaryField;
   const untitled = ot("sectionDetails", {}, ctx.locale);
   try {
@@ -21,5 +23,5 @@ async function load(ctx: ObjectCtx, kind: LayoutKind): Promise<LoadedLayout<Deta
   } catch (e) { console.error("[objects] layout load failed, using the default", e); }
   return { spec: defaultSpec(kind, ctx.fields, primary, untitled), source: "default" };
 }
-export const loadDetailLayout = (ctx: ObjectCtx) => load(ctx, "detail") as Promise<LoadedLayout<DetailSpec>>;
-export const loadListLayout = (ctx: ObjectCtx) => load(ctx, "list") as Promise<LoadedLayout<ListSpec>>;
+export const loadDetailLayout = (ctx: LayoutCtx) => load(ctx, "detail") as Promise<LoadedLayout<DetailSpec>>;
+export const loadListLayout = (ctx: LayoutCtx) => load(ctx, "list") as Promise<LoadedLayout<ListSpec>>;

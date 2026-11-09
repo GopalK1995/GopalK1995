@@ -17,6 +17,10 @@ import { ChannelMark, LeadStageBadge } from "@/components/ui/domain";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { FieldValue } from "@/components/fields/field-value";
+import { pickLabel } from "@/components/fields/labels";
+import type { ClientField } from "@/lib/metadata/runtime";
+import type { FieldsLocale } from "@/lib/metadata/strings";
 import { assignLeads, exportLeads } from "../actions";
 import { field } from "../_lib/sales";
 import { useVocab } from "@/components/shell/providers";
@@ -26,6 +30,8 @@ export type LeadRow = {
   channel: Channel; campaign: { id: string; name: string } | null; utm: string; stage: LeadStage; score: number; factors: ScoreFactor[];
   owner: string | null; ownerId: string | null; lastTouch: string; next: string | null; nextOverdue: boolean; sla: boolean;
   consent: { wa: boolean; email: boolean }; phone: string | null;
+  /** Custom values the viewer may see (masked on the server). */
+  custom?: Record<string, unknown>;
 };
 type Perms = { assign: boolean; exportCsv: boolean; importCsv: boolean; work: boolean };
 
@@ -53,8 +59,9 @@ function download(name: string, csv: string) {
   a.click(); URL.revokeObjectURL(url);
 }
 
-export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }: {
+export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, customCols = [], locale = "en" }: {
   rows: LeadRow[]; owners: { id: string; name: string }[]; perms: Perms; masked: boolean; sort: string; allIds: string[]; empty: { t: string; h: string };
+  customCols?: ClientField[]; locale?: FieldsLocale;
 }) {
   const t = useVocab().ls;
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -109,7 +116,7 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }:
 
       {/* Desktop and tablet */}
       <div className="scrollbar-thin relative hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse" style={{ minWidth: 1060 }} aria-label={t.tableAria} aria-rowcount={allIds.length}>
+        <table className="w-full border-collapse" style={{ minWidth: 1060 + customCols.length * 140 }} aria-label={t.tableAria} aria-rowcount={allIds.length}>
           <thead>
             <tr className="border-y border-line bg-paper/60">
               {selectable && (
@@ -127,6 +134,7 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }:
               <SortTh k="touch">Last touch</SortTh>
               <th scope="col" className={th}>Next step</th>
               <th scope="col" className={th}><span className="sr-only">SLA and consent</span><span aria-hidden>SLA · consent</span></th>
+              {customCols.map((c) => <th key={c.key} scope="col" className={th}>{pickLabel(c.label, locale)}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -159,6 +167,7 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty }:
                     <span title={r.consent.email ? "Marketing email consent" : "No marketing email consent"} className={r.consent.email ? "text-success" : "text-ink-3/50"}><Mail className="size-3.5" aria-hidden /><span className="sr-only">{r.consent.email ? "Email consent given" : "No email consent"}</span></span>
                   </span>
                 </td>
+                {customCols.map((c) => <td key={c.key} className={cn(td, "max-w-[160px] text-[12px]")}><FieldValue def={c} value={(r.custom ?? {})[c.key]} locale={locale} /></td>)}
               </tr>
             ))}
           </tbody>

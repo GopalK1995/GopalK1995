@@ -130,7 +130,7 @@ describe("unread badge and urls", () => {
   });
   it("links are always in-app paths", () => {
     expect(objectUrl("lead", "abc")).toBe("/leads/abc");
-    expect(objectUrl("obj:booking", "abc")).toBe("/records/booking/abc");
+    expect(objectUrl("obj:booking", "abc")).toBe("/o/booking/abc");
     expect(objectUrl("weird", "abc")).toBeNull();
     expect(objectUrl(null, null)).toBeNull();
   });
