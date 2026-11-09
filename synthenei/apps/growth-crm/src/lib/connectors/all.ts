@@ -5,9 +5,12 @@ import type { ConnectorDef } from "./core/types";
 import { razorpayConnector } from "./razorpay/connector";
 import { whatsappConnector } from "./whatsapp/connector";
 import { metaAdsConnector } from "./meta-ads/connector";
+import { ga4Connector } from "./google/ga4/connector";
+import { googleAdsConnector } from "./google/ads/connector";
+import { googleSheetsConnector } from "./google/sheets/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, ga4Connector, googleAdsConnector, googleSheetsConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

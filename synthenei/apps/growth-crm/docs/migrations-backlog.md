@@ -170,3 +170,34 @@ Also needed by the integrator:
 - Webhook URL for the tenant to paste into Razorpay: `/api/hooks/razorpay/<connection id>`; events to tick: payment_link.paid / partially_paid / expired / cancelled, payment.authorized / captured / failed, order.paid, refund.created / processed / failed.
 - A connector_availability row for `razorpay` per environment (gate none; test keys work immediately).
 - Webhook-driven refund matching relies on the payment entity carrying the CRM reference in `notes` (Razorpay copies payment link and order notes onto the payment). A refund for a payment whose notes lack it and whose link id differs from the stored external id cannot be matched (rejected as unknown_payment).
+## T039 needs (Google Analytics 4, Google Ads, Google Sheets import)
+No migration was written. All idempotent. The connectors tolerate every item below being absent: GA4 writes fall back to the table as it is today (campaign dropped, rows merged per key); Ads and Sheets need nothing new.
+```sql
+-- 1. Catalogue alignment: 0015 seeded GA4 as a service-account connector and Sheets / Ads / GA4 without a sandbox. T039 ships all three as OAuth
+--    connectors with a Showcase (mock) gateway. GA4 and Sheets need no vendor approval to connect (Google OAuth app verification is a separate owner task).
+update public.connector_catalog set auth_kind = 'oauth2', gate = 'none', sandbox_supported = true where id = 'ga4';
+update public.connector_catalog set gate = 'none', sandbox_supported = true where id = 'google-sheets';
+update public.connector_catalog set sandbox_supported = true where id = 'google-ads';   -- gate stays needs_vendor_approval: "Needs Google Ads developer token (basic access)"
+-- availability: re-derive for the three rows with the 0015 rule (live where nothing external is needed, sandbox elsewhere, disabled in production when gated)
+insert into public.connector_availability (connector_id, env, mode, gate_status, note)
+select c.id, e.env,
+       case when c.gate = 'none' and e.env <> 'demo' then 'live' when e.env = 'production' then 'disabled' when c.sandbox_supported then 'sandbox' else 'disabled' end,
+       case c.gate when 'none' then 'ready' else c.gate end, null
+  from public.connector_catalog c cross join (values ('production'), ('staging'), ('demo')) e(env)
+ where c.id in ('ga4', 'google-sheets', 'google-ads')
+on conflict (connector_id, env) do update set mode = excluded.mode, gate_status = excluded.gate_status;
+
+-- 2. ga4_daily: the campaign dimension and a workspace-safe key. Today the primary key is (tenant_id, day, channel_group, source_medium, device_category, city, landing_page):
+--    two workspaces of one tenant would overwrite each other and the campaign is lost. The store tries the new key first and falls back to the old one.
+alter table public.ga4_daily add column if not exists campaign text not null default '';
+alter table public.ga4_daily drop constraint if exists ga4_daily_pkey;
+alter table public.ga4_daily add constraint ga4_daily_pkey primary key (tenant_id, workspace_id, day, channel_group, source_medium, device_category, city, landing_page, campaign);
+create index if not exists ga4_daily_ws_day on public.ga4_daily (workspace_id, day);   -- the per-window replace deletes by workspace + day range
+```
+Also needed by the integrator:
+- OAuth: one Google Cloud OAuth client for all three connectors (env `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`); authorised redirect URIs `<app>/api/oauth/ga4/callback`, `/api/oauth/google-ads/callback`, `/api/oauth/google-sheets/callback` (also in `OAUTH_REDIRECT_URIS` when that list is used). Scopes: `analytics.readonly`, `adwords`, `spreadsheets.readonly`: sensitive scopes, so the Google OAuth app needs verification before more than 100 test users can connect.
+- Google Ads: env `GOOGLE_ADS_DEVELOPER_TOKEN` (the connector is `not_configured` without it; test accounts work with a test-level token, live accounts need basic access). Optional `GOOGLE_ADS_LOGIN_CUSTOMER_ID` for a platform manager account. The API version in the URL is `GOOGLE_ADS_API_VERSION` (default in code `v21`): update it when Google sunsets a version.
+- Server actions (not in Owns, no UI built), each behind `integrations.manage` and, for Sheets, also `leads.import` plus the object's write permission (`leads.write` / `contacts.write` / `accounts.write`): `listGa4Properties` / `selectGa4Property` (src/lib/connectors/google/ga4/select.ts), `listAdsCustomers` / `selectAdsCustomer` (ads/select.ts), `listSheetTabs` / `previewSheet` / `startSheetImport` (sheets/select.ts, with `supabaseImportPort(db)` from sheets/import-supabase.ts). Build the deps with `requestRuntime(audit)` and the actor from the session. After `startSheetImport` enqueue `connector.sync {connection_id, stream: "import", trigger: "manual"}` for prompt import. Until a property / customer / sheet is chosen no stream does anything.
+- Sheets column mapping: the field-mapping editor edits `integration_field_maps` rows with `external_object = 'Row'`, `external_field` = column header, `local_table` = leads | contacts | accounts, `local_column` = the CRM field (or `custom.<key>`). `startSheetImport` also stores the resolved mapping in the connection's saved configuration (credential bundle key `sheet_config`), so the editor is optional.
+- Non-INR Ads accounts: connection setting `fx_to_inr` ({"USD": rate}) as for Meta; without a rate those rows are rejected, never converted with a guessed rate.
+- Showcase: the sandbox token `google-mock-token` (or `APP_ENV=demo` without credentials) serves sample data, never in production. Showcase Ads campaigns are `is_synthetic`; Showcase sheet imports flag leads `is_synthetic`.
