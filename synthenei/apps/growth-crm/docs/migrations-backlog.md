@@ -429,3 +429,109 @@ Also needed by the integrator:
 - Server actions (not in Owns): `sendOutlookMail` (behind `inbox.reply`; consent purpose per tenant policy) and `subscribeOutlook` (behind `integrations.manage`; call after connecting and from a "Repair notifications" button). On disconnect call `dropSubscriptions` with the `subscriptions` cursor (best effort).
 - Jobs: streams `inbox`, `sent`, `calendar`, `subscriptions` are scheduled by the generic connector tick; `subscriptions` must run at least hourly (Graph mail/event subscriptions last under 71 h).
 - i18n: `outlook.sandbox` added to `integrations.json` (en only; Tamil not drafted).
+
+## T046 needs (OTA via channel manager + iCal fallback)
+No migration was written, nothing was applied. All idempotent and additive. The code reads and writes `booking` records (0019 seed), `external_links` (0015), `integrations`, `notifications`, `memberships` as they are; the two new tables are needed for the iCal feeds and the export tokens.
+```sql
+-- 1. Catalogue: the two connectors. `ical` is generic (no approval); `channel-manager` is generic until the partner is chosen (B-6).
+insert into public.connector_catalog (id, name, category, auth_kind, verticals, gate, sandbox_supported, docs_url) values
+  ('ical', 'Calendar feeds (iCal)', 'ota', 'api_key', '{hospitality}', 'none', false, null),
+  ('channel-manager', 'Channel manager', 'ota', 'api_key', '{hospitality}', 'needs_vendor_approval', true, null)
+on conflict (id) do update set name = excluded.name, category = excluded.category, auth_kind = excluded.auth_kind, verticals = excluded.verticals,
+  gate = excluded.gate, sandbox_supported = excluded.sandbox_supported;
+insert into public.connector_availability (connector_id, env, mode, gate_status, note)
+select c.id, e.env,
+       case when c.id = 'ical' then 'live' when e.env = 'production' then 'disabled' else 'sandbox' end,
+       case when c.id = 'ical' then 'ready' else c.gate end, null
+  from public.connector_catalog c cross join (values ('production'), ('staging'), ('demo')) e(env)
+ where c.id in ('ical', 'channel-manager')
+on conflict (connector_id, env) do update set mode = excluded.mode, gate_status = excluded.gate_status;
+
+-- 2. iCal import feeds: one row per calendar link. The URL is a bearer secret (Airbnb / Booking.com links), so it lives in the Vault
+--    (url_secret_id), never in a column; url_host is for display only. Written by the service role (jobs, server actions).
+create table if not exists public.ical_feeds (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references public.tenants(id) on delete cascade,
+  workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  integration_id uuid not null references public.integrations(id) on delete cascade,
+  property_key   text not null check (length(property_key) between 1 and 80),          -- becomes booking.room
+  source         text not null check (source in ('airbnb', 'booking_com', 'other')),
+  label          text not null default '' check (length(label) <= 80),
+  timezone       text,
+  url_secret_id  uuid not null,
+  url_host       text,
+  last_hash      text,
+  failures       integer not null default 0 check (failures >= 0),
+  last_error     text check (last_error is null or length(last_error) <= 60),
+  last_ok_at     timestamptz,
+  created_at     timestamptz not null default now()
+);
+create index if not exists ical_feeds_conn on public.ical_feeds (integration_id);
+create index if not exists ical_feeds_ws on public.ical_feeds (workspace_id, created_at desc);
+alter table public.ical_feeds enable row level security;
+drop policy if exists ical_feeds_select on public.ical_feeds;
+create policy ical_feeds_select on public.ical_feeds for select to authenticated using (workspace_id in (select authz.ws_with('integrations.read', 'all')));
+revoke all on public.ical_feeds from anon, authenticated;
+grant select (id, tenant_id, workspace_id, integration_id, property_key, source, label, timezone, url_host, failures, last_error, last_ok_at, created_at) on public.ical_feeds to authenticated;   -- never url_secret_id
+grant select, insert, update, delete on public.ical_feeds to service_role;
+
+-- 3. iCal export tokens: only the SHA-256 of the token is stored (the plaintext is shown once at creation). One token per property
+--    (and optionally per channel). Looked up by hash from the public route with the service role.
+create table if not exists public.ical_export_tokens (
+  id              uuid primary key default gen_random_uuid(),
+  tenant_id       uuid not null references public.tenants(id) on delete cascade,
+  workspace_id    uuid not null references public.workspaces(id) on delete cascade,
+  property_key    text not null check (length(property_key) between 1 and 80),
+  exclude_source  text check (exclude_source is null or exclude_source in ('airbnb', 'booking_com', 'other')),
+  token_hash      text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  created_by      uuid references public.profiles(id) on delete set null,
+  created_at      timestamptz not null default now(),
+  last_fetched_at timestamptz,
+  revoked_at      timestamptz
+);
+create index if not exists ical_export_tokens_ws on public.ical_export_tokens (workspace_id, created_at desc);
+alter table public.ical_export_tokens enable row level security;
+drop policy if exists ical_export_tokens_select on public.ical_export_tokens;
+create policy ical_export_tokens_select on public.ical_export_tokens for select to authenticated using (workspace_id in (select authz.ws_with('integrations.manage', 'all')));
+revoke all on public.ical_export_tokens from anon, authenticated;
+grant select (id, tenant_id, workspace_id, property_key, exclude_source, created_at, last_fetched_at, revoked_at) on public.ical_export_tokens to authenticated;   -- never token_hash
+grant select, insert, update on public.ical_export_tokens to service_role;
+-- both tables also need the a00_<table>_tenant trigger (public.set_tenant_from_workspace()) and the audit trigger, like the other 0019 tables.
+
+-- 4. Booking object: the extra fields the connectors fill (the first six seeded fields are already there). Stored in records.data under
+--    these keys whether or not a field_def exists; the field_defs make them visible and filterable. Fold into metadata.seed_hospitality_booking()
+--    so new hospitality tenants get them; this one-off covers the existing ones.
+insert into public.field_defs (tenant_id, object_type_id, key, label, type, options, required, is_filterable, is_pii, section, position)
+select o.tenant_id, o.id, f.key, jsonb_build_object('en', f.label), f.type, f.options::jsonb, false, f.filterable, f.pii, 'stay', f.pos
+  from public.object_types o
+  cross join (values
+    ('status',            'Status',            'select', '{"choices":[{"key":"confirmed","label":"Confirmed"},{"key":"cancelled","label":"Cancelled"}]}', true,  false, 7),
+    ('entry',             'Entry',             'select', '{"choices":[{"key":"reservation","label":"Reservation"},{"key":"block","label":"Calendar block"}]}', true,  false, 8),
+    ('ota_channel',       'Channel',           'text',   '{}', true,  false, 9),
+    ('external_ref',      'Channel reference', 'text',   '{}', false, false, 10),
+    ('total_amount',      'Total',             'money',  '{}', false, false, 11),
+    ('currency',          'Currency',          'text',   '{}', false, false, 12),
+    ('commission_amount', 'Commission',        'money',  '{}', false, false, 13),
+    ('guest_name',        'Guest',             'text',   '{}', false, true,  14)
+  ) f(key, label, type, options, filterable, pii, pos)
+ where o.key = 'booking'
+on conflict (object_type_id, key) do nothing;
+-- origin and source_version are internal bookkeeping and get no field.
+-- The source_ota select has no "other channel" choice: a channel the CRM does not know is stored with source_ota = null and the raw name in ota_channel.
+-- Add an {"key":"other_ota","label":"Other channel"} choice if the owner wants those filterable, then map unknowns to it in channelToSource().
+
+-- 5. Event types used (already in src/lib/events/catalog/booking.ts from T047): booking.created, booking.cancelled. Their SQL description says
+--    "scheduling tool"; widen it so OTA bookings read correctly in webhooks and the agent catalogue.
+update public.event_types set description = 'A booking was made or imported (scheduling tool, channel manager or calendar feed)' where type = 'booking.created';
+update public.event_types set description = 'A booking was cancelled (scheduling tool, channel manager or calendar feed)' where type = 'booking.cancelled';
+```
+Also needed by the integrator (none of this is in T046's Owns):
+- **Webhook scheme**: add `"channel-manager": "standard"` to `SCHEME_OF` in `src/lib/connectors/verify/index.ts` (T023) so `/api/hooks/channel-manager/<connection id>` is verified (Standard Webhooks, secret = the connection's `webhook_secret`); until then the receiver answers 404 and only the 15-minute pull works. Replace with the partner's own scheme once B-6 is decided. The webhook body shape is in `src/lib/connectors/channel-manager/generic.ts`.
+- **Route** `src/app/api/ical/[token]/route.ts` (GET only): apply the platform per-IP rate limit, then `handleFeedRequest(icalServiceDeps(), params.token)` from `src/lib/connectors/ical` (`icalServiceDeps` is in `ical/runtime.ts`); relay status, headers and body unchanged; any other method is 405. The path shown to the owner is `exportPath(token)` on the deployment's base URL.
+- **Server actions behind `integrations.manage`** (assertCan first, then the signed-in user's actor for audit): connect the `ical` connection with `connectWithCredentials(... "ical", {})` (no fields); `addFeed`, `removeFeed`, `createExportToken`, `revokeExportToken` from `src/lib/connectors/ical/manage.ts` with `IcalDeps` from `icalServiceDeps(workspaceId)` but `audit` replaced by the user's `audit(actorFromPrincipal(p), ...)`, so the action fails when the audit row cannot be written. A settings screen lists feeds (label, source, property, `failures`, `last_ok_at`) and tokens; the new token URL is shown once.
+- **System audit**: `ical/runtime.ts` writes the `ical.feed_failing` row through `audit_record` with `p_actor_kind = 'connector'` and no user; confirm 0014's RPC accepts that for the service role, otherwise the row is logged and skipped (the notification, `integrations.last_error` and the sync run still record it).
+- **Env** (names only): `CHANNEL_MANAGER_API_BASE` (the partner's https base; unset = the adapter refuses to call out, sandbox fixtures still work). The channel-manager sandbox token is `cm-fixture-token` (refused when `APP_ENV=production`).
+- **Booking object**: workspaces without the hospitality preset have no `booking` object; the sync then fails with "no Booking object" (not a credential problem). `seed_hospitality_booking` is the fix.
+- **Timezone**: the iCal connection reads the optional connection setting `timezone` (IANA name) and falls back to UTC; each feed can carry its own. Set it from the workspace's configured zone when the connection is created.
+- **Cypress gate** (specs written, not run): `connectors/ical-import.cy.ts` needs `CYPRESS_ICAL_TOKEN` and the route above; `connectors/channel-manager-fixture.cy.ts` needs `CYPRESS_CM_CONNECTION` plus a pre-signed body and headers.
+- **Owner decision (B-6)**: which channel manager (STAAH, eZee, AxisRooms ...); sandbox and partner agreement; then one adapter implementing `ChannelManager` (four methods) replaces `generic.ts` in `channelManagerServiceRuntime()`.
