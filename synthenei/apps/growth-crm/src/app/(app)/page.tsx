@@ -1,247 +1,169 @@
+// Home (T054). One organising idea: the month as a ruler, pipeline flow against target, decision zone first.
+// Real sessions read their own workspace only; demo sessions read the labelled sample dataset. A reading that cannot be
+// computed shows "No data", never 0. Viewers get the same page with names and record links removed.
 import Link from "next/link";
-import { ArrowRight, Clock, DatabaseBackup, FileClock, UserX } from "lucide-react";
+import { getT } from "@/i18n/server";
+import { loadPrincipal } from "@/lib/authz/load";
+import { can } from "@/lib/authz";
+import { loadSocialView } from "@/lib/connectors/meta/organic/read";
+import type { SocialView } from "@/lib/connectors/meta/organic/view";
 import { pageCtx } from "@/lib/data/context";
-import {
-  SLA_MINUTES, DEAL_STAGES, campaignStats, channelMix, funnel, isDemo, leaderboard, DEMOS_DONE_TARGET, leadsPerDay, pipelineTotals, slaStats, topFirms,
-} from "@/lib/data/metrics";
-import { fmtWeekday, fmtDate, inr, inrCompact, num, pct, ratio, minsToHuman } from "@/lib/format";
-import { Card, CardBody, CardHeader, NavyPanel } from "@/components/ui/card";
-import { Kpi } from "@/components/ui/kpi";
-import { PageHeader, Meter } from "@/components/ui/misc";
-import { DataTable } from "@/components/ui/data-table";
-import { Stagger, StaggerItem } from "@/components/ui/motion";
-import { DealStageBadge } from "@/components/ui/domain";
-import { Avatar } from "@/components/ui/avatar";
-import { LineTrend } from "@/components/charts/line-trend";
-import { Donut } from "@/components/charts/donut";
-import { HBar } from "@/components/charts/hbar";
-import { Funnel } from "@/components/charts/funnel";
-import { TargetBar } from "@/components/charts/target";
-import { cn } from "@/lib/utils";
+import { channelMix, isDemo } from "@/lib/data/metrics";
+import type { Account, Campaign, CampaignDay, Deal, Lead, Task, TeamMember } from "@/lib/data/types";
+import { TILE_CATALOGUE } from "@/lib/config/types";
+import { fmtDate, fmtWeekday, inr, num, pct } from "@/lib/format";
 import { vocabFor } from "@/lib/vertical";
-import { Columns } from "@/components/charts/columns";
+import { PageHeader } from "@/components/ui/misc";
+import { StatusChip } from "@/components/ui/badge";
+import { KpiLedger } from "@/components/ui/kpi";
+import { PartialState } from "@/components/ui/states";
+import { ErrorState } from "@/components/ui/states";
+import { DecisionZone, PaidOrganicTable, StageFlow } from "./analytics/_components/home-sections";
+import { CostChart, FunnelChart, MixChart, PairedChart, PerDayChart, RulerChart } from "./analytics/_components/home-charts";
+import { costPerConverted, decisions, leadFunnel, leadsPerDay, monthRuler, paidVsOrganic, stageFlow, teamVsTarget, tiles, topAccounts, type StageMap } from "./analytics/_lib/home";
 
-export const metadata = { title: "Command Center" };
-const DAY = 86400e3;
+export const metadata = { title: "Home" };
+export const dynamic = "force-dynamic";
 
-export default async function CommandCenter() {
-  const { ds, now, masked, active, stageOrder } = await pageCtx();
-  const v = vocabFor(active.tenant), c = v.cc, hosp = v.id === "hospitality";
-  const [leads, deals, campaigns, days, { days: ga4 }, team, accounts, _syncRuns, acts] = await Promise.all([
-    ds.leads(), ds.deals(), ds.campaigns(), ds.campaignDays(), ds.ga4(), ds.team(), ds.accounts(), ds.syncRuns(), ds.activities(),
+const section = "border-t border-line pt-5";
+const h2 = "text-[15px] font-bold tracking-[-0.015em] text-ink";
+const sub = "mt-0.5 text-[12px] leading-4 text-ink-3";
+
+export default async function Home() {
+  const [t, ctx, principal] = await Promise.all([getT("dashboard"), pageCtx(), loadPrincipal()]);
+  const { ds, now, masked, active, cfg, scope, session } = ctx;
+  const failed: string[] = [];
+  const optional = async <X,>(source: string, fn: () => Promise<X>, fallback: X): Promise<X> => { try { return await fn(); } catch { failed.push(source); return fallback; } };
+
+  let leads: Lead[], deals: Deal[];
+  try { [leads, deals] = await Promise.all([ds.leads(), ds.deals()]); } catch {
+    return <><PageHeader title={t("title")} sub={t("sub")} /><ErrorState source={`${active.ws.name}: leads and deals`} message={t("errorMessage")} /></>;
+  }
+  const [tasks, campaigns, days, team, accounts] = await Promise.all([
+    optional<Task[]>("Tasks", () => ds.tasks(), []), optional<Campaign[]>("Campaigns", () => ds.campaigns(), []),
+    optional<CampaignDay[]>("Campaign metrics", () => ds.campaignDays(), []), optional<TeamMember[]>("Team and targets", () => ds.team(), []),
+    optional<Account[]>("Accounts", () => ds.accounts(), []),
   ]);
-  const nowMs = new Date(now).getTime();
-  const tot = pipelineTotals(deals, now);
-  const teamTarget = team.filter((t) => t.role === "sales_rep").reduce((a, t) => a + t.monthlyTarget, 0);
-  const d = new Date(now), dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-  const pace = d.getUTCDate() / dim;
+  const canAnalytics = can(principal, "analytics.read");
+  const social: SocialView | null = canAnalytics ? await loadSocialView() : null;
+  if (social?.state === "error") failed.push(social.errorSource ?? t("pvoSource"));
 
-  const inWin = (from: number, to: number) => leads.filter((l) => { const t = nowMs - new Date(l.createdAt).getTime(); return t >= from * DAY && t < to * DAY; });
-  const l30 = inWin(0, 30), lPrev = inWin(30, 60);
-  // Hospitality: "converted" = booked (stage won); legal: demo reached.
-  const conv = (l: (typeof leads)[number]) => (hosp ? l.stage === "won" : isDemo(l));
-  const demos30 = l30.filter(conv).length, demosPrev = lPrev.filter(conv).length;
-  const stats = campaigns.map((c) => campaignStats(c, days, leads, deals));
-  const spend30 = days.filter((x) => nowMs - new Date(x.date + "T12:00:00+05:30").getTime() < 30 * DAY).reduce((a, x) => a + x.spend, 0);
-  const spendPrev = days.filter((x) => { const t = nowMs - new Date(x.date + "T12:00:00+05:30").getTime(); return t >= 30 * DAY && t < 60 * DAY; }).reduce((a, x) => a + x.spend, 0);
-  // Cost per demo by the date the demo was booked (not lead cohort), so recent leads don't look artificially expensive.
-  const paidIds = new Set(leads.filter((l) => l.campaignId).map((l) => l.id));
-  const wonIn = (from: number, to: number) => deals.filter((x) => x.stage === "won" && x.wonAt && paidIds.has(x.leadId) && nowMs - new Date(x.wonAt).getTime() >= from * DAY && nowMs - new Date(x.wonAt).getTime() < to * DAY).length;
-  const booked = (from: number, to: number) => hosp ? wonIn(from, to) : acts.filter((a) => a.kind === "demo_booked" && paidIds.has(a.leadId) && nowMs - new Date(a.at).getTime() >= from * DAY && nowMs - new Date(a.at).getTime() < to * DAY).length;
-  const cpd = ratio(spend30, booked(0, 30));
-  const cpdPrev = ratio(spendPrev, booked(30, 60));
-  const sla = slaStats(l30, now), slaPrev = slaStats(lPrev, now);
+  leads = scope.leads(leads); deals = scope.deals(deals);
+  const myTasks = scope.tasks(tasks);
+  const stages = cfg.stages.deal as StageMap, leadStages = cfg.stages.lead as StageMap;
+  const converted = (l: Lead) => leadStages[l.stage]?.outcome === "won" || isDemo(l);
+  const slaHours = cfg.data.slaHours;
+  const reps = team.filter((m) => m.role === "sales_rep").filter((m) => ctx.role !== "sales_rep" || m.id === session.uid);
+  const fromTeam = reps.reduce((a, m) => a + (m.monthlyTarget > 0 ? m.monthlyTarget : 0), 0);
+  const target = fromTeam > 0 ? fromTeam : cfg.data.targetPerRepMonthly && reps.length ? cfg.data.targetPerRepMonthly * reps.length : null;
 
-  const perDay = leadsPerDay(leads, ga4, 90);
-  const trend = perDay.map((p, i) => ({ date: p.date, leads: p.leads, avg: Math.round((perDay.slice(Math.max(0, i - 6), i + 1).reduce((a, x) => a + x.leads, 0) / Math.min(7, i + 1)) * 10) / 10 }));
-  const weeklySpark = (fn: (i: number) => number) => Array.from({ length: 8 }, (_, i) => fn(7 - i));
-  const leadsWeekly = weeklySpark((w) => inWin(w * 7, w * 7 + 7).length);
+  const ruler = monthRuler(deals, stages, now, target);
+  const flow = stageFlow(deals, stages, now);
+  const todo = decisions({ leads, deals, tasks: myTasks, stages, now, slaHours });
+  const rooms = vocabFor(active.tenant).rooms || null;
+  const ids = cfg.dashboard.kpiTiles;
+  const tileLabel = (id: string) => TILE_CATALOGUE.find((x) => x.id === id)?.label ?? id;
+  const ledger = tiles(ids, { leads, deals, days, stages, now, slaHours, converted, rooms }).map((x) => ({ ...x, label: tileLabel(x.id), deltaLabel: t("vsPrev") }));
+  const pvo = social ? paidVsOrganic({ campaigns, days, leads, social, now }) : null;
 
-  const mix = channelMix(leads, 4, v.channelFamily);
-  const cpdRows = stats.filter((s) => (hosp ? s.won : s.demos) > 0 && s.spend > 0).map((s) => ({ label: s.name.split(" — ")[0], value: Math.round(hosp ? s.spend / s.won : s.costPerDemo), note: c.cpdNote(hosp ? s.won : s.demos, inrCompact(s.spend)) })).sort((a, b) => a.value - b.value);
-  const steps = funnel(leads, ga4, 90, v.funnel);
-  const firms = topFirms(accounts, deals, leads, 6);
-  const board = leaderboard(team, deals, leads, acts, now);
-  const open = deals.filter((x) => x.stage !== "won" && x.stage !== "lost");
-  const byStage = stageOrder.deal.filter((s) => s !== "won" && s !== "lost").map((s, i) => ({ s, v: open.filter((x) => x.stage === s).reduce((a, x) => a + x.value, 0), c: [`var(--seq-1)`, `var(--seq-2)`, `var(--seq-3)`, `var(--accent-on-navy)`, `var(--chart-5)`][i] }));
+  const month = new Date(ruler.month + "-01T12:00:00Z").toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+  const tableLabels = { chart: t("chart"), table: t("table"), toggle: t("showAs"), noData: t("noData") };
+  const canSettings = can(principal, "settings.read");
+  const l90 = leads.filter((l) => new Date(now).getTime() - new Date(l.createdAt).getTime() < 90 * 864e5);
+  const chartIds = cfg.dashboard.charts;
+  const funnelSteps = leadFunnel(l90, leadStages, t("funnelFirst"));
+  const mix = channelMix(l90, 4, cfg.taxonomies.channelFamily);
+  const cpc = costPerConverted(campaigns, days, leads, converted);
+  const accNames = new Map(accounts.map((a) => [a.id, a.name]));
+  const accRows = topAccounts(deals, stages, accNames).map((r, i) => ({ ...r, name: masked || !r.name ? t("account", { n: i + 1 }) : r.name }));
+  const teamRows = teamVsTarget(team, deals, stages, now).map((r, i) => ({ ...r, name: masked ? t("rep", { n: i + 1 }) : r.name }));
 
-  const closing = [...open].filter((x) => x.stage === "proposal" || x.stage === "negotiation").sort((a, b) => a.expectedClose.localeCompare(b.expectedClose)).slice(0, 3);
-  const unanswered = leads.filter((l) => l.firstResponseMins === null && nowMs - new Date(l.createdAt).getTime() > SLA_MINUTES * 60e3);
-  const staleProposals = deals.filter((x) => (x.stage === "proposal" || x.stage === "negotiation") && nowMs - new Date(x.stageEnteredAt).getTime() > 7 * DAY);
-  const quietBy = new Map<string, number>();
-  accounts.filter((a) => a.status === "prospect" && nowMs - new Date(a.lastActivityAt).getTime() > 5 * DAY).forEach((a) => quietBy.set(a.city, (quietBy.get(a.city) ?? 0) + 1));
-  const [quietCity, quietN] = [...quietBy.entries()].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
-  const monthName = (d_: Date) => d_.toLocaleString("en-IN", { month: "long", timeZone: "UTC" });
-  const curMonth = monthName(new Date(now)), prevMonthName = monthName(new Date(new Date(now).setUTCMonth(new Date(now).getUTCMonth() - 1)));
-  // Hospitality extras: enquiries vs bookings by month (last 6 months) and 30-day forward occupancy from booked stays.
-  const monthKey = (iso: string) => iso.slice(0, 7);
-  const months = Array.from({ length: 6 }, (_, i) => { const x = new Date(new Date(now).setUTCDate(1)); x.setUTCMonth(x.getUTCMonth() - (5 - i)); return x.toISOString().slice(0, 7); });
-  const monthly = months.map((m) => ({ month: new Date(m + "-01T12:00:00Z").toLocaleString("en-IN", { month: "short", timeZone: "UTC" }), enquiries: leads.filter((l) => monthKey(l.createdAt) === m).length, bookings: deals.filter((x) => x.stage === "won" && x.wonAt && monthKey(x.wonAt) === m).length }));
-  const ROOMS = v.rooms;
-  const today0 = new Date(now.slice(0, 10) + "T00:00:00Z").getTime();
-  const occ = Array.from({ length: 30 }, (_, i) => {
-    const t = today0 + i * DAY;
-    const used = deals.filter((x) => x.stage === "won" && x.stay && x.stay.status !== "cancelled" && new Date(x.stay.checkIn + "T00:00:00Z").getTime() <= t && t < new Date(x.stay.checkIn + "T00:00:00Z").getTime() + x.stay.nights * DAY).reduce((a, x) => a + (x.stay?.rooms ?? 1), 0);
-    return { day: String(new Date(t).getUTCDate()), occupancy: Math.min(1, used / ROOMS) };
-  });
-  const occAvg = Math.round((occ.reduce((a, o) => a + o.occupancy, 0) / occ.length) * 100);
-  const districtCount = new Set(accounts.map((a) => a.district)).size;
-  /** Delta only when the base is big enough to mean something. */
-  const delta = (cur: number, prev: number, minBase = 5) => (prev >= minBase ? ratio(cur - prev, prev) : undefined);
+  const orgNote = pvo && ({
+    not_connected: [t("orgNotConnected"), "/integrations/meta-ads", t("orgConnect")], needs_vendor_approval: [t("orgApproval"), "/analytics/social", t("pvoOpen")],
+    needs_attention: [t("orgAttention"), "/integrations/meta-ads", t("orgConnect")], empty: [t("orgEmpty"), null, null], error: [t("orgError"), null, null],
+    permission_denied: [t("orgDenied"), null, null], ready: null,
+  } as Record<SocialView["state"], [string, string | null, string | null] | null>)[pvo.organicState];
 
   return (
     <>
-      <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · IST`} title="Command Center"
-        sub={c.sub(districtCount, active.ws.region.replace(/ · /g, ", "))} />
+      <PageHeader eyebrow={t("eyebrow", { weekday: fmtWeekday(now), date: fmtDate(now) })} title={t("title")} sub={t("sub")} />
+      <div className="grid gap-6">
+        {session.demo && <div role="note" className="flex flex-wrap items-center gap-3 rounded-control border border-dashed border-ink-3/60 bg-surface px-4 py-3 text-[13px] text-ink-2"><StatusChip status="sample" /><span>{t("sampleBand")}</span></div>}
+        {failed.length > 0 && <PartialState done={Math.max(0, 6 - failed.length)} total={6} noun={t("partialNoun")} items={failed.map((f) => ({ label: f, status: "failed" as const, detail: t("partialFailed") }))} />}
 
-      {/* alerts strip: specific, actionable, never generic */}
-      <Stagger className="mb-6 flex flex-wrap gap-2">
-        {[
-          unanswered.length ? { icon: UserX, tone: "danger", text: c.unanswered(unanswered.length), href: "/leads?view=sla" } : { icon: UserX, tone: "ok", text: c.unansweredOk, href: "/leads?view=sla" },
-          { icon: Clock, tone: "warn", text: quietN ? c.quiet(quietN, quietCity === "Tiruchirappalli" ? "Trichy" : quietCity) : c.quietOk, href: quietN ? `/accounts?city=${quietCity}` : "/accounts" },
-          { icon: FileClock, tone: "warn", text: c.stale(staleProposals.length), href: "/pipeline" },
-          { icon: DatabaseBackup, tone: "ok", text: "Backup check (sample): last 6 h ago, threshold 26 h", href: "/data-health" },
-        ].map((a) => (
-          <StaggerItem key={a.text}>
-            <Link href={a.href} className="group inline-flex h-8 items-center gap-2 rounded-sm border border-line bg-surface px-3 text-[12px] text-ink-2 shadow-1 hover:border-line-strong hover:text-ink">
-              <a.icon className={cn("size-3.5", a.tone === "danger" ? "text-danger" : a.tone === "warn" ? "text-warn" : "text-success")} aria-hidden />
-              <span className="num">{a.text}</span>
-              <ArrowRight className="size-3 text-ink-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
-            </Link>
-          </StaggerItem>
-        ))}
-      </Stagger>
+        <DecisionZone t={t} ruler={ruler} items={todo} slaHours={slaHours} links={!masked} settingsHref={canSettings ? "/settings" : null} />
 
-      <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* KEY PANEL (navy, 30% structure): the number leadership opens the app for */}
-        <StaggerItem className="lg:col-span-5">
-          <NavyPanel className="flex h-full flex-col gap-5 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-[12px] font-medium text-navy-ink-2">{c.headline}</div>
-                <div className="mt-1 text-[34px] font-semibold leading-10 tracking-[-0.025em] num">{inr(tot.openValue)}</div>
-                <div className="mt-1 text-[12px] text-navy-ink-3 num">{c.headlineFoot(tot.openCount, inrCompact(tot.weighted), pct(tot.winRate, 0))}</div>
+        <KpiLedger label={t("tilesAria")} noData={t("noData")} tiles={ledger} />
+
+        <section aria-labelledby="ruler-title" className="grid gap-x-8 gap-y-6 lg:grid-cols-12">
+          <div className="min-w-0 lg:col-span-8">
+            <h2 id="ruler-title" className={h2}>{t("rulerTitle", { month })}</h2>
+            <p className={sub}>{t("rulerSub")}</p>
+            <div className="mt-3">
+              <RulerChart points={ruler.points} today={ruler.today} tableLabels={tableLabels} caption={t("rulerCaption")} dayHeader={t("colDay")}
+                aria={t("rulerAria", { month, won: inr(ruler.won), forecast: inr(ruler.forecastEnd), target: ruler.target === null ? t("noData") : inr(ruler.target) })}
+                labels={{ actual: t("seriesWon"), pace: t("seriesPace"), forecast: t("seriesForecast"), today: t("today"), noData: t("noData"), day: t("day") }} />
+            </div>
+          </div>
+          <div className="min-w-0 lg:col-span-4">
+            <h2 className={h2}>{t("flowTitle")}</h2>
+            <p className={sub}>{t("flowSub")}</p>
+            <div className="mt-3"><StageFlow t={t} stages={flow} /></div>
+          </div>
+        </section>
+
+        {pvo && (
+          <section aria-labelledby="pvo-title" className={section}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div><h2 id="pvo-title" className={h2}>{t("pvoTitle")}</h2><p className={sub}>{t("pvoSub")}</p></div>
+              <Link href="/analytics/social" className="text-[12px] font-medium text-accent hover:underline">{t("pvoOpen")}</Link>
+            </div>
+            {(orgNote || !pvo.paidConnected) && (
+              <ul className="mt-3 space-y-1 text-[13px] text-ink-2">
+                {!pvo.paidConnected && <li>{t("paidNone")}</li>}
+                {orgNote && <li>{orgNote[0]}{orgNote[1] && <> <Link href={orgNote[1]} className="font-medium text-accent hover:underline">{orgNote[2]}</Link></>}</li>}
+              </ul>
+            )}
+            <div className="mt-3 grid gap-x-8 gap-y-6 lg:grid-cols-12">
+              <div className="min-w-0 lg:col-span-5"><PaidOrganicTable t={t} data={pvo} /></div>
+              <div className="min-w-0 lg:col-span-7">
+                <h3 className="mb-2 text-[13px] font-semibold text-ink">{t("pvoWeeklyTitle")}</h3>
+                <PairedChart data={pvo.weekly} aLabel={t("paid")} bLabel={t("organic")} aria={t("pvoWeeklyAria")} caption={t("pvoWeeklyCaption")} weekHeader={t("colWeek")} tableLabels={tableLabels} />
               </div>
             </div>
-            <div>
-              <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-[3px]" role="img" aria-label={c.stageAria}>
-                {byStage.filter((b) => b.v > 0).map((b) => <div key={b.s} style={{ flexGrow: b.v, background: b.c }} title={`${v.dealStage[b.s]}: ${inr(b.v)}`} />)}
-              </div>
-              <ul className="mt-2.5 grid grid-cols-2 gap-x-6 gap-y-1 text-[11px]">
-                {byStage.map((b) => (
-                  <li key={b.s} className="flex items-center justify-between gap-2 text-navy-ink-2">
-                    <span className="flex items-center gap-1.5 truncate"><span className="size-2 shrink-0 rounded-[2px]" style={{ background: b.c }} />{v.dealStage[b.s]}</span>
-                    <span className="num text-navy-ink">{inrCompact(b.v)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-navy-ink-3">{c.closing}</div>
-              <ul className="divide-y divide-navy-line/70 text-[12px]">
-                {closing.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="min-w-0 truncate text-navy-ink-2"><span className="text-navy-ink">{accounts.find((a) => a.id === c.accountId)?.name}</span> · {v.dealStage[c.stage]}</span>
-                    <span className="shrink-0 num text-navy-ink-2">{fmtDate(c.expectedClose)} · <span className="font-medium text-navy-ink">{inrCompact(c.value)}</span></span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-auto border-t border-navy-line pt-4">
-              <TargetBar tone="navy" value={tot.wonMonthValue} target={teamTarget} pace={pace} label={c.wonIn(curMonth, tot.wonMonthCount)} format="inrCompact" />
-            </div>
-          </NavyPanel>
-        </StaggerItem>
-
-        <StaggerItem className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
-          <Kpi label={c.kWon} metric="M42" value={tot.wonMonthValue} format="inr" delta={tot.wonPrevValue > 0 ? ratio(tot.wonMonthValue - tot.wonPrevValue, tot.wonPrevValue) : undefined} deltaLabel={c.prevMonthLabel(prevMonthName)}
-            foot={Number.isFinite(tot.avgDeal) ? <>{c.kWonFoot(inrCompact(tot.avgDeal))}</> : <>{c.kWonNone}</>} />
-          <Kpi label={c.kNew} metric="M5" value={l30.length} delta={delta(l30.length, lPrev.length)} spark={leadsWeekly}
-            foot={<>{num(lPrev.length)} in the previous 30 days</>} />
-          <Kpi label={c.kConv} metric="M12" value={ratio(demos30, l30.length)} format="pct" delta={lPrev.length >= 10 ? ratio(demos30, l30.length) - ratio(demosPrev, lPrev.length) : undefined} deltaLabel="pts vs prev."
-            foot={<>{c.kConvFoot(demos30, l30.length)}</>} />
-          <Kpi label={c.kCost} metric="M11" value={cpd} format="inr" delta={booked(30, 60) >= 5 ? ratio(cpd - cpdPrev, cpdPrev) : undefined} goodWhen="down"
-            foot={<>{c.kCostFoot(booked(0, 30), inrCompact(spend30), pct(sla.within, 0), minsToHuman(sla.median), pct(slaPrev.within, 0))}</>} />
-        </StaggerItem>
-
-        <StaggerItem className="lg:col-span-8">
-          <Card className="h-full">
-            <CardHeader title={c.perDay} sub={c.perDaySub} />
-            <CardBody>
-              <LineTrend label={c.perDayAria} height={248} yFormat="num"
-                data={trend} series={[{ key: "leads", label: c.perDayBar, color: "var(--seq-1)", bar: true }, { key: "avg", label: "7-day average", color: "var(--chart-1)", area: true }]} />
-            </CardBody>
-          </Card>
-        </StaggerItem>
-        <StaggerItem className="lg:col-span-4">
-          <Card className="h-full">
-            <CardHeader title={c.mix} sub={c.mixSub} />
-            <CardBody><Donut label={c.mixAria} data={mix} centerValue={num(leads.length)} centerLabel={c.mixCenter} /></CardBody>
-          </Card>
-        </StaggerItem>
-
-        <StaggerItem className="lg:col-span-6">
-          <Card className="h-full">
-            <CardHeader title={c.funnel} sub="Cohort of the last 90 days" />
-            <CardBody><Funnel steps={steps} /></CardBody>
-          </Card>
-        </StaggerItem>
-        <StaggerItem className="lg:col-span-6">
-          <Card className="h-full">
-            <CardHeader title={c.cpd} sub="Lower is better. Best campaign highlighted." action={<Link href="/campaigns" className="text-[12px] font-medium text-accent hover:underline">All campaigns</Link>} />
-            <CardBody><HBar label={c.cpdAria} data={cpdRows} format="inr" highlight={cpdRows[0]?.label} labelWidth={168} valueLabel={c.cpdValue} /></CardBody>
-          </Card>
-        </StaggerItem>
-
-        <StaggerItem className="lg:col-span-7">
-          <Card className="h-full">
-            <CardHeader title={c.firms} sub={c.firmsSub} action={<Link href="/accounts" className="text-[12px] font-medium text-accent hover:underline">{c.firmsLink}</Link>} />
-            <DataTable rows={firms} rowKey={(f) => f.id} minWidth={480} caption={c.firmsCaption} columns={[
-              { key: "firm", header: c.firmCol, mobile: "title", className: "h-14", cell: (f) => <><Link href={`/accounts/${f.id}`} className="block font-medium text-ink hover:text-accent">{f.name}</Link><span className="hidden text-[12px] text-ink-3 md:inline">{c.firmMeta(f.locality, f.city === "Tiruchirappalli" ? "Trichy" : f.city, f.lawyers)}</span></> },
-              { key: "stage", header: "Stage", mobile: "fact", cell: (f) => (f.openStage ? <DealStageBadge stage={f.openStage} /> : null) },
-              { key: "score", header: "Best score", align: "right", cell: (f) => f.topScore },
-              { key: "value", header: "Open value", align: "right", mobile: "fact", cell: (f) => <span className="font-medium">{inr(f.openValue)}</span> },
-            ]} />
-          </Card>
-        </StaggerItem>
-        <StaggerItem className="lg:col-span-5">
-          <Card className="h-full">
-            <CardHeader title={c.team(curMonth)} sub={c.teamSub} />
-            <ul className="divide-y divide-line border-t border-line">
-              {board.map((r, i) => (
-                <li key={r.id} className="grid grid-cols-[20px_1fr_auto] items-center gap-3 px-4 py-3 sm:px-5">
-                  <span className="text-[12px] font-semibold text-ink-3 num">{i + 1}</span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2"><Avatar name={r.name} size={22} /><span className="truncate text-[13px] font-medium">{masked ? c.rep(i + 1) : r.name}</span></div>
-                    <Meter className="mt-2" value={r.won} max={r.target} tone={r.won / r.target >= pace ? "accent" : "warn"} />
-                    <div className="mt-1 text-[11px] text-ink-3 num">{c.teamLine(r.demosBooked, r.demosDone, DEMOS_DONE_TARGET, pct(r.sla, 0), inrCompact(r.open))}</div>
-                  </div>
-                  <div className="text-right"><div className="text-[13px] font-semibold num">{inrCompact(r.won)}</div><div className="text-[11px] text-ink-3 num">of {inrCompact(r.target)}</div></div>
-                </li>
-              ))}
-            </ul>
-            <p className="border-t border-line px-5 py-3 text-[11px] text-ink-3">{c.territories}: {team.filter((t) => t.role === "sales_rep").map((t) => `${masked ? "Rep" : t.name} (${t.title.split(" · ")[1] ?? c.allTerritory})`).join(", ")}.</p>
-          </Card>
-        </StaggerItem>
-        {hosp && (
-          <>
-            <StaggerItem className="lg:col-span-6">
-              <Card className="h-full">
-                <CardHeader title="Enquiries vs bookings by month" sub="Enquiries by month received; bookings by month confirmed" />
-                <CardBody><Columns label="Enquiries and bookings by month, last 6 months" data={monthly} xKey="month" height={220} totalLabel={false}
-                  series={[{ key: "enquiries", label: "Enquiries", color: "var(--seq-2)" }, { key: "bookings", label: "Bookings", color: "var(--chart-1)" }]} /></CardBody>
-              </Card>
-            </StaggerItem>
-            <StaggerItem className="lg:col-span-6">
-              <Card className="h-full">
-                <CardHeader title="Occupancy, next 30 days" sub={`Confirmed bookings against ${ROOMS} rooms · average ${occAvg}%`} />
-                <CardBody><Columns label="Forward occupancy per day, next 30 days" data={occ} xKey="day" height={220} totalLabel={false} format="pct0"
-                  series={[{ key: "occupancy", label: "Occupancy", color: "var(--chart-1)" }]} /></CardBody>
-              </Card>
-            </StaggerItem>
-          </>
+          </section>
         )}
-      </Stagger>
+
+        {chartIds.length > 0 && (
+          <section aria-labelledby="charts-title" className={section}>
+            <h2 id="charts-title" className="sr-only">{t("chartsTitle")}</h2>
+            <div className="grid gap-x-8 gap-y-8 lg:grid-cols-12">
+              {chartIds.map((id) => {
+                const wide = id === "perDay";
+                const head = (title: string, s: string) => <><h3 className={h2}>{title}</h3><p className={sub}>{s}</p></>;
+                return (
+                  <div key={id} data-chart={id} className={wide ? "min-w-0 lg:col-span-12" : "min-w-0 lg:col-span-6"}>
+                    {id === "perDay" && <>{head(t("perDayTitle"), t("perDaySub"))}<div className="mt-3"><PerDayChart data={leadsPerDay(leads, now, 60)} aria={t("perDayAria")} caption={t("perDayTitle")} labels={{ bar: t("perDayBar"), avg: t("perDayAvg") }} dateHeader={t("colDate")} tableLabels={tableLabels} /></div></>}
+                    {id === "mix" && <>{head(t("mixTitle"), t("mixSub"))}<div className="mt-3">{mix.length ? <MixChart data={mix} aria={t("mixAria")} caption={t("mixTitle")} center={{ value: num(l90.length), label: t("mixCenter") }} header={t("mixTitle")} countHeader={t("colCount")} tableLabels={tableLabels} /> : <p className="text-[13px] text-ink-3">{t("noData")}</p>}</div></>}
+                    {id === "funnel" && <>{head(t("funnelTitle"), t("funnelSub"))}<div className="mt-3">{funnelSteps[0].n ? <FunnelChart steps={funnelSteps} caption={t("funnelCaption")} headers={{ step: t("colStep"), count: t("colCount"), rate: t("colStepRate") }} tableLabels={tableLabels} /> : <p className="text-[13px] text-ink-3">{t("noData")}</p>}</div></>}
+                    {id === "cpd" && <>{head(t("cpdTitle"), t("cpdSub"))}<div className="mt-3">{cpc.length ? <CostChart data={cpc} aria={t("cpdAria")} caption={t("cpdTitle")} headers={{ campaign: t("colCampaign"), cost: t("colCost") }} valueLabel={t("cpdValue")} tableLabels={tableLabels} /> : <p className="text-[13px] text-ink-3">{t("cpdEmpty")}</p>}</div></>}
+                    {id === "accounts" && <>{head(t("accountsTitle"), t("accountsSub"))}<div className="mt-3">{accRows.length ? (
+                      <table className="w-full border-collapse text-[12px]"><caption className="sr-only">{t("accountsTitle")}</caption>
+                        <thead><tr className="border-b border-line text-ink-3"><th scope="col" className="h-8 text-left font-medium">{t("colAccount")}</th><th scope="col" className="h-8 text-right font-medium">{t("colDeals")}</th><th scope="col" className="h-8 text-right font-medium">{t("colOpen")}</th></tr></thead>
+                        <tbody>{accRows.map((r) => <tr key={r.id} className="h-9 border-b border-line last:border-0"><th scope="row" className="text-left font-normal text-ink">{r.name}</th><td className="num-mono text-right">{r.deals}</td><td className="num-mono text-right">{inr(r.value)}</td></tr>)}</tbody></table>
+                    ) : <p className="text-[13px] text-ink-3">{t("accountsEmpty")}</p>}</div></>}
+                    {id === "team" && <>{head(t("teamTitle"), t("teamSub"))}<div className="mt-3">{teamRows.length ? (
+                      <table className="w-full border-collapse text-[12px]"><caption className="sr-only">{t("teamTitle")}</caption>
+                        <thead><tr className="border-b border-line text-ink-3"><th scope="col" className="h-8 text-left font-medium">{t("colRep")}</th><th scope="col" className="h-8 text-right font-medium">{t("colWon")}</th><th scope="col" className="h-8 text-right font-medium">{t("colTarget")}</th></tr></thead>
+                        <tbody>{teamRows.map((r) => <tr key={r.id} className="h-9 border-b border-line last:border-0"><th scope="row" className="text-left font-normal text-ink">{r.name}</th><td className="num-mono text-right">{inr(r.won)}</td><td className="num-mono text-right">{r.target === null ? <span className="text-ink-3">{t("noData")}</span> : <>{inr(r.target)} <span className="text-ink-3">{pct(r.won / r.target, 0)}</span></>}</td></tr>)}</tbody></table>
+                    ) : <p className="text-[13px] text-ink-3">{t("teamEmpty")}</p>}</div></>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
     </>
   );
 }

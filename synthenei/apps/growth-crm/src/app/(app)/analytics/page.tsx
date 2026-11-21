@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PlugZap } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
-import { CONSENT_RATE } from "@/lib/data/metrics";
+import { getT } from "@/i18n/server";
+import { CONSENT_RATE, isDemo } from "@/lib/data/metrics";
 import { dayKey, num, numCompact, pct, ratio } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusChip } from "@/components/ui/badge";
@@ -19,7 +20,9 @@ import { OTHER } from "@/components/charts/kit";
 import type { Ga4Channel, Ga4Page } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { vocabFor } from "@/lib/vertical";
-import { DAY_MS, attribution, ga4Weekly, inBucket, outcomeOf, weekBuckets } from "../campaigns/_lib/marketing";
+import { DAY_MS, ga4Weekly, inBucket, outcomeOf, weekBuckets } from "../campaigns/_lib/marketing";
+import { attributionFromTouches, UNKNOWN_TOUCH } from "./_lib/touches";
+import { loadTouches } from "./_lib/load-touches";
 import { AttributionPanel } from "./_components/attribution";
 
 export const metadata = { title: "Web analytics" };
@@ -28,7 +31,8 @@ const STACK_COLOR = { won: "var(--chart-1)", open: "var(--chart-2)", booked: "va
 const stackKey = (o: string) => (o === "proposal" || o === "done" ? "open" : o);
 
 export default async function Analytics() {
-  const { ds, now, active } = await pageCtx();
+  const { ds, now, active, session } = await pageCtx();
+  const dt = await getT("dashboard");
   const v = vocabFor(active.tenant), a = v.an;
   const STACK = (Object.keys(STACK_COLOR) as (keyof typeof STACK_COLOR)[]).map((key) => ({ key, label: a.stack[key], color: STACK_COLOR[key] }));
   const [{ days: ga4, pages }, leads, acts, integrations] = await Promise.all([ds.ga4(), ds.leads(), ds.activities(), ds.integrations()]);
@@ -48,7 +52,6 @@ export default async function Analytics() {
   const keyEv = sum(g30, "keyEvents");
   const gap = ratio(keyEv - crmSubmits, crmSubmits);
   const l90 = leads.filter((l) => nowMs - new Date(l.createdAt).getTime() < 90 * DAY_MS);
-  const untagged = ratio(l90.filter((l) => !l.utm.campaign).length, l90.length);
 
   const weeksG = ga4Weekly(ga4, now);
   const wSpark = weeksG.map((w) => w.sessions);
@@ -69,7 +72,13 @@ export default async function Analytics() {
   const demoTotal = bookedActs.filter((a) => nowMs - new Date(a.at).getTime() < 84 * DAY_MS).length;
   const colSeries = STACK.map(({ key, label, color }) => ({ key, label, color }));
 
-  const first = attribution(l90, "first"), last = attribution(l90, "last");
+  // Attribution reads the touches the CRM recorded. Demo sessions use the sample leads; real sessions read first/last touch from the
+  // lead rows and keep a missing touch as its own row instead of crediting Organic.
+  let touches: Awaited<ReturnType<typeof loadTouches>> | undefined, touchError = false;
+  if (!session.demo) { try { touches = await loadTouches(active.ws.uuid, new Date(nowMs - 90 * DAY_MS).toISOString()); } catch { touchError = true; } }
+  const attOpts = { touches, unknownLabel: dt("attUnknown"), isDemo, isWon: (l: (typeof l90)[number]) => l.stage === "won" };
+  const first = attributionFromTouches(l90, "first", attOpts), last = attributionFromTouches(l90, "last", attOpts);
+  const untouched = first.find((r) => r.ch === UNKNOWN_TOUCH)?.leads ?? 0;
 
   const pageCols: Column<Ga4Page>[] = [
     { key: "path", header: "Landing page", mobile: "title", cell: (p) => <div className="min-w-0"><div className="truncate font-mono text-[12px] text-ink">{p.path}</div><div className="hidden truncate text-[11px] text-ink-3 md:block">{p.title}</div></div> },
@@ -83,7 +92,7 @@ export default async function Analytics() {
     <>
       <PageHeader eyebrow="Marketing · website" title="Web analytics"
         sub={a.sub(active.tenant.name)}
-        actions={<><Gate can="connectIntegrations" reason="Only the Owner connects integrations."><Button variant="primary"><PlugZap />Connect GA4</Button></Gate></>} />
+        actions={<><Link href="/analytics/social" className="text-[13px] font-medium text-accent hover:underline">{dt("attSocialLink")}</Link><Gate can="connectIntegrations" reason="Only the Owner connects integrations."><Button variant="primary"><PlugZap />Connect GA4</Button></Gate></>} />
 
       {!connected && (
         <div role="note" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-dashed border-ink-3/60 bg-surface px-4 py-3 text-[13px] text-ink-2">
@@ -147,8 +156,8 @@ export default async function Analytics() {
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-5">
-          <Card className="h-full">
-            <CardHeader title="Which channel gets the credit?" sub={a.credit(pct(untagged, 0))} />
+          <Card className="h-full" id="attribution">
+            <CardHeader title={dt("attTitle")} sub={touchError ? dt("partialFailed") + ": " + dt("attSource") : dt("attSub", { n: l90.length, unknown: untouched })} />
             <CardBody><AttributionPanel first={first} last={last} /></CardBody>
           </Card>
         </StaggerItem>

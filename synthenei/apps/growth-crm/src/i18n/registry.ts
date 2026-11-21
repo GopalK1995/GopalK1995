@@ -30,6 +30,7 @@ import enEmail from "../../messages/en/email.json";
 import enSlack from "../../messages/en/slack.json";
 import enGoogle from "../../messages/en/google.json";
 import enSocial from "../../messages/en/social.json";
+import enDashboard from "../../messages/en/dashboard.json";
 import enGmail from "../../messages/en/gmail.json";
 import enLinkedin from "../../messages/en/linkedin.json";
 import enSearch from "../../messages/en/search.json";
