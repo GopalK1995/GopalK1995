@@ -291,3 +291,25 @@ Also needed by the integrator:
 - Env: `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` (the connector is `not_configured` without them); optional `LINKEDIN_API_BASE`, `LINKEDIN_API_VERSION`. A `connector_availability` row for `linkedin` per environment (seeded `needs_vendor_approval` by 0015).
 - Connection settings (`integrations.settings`, no editor yet): `consent_rules` ([{source: "field"|"checkbox", key, purpose}]; `field` key is the form field name, `checkbox` key is LinkedIn's consent id) and `fx_to_inr` ({"USD": rate}) for non-INR ad accounts. There are no default consent rules: nothing is granted without one.
 - Lead Sync webhook (push) is not wired: it needs LinkedIn's separate approval and a LinkedIn signature scheme (HMAC with the client secret) in the T023 receiver. Polling covers the gap; `handleLeadResponse` (linkedin/leads.ts) is the function a webhook consumer would call.
+
+
+## T047 needs (Calendly + Cal.com bookings)
+No migration was written. Uses existing tables only: `calendar_events` (0019), `tasks`, `notifications` (0018), `memberships`, `leads`. All idempotent.
+```sql
+-- 1. Event types the connectors emit (also in src/lib/events/catalog/booking.ts). The catalogue is a superset of the SQL seed.
+insert into public.event_types (type, domain, description, webhook_eligible, agent_eligible) values
+  ('booking.created', 'booking', 'A booking was made through a connected scheduling tool', true, true),
+  ('booking.cancelled', 'booking', 'A booking was cancelled in a connected scheduling tool', true, true),
+  ('booking.unmatched', 'booking', 'A booking or cancellation came from an email that matches no lead', false, true)
+on conflict (type) do update set domain = excluded.domain, description = excluded.description,
+  webhook_eligible = excluded.webhook_eligible, agent_eligible = excluded.agent_eligible;
+
+-- 2. Catalogue rows: Calendly is connected with a personal access token (api_key), not OAuth, so no platform client id is needed.
+update public.connector_catalog set auth_kind = 'api_key', gate = 'none' where id = 'calendly';  
+-- plus a connector_availability row for 'calendly' and 'cal-com' per environment (gate none).
+```
+Also needed by the integrator:
+- Server actions behind `integrations.manage`: after `connectWithCredentials`, call `subscribeCalendly` / `subscribeCalcom` (src/lib/connectors/calendly|calcom/api.ts) with `webhookUrlFor(APP_BASE_URL, connectorId, connectionId)` and the decrypted bundle, then `saveState` (writes `integrations.health.booking_webhook`, which REPLACES `health`: merge first if another writer uses it). Show `subscriptionState(conn.health)` with the `calendly` namespace string at its `messageKey`: `state_needs_paid_plan` tells the client that Calendly webhooks need a paid plan. Prefill the signing key / webhook secret with `newSigningKey()`. On disconnect call `unsubscribeCalendly` / `unsubscribeCalcom` with the stored subscription id.
+- Webhook URLs: `/api/hooks/calendly/<connection id>` and `/api/hooks/cal-com/<connection id>`.
+- Optional connection setting `display_timezone` (IANA name) controls how a start time is printed in notifications; default `Asia/Kolkata`.
+- A calendar page linked from the unmatched-booking notification (`/calendar`) should list `calendar_events` rows with a null `object_id` so the owner can link them to a lead.

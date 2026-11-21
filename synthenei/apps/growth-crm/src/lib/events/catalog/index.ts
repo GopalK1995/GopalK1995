@@ -2,6 +2,7 @@
 import type { EventTypeDef } from "../types";
 import { EVENT_TYPES as account } from "./account";
 import { EVENT_TYPES as activity } from "./activity";
+import { EVENT_TYPES as booking } from "./booking";
 import { EVENT_TYPES as campaign } from "./campaign";
 import { EVENT_TYPES as collab } from "./collab";
 import { EVENT_TYPES as config } from "./config";
@@ -20,7 +21,7 @@ import { EVENT_TYPES as webhook } from "./webhook";
 
 export const ALL_EVENT_TYPES = [
   ...core, ...lead, ...deal, ...account, ...contact, ...task, ...activity, ...inbox, ...campaign,
-  ...collab, ...connector, ...privacy, ...config, ...member, ...webhook, ...payment, ...email,
+  ...collab, ...connector, ...privacy, ...config, ...member, ...webhook, ...payment, ...email, ...booking,
 ] as const;
 
 export type KnownEventType = (typeof ALL_EVENT_TYPES)[number]["type"];

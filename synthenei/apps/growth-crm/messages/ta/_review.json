@@ -849,6 +849,36 @@
       "analytics.synced": true,
       "analytics.currencyNote": true,
       "consent.note": true
+    },
+    "calendly": {
+      "someone": true,
+      "task_booked": true,
+      "task_cancelled": true,
+      "notice_booked_title": true,
+      "notice_booked_body": true,
+      "notice_cancelled_title": true,
+      "notice_cancelled_body": true,
+      "notice_unmatched_title": true,
+      "notice_unmatched_body": true,
+      "notice_cancelledUnmatched_title": true,
+      "notice_cancelledUnmatched_body": true,
+      "calendly_title": true,
+      "calendly_help": true,
+      "calcom_title": true,
+      "calcom_help": true,
+      "tokenLabel": true,
+      "apiKeyLabel": true,
+      "signingKeyLabel": true,
+      "webhookSecretLabel": true,
+      "subscribe": true,
+      "state_not_subscribed": true,
+      "state_subscribed": true,
+      "state_needs_paid_plan": true,
+      "state_user_scope": true,
+      "state_needs_attention": true,
+      "state_error": true,
+      "webhookUrlLabel": true,
+      "webhookHelp": true
     }
   }
 }
