@@ -142,7 +142,7 @@ describe("CommandPalette", () => {
   it("renders Tamil strings", async () => {
     render(ui(vi.fn(() => reply(boot)), "ta"));
     open();
-    expect(await screen.findByPlaceholderText(BASE.ta.search && (BASE.ta.search as { placeholder: string }).placeholder)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText((BASE.ta.search as { placeholder: string }).placeholder)).toBeInTheDocument();
   });
 
   it("does not render a name for masked hits beyond what the server sent, and labels them", async () => {

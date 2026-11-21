@@ -553,3 +553,24 @@ Also needed by the integrator (not SQL):
 - Server actions (not in Owns, no page): `finishZohoSetup` (region + org check after the OAuth callback), `finishHubspotSetup` (portal binding + webhook secret), `saveSyncOptions`. Behind `integrations.manage`, support-blocked.
 - Verifier/router gaps in `verify/**`: (1) Zoho sends its shared token in the JSON body, not an `x-zoho-token` header, so the current verifier will 401 real deliveries until it also accepts the body token. (2) HubSpot app webhooks have ONE subscription URL for all portals (the v3 signature covers it), so a per-connection URL cannot be used: a platform router mapping `portalId` to the connection is needed; until then HubSpot syncs by polling every 15 minutes.
 - No shared mock vendor server yet; Cypress points `ZOHO_API_BASE`, `ZOHO_ACCOUNTS_URL`, `HUBSPOT_API_BASE` at a stub.
+
+
+## T056 needs (global search and command palette)
+Nothing is applied by this task. All additive and idempotent; the palette works without them (it just scans more rows). 0022g already provides `gin_trgm_ops` indexes on `leads.full_name`, `leads.firm_name`, `accounts.name`, `contacts.full_name`.
+```sql
+create extension if not exists pg_trgm;
+-- Lead role title, account city and contact role title are also searched.
+create index if not exists leads_role_title_trgm    on public.leads    using gin (role_title gin_trgm_ops);
+create index if not exists accounts_city_trgm       on public.accounts using gin (city gin_trgm_ops);
+create index if not exists contacts_role_title_trgm on public.contacts using gin (role_title gin_trgm_ops);
+-- Custom-object records: the title, and one expression index per searchable text field.
+create index if not exists records_title_trgm on public.records using gin (title gin_trgm_ops) where deleted_at is null;
+-- Per searchable custom field (created by the field editor when is_searchable is switched on, dropped when it is switched off or the field is retired).
+-- Example for a field with key "serial":
+-- create index if not exists records_data_serial_trgm on public.records using gin ((data->>'serial') gin_trgm_ops) where deleted_at is null;
+```
+Also needed by the integrator (not SQL):
+- The masked views are searched by `display_name` and `firm_name` (v_leads_masked) and `display_name` and `role_title` (v_contacts_masked). Those columns are computed expressions in the views, so the base-table trigram indexes do not help viewers; if viewer search is slow at scale, add a stored `display_name` column on leads and contacts with its own trigram index and point the views at it.
+- The `/api/search` rate limit uses the in-memory store (per server instance). Moving it to the DB-backed `rate_limit_hit()` store needs no change here: pass the store to `rateLimit` in `src/lib/search/handler.ts`.
+- The lead and task pages should read `?new=1` (open the create dialog) and `/leads?log=call` (open the log-call dialog); the palette only navigates.
+- The top-bar search chip belongs to T059: call `openCommandPalette()` from `@/components/command` (or dispatch the `gcrm:open-palette` window event). The existing `/` focus shortcut and the inline search box in `shell.tsx` are untouched.
