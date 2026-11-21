@@ -2,7 +2,7 @@
 export type ConnectorId =
   | "csv" | "whatsapp" | "meta-ads" | "razorpay" | "gmail" | "outlook" | "google-ads" | "ga4" | "google-business" | "linkedin"
   | "mailchimp" | "booking-com" | "makemytrip" | "airbnb" | "google-calendar" | "google-sheets" | "calendly" | "cal-com"
-  | "zoho-crm" | "hubspot" | "slack" | "zapier" | "make" | "email" | "email-smtp" | "resend" | "ical" | "mock";
+  | "zoho-crm" | "hubspot" | "slack" | "zapier" | "make" | "email" | "email-smtp" | "resend" | "ical" | "channel-manager" | "mock";
 
 export type ConnectorCategory = "crm" | "messaging" | "email" | "ads" | "analytics" | "scheduling" | "payments" | "automation" | "ota" | "data";
 export type AuthKind = "oauth2" | "api_key" | "service_account" | "webhook_secret" | "none";

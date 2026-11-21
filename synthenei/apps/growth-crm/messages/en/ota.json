@@ -1,0 +1,17 @@
+{
+  "_review": "T046 draft. English is final; Tamil needs native review.",
+  "channelManager.sandbox": "Sandbox: scripted reservations, nothing is sent to a real channel manager. Use the sandbox token shown in the connector guide.",
+  "ical.sandbox": "No sandbox: iCal feeds are read-only. Paste a calendar link and the dates appear as bookings within 30 minutes.",
+  "feedFailing_title": "A calendar link has stopped working",
+  "feedFailing_body": "{label}: {reason}. Check the link in Integrations, then run Test connection.",
+  "reason_http_401": "the calendar requires a sign-in (the link may have been regenerated)",
+  "reason_http_403": "the calendar refused access (the link may have been regenerated)",
+  "reason_http_404": "the calendar link no longer exists",
+  "reason_not_ical": "the link did not return a calendar",
+  "reason_empty_feed": "the calendar suddenly shows no dates at all",
+  "reason_timeout": "the calendar did not answer in time",
+  "reason_too_large": "the calendar is too large to read",
+  "reason_blocked_address": "the link points to a private address",
+  "reason_other": "the calendar could not be read",
+  "feedFailing_message": "Calendar link failing: {reason}"
+}

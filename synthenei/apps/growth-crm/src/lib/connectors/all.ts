@@ -17,12 +17,14 @@ import { calendlyConnector } from "./calendly/connector";
 import { calcomConnector } from "./calcom/connector";
 import { googleBusinessConnector } from "./google/business-profile/connector";
 import { outlookConnector } from "./microsoft/connector";
+import { channelManagerConnector } from "./channel-manager/connector";
+import { icalConnector } from "./ical/connector";
 
 import { slackConnector } from "./slack/connector";
 import { zapierConnector, makeConnector } from "./automation/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector, slackConnector, zapierConnector, makeConnector, googleCalendarConnector, gmailConnector, outlookConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector, slackConnector, zapierConnector, makeConnector, googleCalendarConnector, gmailConnector, outlookConnector, channelManagerConnector, icalConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

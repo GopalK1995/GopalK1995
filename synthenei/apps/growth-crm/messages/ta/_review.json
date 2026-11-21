@@ -1091,6 +1091,22 @@
       "gmail.scopeNote": true,
       "gmail.synced": true,
       "gmail.send.noContact": true
+    },
+    "ota": {
+      "channelManager.sandbox": true,
+      "ical.sandbox": true,
+      "feedFailing_title": true,
+      "feedFailing_body": true,
+      "reason_http_401": true,
+      "reason_http_403": true,
+      "reason_http_404": true,
+      "reason_not_ical": true,
+      "reason_empty_feed": true,
+      "reason_timeout": true,
+      "reason_too_large": true,
+      "reason_blocked_address": true,
+      "reason_other": true,
+      "feedFailing_message": true
     }
   }
 }
