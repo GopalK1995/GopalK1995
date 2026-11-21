@@ -178,7 +178,12 @@
   "mailchimp.sandbox": "Mailchimp has no sandbox. Connect a test audience in your own Mailchimp account.",
   "linkedin.sandbox": "LinkedIn has no public sandbox. Showcase shows sample leads and spend only; a live connection needs LinkedIn's approval of the Advertising API and Lead Sync products.",
   "google-business.sandbox": "Showcase only: sample reviews and daily performance, nothing is read from or sent to Google. Google grants the Business Profile APIs to approved applications only, so a live connection needs that approval first.",
+<<<<<<< HEAD
   "slack.sandbox": "Showcase uses sample channels only; nothing is posted to a real Slack workspace. A live connection posts to the channel you pick.",
   "zapier.sandbox": "Zapier has no sandbox. Use a test Zap with a sandbox API key; nothing reaches real customers unless a Zap sends it.",
   "make.sandbox": "Make has no sandbox. Use a test scenario with a sandbox API key; nothing reaches real customers unless a scenario sends it."
+=======
+  "google-calendar.sandbox": "Showcase uses a sample calendar with two sample events; nothing is read from or written to Google.",
+  "gmail.sandbox": "Showcase reads no mail and sends nothing. A live connection needs the platform's Google app in testing mode and your opt-in."
+>>>>>>> 39a909d (T042: Gmail (gated, testing mode) + Google Calendar two-way connectors)
 }

@@ -1,0 +1,21 @@
+{
+  "_review": "T042 draft. Tamil is a placeholder copy of the English and needs native translation.",
+  "calendar.name": "Google Calendar",
+  "gmail.name": "Gmail",
+  "calendar.scopeNote": "Connect your own Google account. Demos, meetings and holds created here appear in your calendar, and calendar events that involve a known contact appear here. Other events on your calendar are never copied.",
+  "calendar.users": "Connected users",
+  "calendar.reconnect": "Reconnect",
+  "calendar.privateIgnored": "Private events are never imported.",
+  "gmail.gateTitle": "Gmail is limited while Google reviews our app",
+  "gmail.gateBody": "Gmail uses a restricted Google permission. Until Google finishes its security review, Gmail works only for people the platform owner has added as named test users (at most 100).",
+  "gmail.reason.app_mode_unknown": "The platform has not said whether the Google app is in testing, so Gmail stays closed.",
+  "gmail.reason.app_in_production_unverified": "The Google app is published but has not passed the security review, so Gmail stays closed.",
+  "gmail.reason.not_opted_in": "Your organisation has not opted in to Gmail yet.",
+  "gmail.optIn.restricted": "I understand Gmail asks for a restricted permission and that only threads with people already in this workspace are read.",
+  "gmail.optIn.testUser": "My Google account has been added as a test user by the platform owner.",
+  "gmail.optIn.cta": "Opt in and connect Gmail",
+  "gmail.testing": "Testing mode: limited to named test users.",
+  "gmail.scopeNote": "Only mail to or from people already in this workspace is read. Everything else in your mailbox is never stored. Replies are sent from your own Gmail.",
+  "gmail.synced": "{count} messages synced",
+  "gmail.send.noContact": "You can only reply to people already in this workspace."
+}

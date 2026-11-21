@@ -360,6 +360,7 @@ Also needed by the integrator:
 - Env (names only, all optional, unset = Google's hosts): `GBP_ACCOUNTS_API_BASE`, `GBP_INFO_API_BASE`, `GBP_PERFORMANCE_API_BASE`, `GBP_REVIEWS_API_BASE` (stubs / Cypress).
 - Server actions (not in Owns, no page built): `listGbpLocations` / `selectGbpLocation` (behind `integrations.manage`); `draftReply` / `submitForApproval` / `decideReply` / `postApprovedReply` (behind `inbox.reply`; the code only requires a signed-in person and stamps them as the approver, so the action decides who may approve). All exported from `src/lib/connectors/google/business-profile/index.ts`. Build `ReplyDeps` with `{ rt: requestRuntime(audit), store: supabaseGbpStore(serviceDb()) }` (scoped by tenant and workspace); pass an AI-backed `ReplyDrafter` as `drafter` when a provider is chosen (default is a rule-based template). Mount `<ReviewsPanel>` from `src/components/reviews` (props: reviews, actions wrapping the four server actions, canReply, canApprove) on the inbox reviews view, and pass `CYPRESS_GBP_REVIEWS_PATH` to the spec.
 - i18n: namespace `reviews` is registered (en final, ta machine draft in `_review.json`); `google-business.sandbox` added to integrations.json.
+<<<<<<< HEAD
 ## T049 needs (Slack alerts, Zapier, Make)
 No migration was written. Idempotent and additive. Slack and the two automation apps add no tables: the Slack channel, alert switches and team live in the connection's Vault bundle; Zapier and Make use the existing REST API keys (T025) and `/api/v1/webhooks` REST hooks (T024).
 ```sql
@@ -380,3 +381,28 @@ Also needed by the integrator:
 - Slack Events API (optional, for instant revocation): the connection URL is `/api/hooks/slack/<connection id>`; Slack's URL verification handshake (`url_verification` challenge) is not answered by the T023 receiver, so subscribe to `tokens_revoked` / `app_uninstalled` only after the receiver answers the challenge. Without it a revoked token is still caught on the next alert post (the connection goes to `needs_attention`).
 - Optional later: `notification_rules.channels` accepts only in_app, email, whatsapp, push (0018 check). Adding `'slack'` there would let owners route per-rule; T049 routes by the four alert switches on the connection instead.
 - Zapier (owner step): `integrations/zapier-app` needs `npm install` + `zapier validate` + `zapier push` with a Zapier account; Make: import `integrations/make-app` with the Make Apps extension. Both are untested against the vendors.
+=======
+## T042 needs (Gmail + Google Calendar)
+No migration was written. Everything below is idempotent and additive. The connectors need NO new table or column: Calendar uses `calendar_events` (0019), Gmail uses `conversations` + `messages` (channel `email`).
+```sql
+-- 1. Catalogue alignment: both connectors ship with a Showcase (mock) gateway. Calendar needs no vendor approval (sensitive scope; Google OAuth app verification is a separate owner task).
+--    Gmail stays gated (restricted scope).
+update public.connector_catalog set sandbox_supported = true, gate = 'none' where id = 'google-calendar';
+update public.connector_catalog set sandbox_supported = true where id = 'gmail';
+-- 2. Availability: Calendar live where nothing external is needed. Gmail NEVER live by default: sandbox in staging/demo, disabled in production until the platform admin
+--    enables it (only while the Google OAuth app is in testing, or after CASA).
+insert into public.connector_availability (connector_id, env, mode, gate_status, note)
+values ('google-calendar', 'production', 'live', 'ready', null), ('google-calendar', 'staging', 'live', 'ready', null), ('google-calendar', 'demo', 'sandbox', 'ready', null),
+       ('gmail', 'production', 'disabled', 'needs_vendor_approval', 'Restricted scope: testing mode (max 100 named test users) until CASA completes'),
+       ('gmail', 'staging', 'sandbox', 'needs_vendor_approval', null), ('gmail', 'demo', 'sandbox', 'needs_vendor_approval', null)
+on conflict (connector_id, env) do update set mode = excluded.mode, gate_status = excluded.gate_status, note = excluded.note;
+-- 3. Optional index for the contact lookup (lower-case email per workspace); skip if 0022 already covers it.
+create index if not exists leads_ws_lower_email on public.leads (workspace_id, lower(email)) where email is not null;
+create index if not exists contacts_ws_lower_email on public.contacts (workspace_id, lower(email)) where email is not null;
+```
+Also needed by the integrator:
+- OAuth: same Google client as T039 (`GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`); add redirect URIs `<app>/api/oauth/google-calendar/callback` and `/api/oauth/gmail/callback`. Scopes: `calendar.events` (sensitive); `gmail.readonly` (RESTRICTED) + `gmail.send` (sensitive). Env: `GOOGLE_OAUTH_APP_MODE` (`testing` or `production`; Gmail is `not_configured` while unset), `GOOGLE_OAUTH_CASA_COMPLETE` (`true` only after Google verified the app), optional `GOOGLE_CALENDAR_API_BASE`, `GMAIL_API_BASE`. In testing mode each Gmail user must be listed as a test user in the Google Cloud console (max 100) and Google expires test-mode refresh tokens after 7 days (the connection then shows needs_attention: Reconnect).
+- Callback routing: the generic `/api/oauth/[connector]/callback` calls core `completeOAuth`, which keeps ONE grant per connection. For `google-calendar` and `gmail` call `connectGoogleUser(rt, actor, connector, tokens, { email, flags })` (src/lib/connectors/google/calendar/grants.ts) instead, so each user's own grant is kept beside the first. For `gmail` pass `flags: { gmail_opt_in: <iso time> }`. The Gmail start route must take its scopes from `startGmailConnect(rt, actor, optIn)` (gmail/start.ts; empty scopes = closed) and refuse when it returns `ok: false`. Without that wiring the runtime still refuses: a Gmail connection without the `gmail_opt_in` stamp never reads or sends (checked on every sync and send).
+- Server actions (not in Owns, no UI built): `startGmailConnect` (behind `integrations.manage`), `createCalendarEvent` (behind `activities.write`; calendar/actions.ts; demos, meetings and room holds linked to a record), `sendGmailReply` (behind `inbox.reply` plus consent; gmail/send.ts). UI gate state: `gmailGate(env, optedIn)` returns `{ open, reasons, mode }`; strings in namespace `gmail`.
+- Room holds: CRM rows in `calendar_events` with status `tentative` linked to a custom object (`obj:<key>`) go to Google as tentative events stamped `crm_kind=room_hold`; any unlinked CRM row (integration_id null, not cancelled) is pushed to the primary user's calendar by the push stream.
+>>>>>>> 39a909d (T042: Gmail (gated, testing mode) + Google Calendar two-way connectors)
