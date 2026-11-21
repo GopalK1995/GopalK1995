@@ -326,7 +326,8 @@
       "mailchimp.sandbox": true,
       "ga4.sandbox": true,
       "google-ads.sandbox": true,
-      "google-sheets.sandbox": true
+      "google-sheets.sandbox": true,
+      "linkedin.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -830,6 +831,24 @@
       "sheetTitle": true,
       "pickTitle": true,
       "pickSave": true
+    },
+    "linkedin": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "gate": true,
+      "pickAccountTitle": true,
+      "pickAccountHelp": true,
+      "err.account_taken": true,
+      "err.account_not_available": true,
+      "err.token_rejected": true,
+      "err.not_connected": true,
+      "health.expiring": true,
+      "health.expired": true,
+      "leads.synced": true,
+      "analytics.synced": true,
+      "analytics.currencyNote": true,
+      "consent.note": true
     }
   }
 }

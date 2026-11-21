@@ -10,9 +10,10 @@ import { metaAdsConnector } from "./meta-ads/connector";
 import { ga4Connector } from "./google/ga4/connector";
 import { googleAdsConnector } from "./google/ads/connector";
 import { googleSheetsConnector } from "./google/sheets/connector";
+import { linkedinConnector } from "./linkedin/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

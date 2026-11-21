@@ -175,5 +175,6 @@
   "chip.not_shipped": "Not available",
   "stepVendorAdmin": "Vendor admin",
   "email.sandbox": "Use the sandbox key shown in the runbook. Nothing leaves this system and nothing is delivered.",
-  "mailchimp.sandbox": "Mailchimp has no sandbox. Connect a test audience in your own Mailchimp account."
+  "mailchimp.sandbox": "Mailchimp has no sandbox. Connect a test audience in your own Mailchimp account.",
+  "linkedin.sandbox": "LinkedIn has no public sandbox. Showcase shows sample leads and spend only; a live connection needs LinkedIn's approval of the Advertising API and Lead Sync products."
 }

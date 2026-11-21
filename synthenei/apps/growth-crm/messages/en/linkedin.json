@@ -1,0 +1,19 @@
+{
+  "_review": "T044 draft. English is final; Tamil needs native review.",
+  "name": "LinkedIn (Lead Gen Forms, Ads)",
+  "showcase": "Showcase",
+  "showcaseSub": "Sandbox gateway: sample leads and sample spend only.",
+  "gate": "Needs LinkedIn approval of the Advertising API and Lead Sync products for live",
+  "pickAccountTitle": "Choose the ad account",
+  "pickAccountHelp": "Only ad accounts you can access are listed. An ad account can belong to one workspace only.",
+  "err.account_taken": "This ad account is already connected to another workspace",
+  "err.account_not_available": "You do not have access to this ad account",
+  "err.token_rejected": "LinkedIn rejected the access token. Reconnect to continue.",
+  "err.not_connected": "Connect LinkedIn first",
+  "health.expiring": "The LinkedIn connection expires in {days} days. Reconnect before then to keep leads and spend flowing.",
+  "health.expired": "The LinkedIn connection has expired. Reconnect to resume syncing.",
+  "leads.synced": "{count} lead form responses synced",
+  "analytics.synced": "{count} campaign-days synced",
+  "analytics.currencyNote": "Ad accounts not in INR need a conversion rate in the connection settings; rows without one are skipped, never converted with a guess.",
+  "consent.note": "Consent is recorded only when a consent rule in the connection settings matches an answer the person gave. Nothing is assumed."
+}

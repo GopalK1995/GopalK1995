@@ -257,3 +257,34 @@ Also needed by the integrator:
 - Sheets column mapping: the field-mapping editor edits `integration_field_maps` rows with `external_object = 'Row'`, `external_field` = column header, `local_table` = leads | contacts | accounts, `local_column` = the CRM field (or `custom.<key>`). `startSheetImport` also stores the resolved mapping in the connection's saved configuration (credential bundle key `sheet_config`), so the editor is optional.
 - Non-INR Ads accounts: connection setting `fx_to_inr` ({"USD": rate}) as for Meta; without a rate those rows are rejected, never converted with a guessed rate.
 - Showcase: the sandbox token `google-mock-token` (or `APP_ENV=demo` without credentials) serves sample data, never in production. Showcase Ads campaigns are `is_synthetic`; Showcase sheet imports flag leads `is_synthetic`.
+## T044 needs (LinkedIn Lead Gen Forms + Ads analytics)
+No migration was written. Needed before real-mode LinkedIn works. Idempotent and additive. Ad account details reuse the existing `ad_accounts` table (platform `linkedin`); campaigns reuse `campaigns` (channel `linkedin`, `external_ids->>'linkedin'`); metrics reuse `campaign_daily_metrics` (0019 columns `integration_id`, `external_campaign_id`).
+```sql
+-- 1. Tenant isolation: a LinkedIn ad account belongs to exactly one workspace, platform-wide.
+create table if not exists public.linkedin_assets (
+  id             uuid primary key default gen_random_uuid(),
+  tenant_id      uuid not null references public.tenants(id) on delete cascade,
+  workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  integration_id uuid references public.integrations(id) on delete set null,   -- null = released (connection disconnected / re-selected)
+  platform       text not null check (platform in ('linkedin_ad_account')),
+  external_id    text not null,
+  name           text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  constraint linkedin_assets_asset_unique unique (platform, external_id)
+);
+create index if not exists linkedin_assets_workspace on public.linkedin_assets (workspace_id);
+create index if not exists linkedin_assets_integration on public.linkedin_assets (integration_id);
+alter table public.linkedin_assets enable row level security;
+-- Read for members of the workspace; writes are service role only (the connector).
+drop policy if exists linkedin_assets_read on public.linkedin_assets;
+create policy linkedin_assets_read on public.linkedin_assets for select to authenticated using (workspace_id in (select public.member_ws_ids()));
+
+-- 2. Lookup used when a lead is matched back to a LinkedIn campaign.
+create index if not exists campaigns_linkedin_external on public.campaigns (workspace_id, (external_ids->>'linkedin')) where external_ids ? 'linkedin';
+```
+Also needed by the integrator:
+- UI for selection: call `listLinkedInAccounts` / `selectLinkedInAccount` (src/lib/connectors/linkedin/assets.ts) from a server action (permission `integrations.manage`, deps from `requestRuntime(audit)`) after the OAuth callback returns `connected=1`. Until the selection runs no stream does anything.
+- Env: `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` (the connector is `not_configured` without them); optional `LINKEDIN_API_BASE`, `LINKEDIN_API_VERSION`. A `connector_availability` row for `linkedin` per environment (seeded `needs_vendor_approval` by 0015).
+- Connection settings (`integrations.settings`, no editor yet): `consent_rules` ([{source: "field"|"checkbox", key, purpose}]; `field` key is the form field name, `checkbox` key is LinkedIn's consent id) and `fx_to_inr` ({"USD": rate}) for non-INR ad accounts. There are no default consent rules: nothing is granted without one.
+- Lead Sync webhook (push) is not wired: it needs LinkedIn's separate approval and a LinkedIn signature scheme (HMAC with the client secret) in the T023 receiver. Polling covers the gap; `handleLeadResponse` (linkedin/leads.ts) is the function a webhook consumer would call.
