@@ -182,5 +182,6 @@
   "zapier.sandbox": "Zapier has no sandbox. Use a test Zap with a sandbox API key; nothing reaches real customers unless a Zap sends it.",
   "make.sandbox": "Make has no sandbox. Use a test scenario with a sandbox API key; nothing reaches real customers unless a scenario sends it.",
   "google-calendar.sandbox": "Showcase uses a sample calendar with two sample events; nothing is read from or written to Google.",
-  "gmail.sandbox": "Showcase reads no mail and sends nothing. A live connection needs the platform's Google app in testing mode and your opt-in."
+  "gmail.sandbox": "Showcase reads no mail and sends nothing. A live connection needs the platform's Google app in testing mode and your opt-in.",
+  "outlook.sandbox": "Showcase only: sample mail and calendar events, nothing is read from or sent to Microsoft. A live connection needs the app's publisher verification at Microsoft first; a tenant admin can pre-approve it for the whole firm with the admin-consent link."
 }

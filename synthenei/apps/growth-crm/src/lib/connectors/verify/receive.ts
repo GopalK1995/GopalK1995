@@ -4,6 +4,7 @@
 // the same empty-detail body.
 import { LIMITS, type RateLimitResult } from "@/lib/security/rate-limit";
 import { HOOK_KEY, HOOK_METHOD, HOOK_URL, safeEqual } from "./util";
+import { answerValidation } from "../microsoft/validation";
 import { VERIFIERS, allowListedHeaders, pickSecret, pickVerifyToken, providerEventId, schemeFor, type Scheme } from "./index";
 
 export const MAX_BODY_BYTES = 1_048_576;
@@ -80,6 +81,8 @@ export async function receivePost(d: ReceiveDeps, req: ReceiveReq): Promise<Rece
   const r = await resolve(d, req);
   if (!r) return notFound();
   const { conn, scheme } = r;
+  // Microsoft Graph subscription handshake: echo ?validationToken as text/plain, nothing stored, nothing processed.
+  if (scheme === "graph") { const v = answerValidation(req.query.get("validationToken")); if (v) return v; }
   if (req.contentLength !== null && req.contentLength > MAX_BODY_BYTES) return { status: 413, json: { ok: false }, headers: NO_STORE };
   const raw = await req.readBody();
   if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) return { status: 413, json: { ok: false }, headers: NO_STORE };

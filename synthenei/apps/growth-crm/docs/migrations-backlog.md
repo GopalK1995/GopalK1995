@@ -403,3 +403,29 @@ Also needed by the integrator:
 - Callback routing: the generic `/api/oauth/[connector]/callback` calls core `completeOAuth`, which keeps ONE grant per connection. For `google-calendar` and `gmail` call `connectGoogleUser(rt, actor, connector, tokens, { email, flags })` (src/lib/connectors/google/calendar/grants.ts) instead, so each user's own grant is kept beside the first. For `gmail` pass `flags: { gmail_opt_in: <iso time> }`. The Gmail start route must take its scopes from `startGmailConnect(rt, actor, optIn)` (gmail/start.ts; empty scopes = closed) and refuse when it returns `ok: false`. Without that wiring the runtime still refuses: a Gmail connection without the `gmail_opt_in` stamp never reads or sends (checked on every sync and send).
 - Server actions (not in Owns, no UI built): `startGmailConnect` (behind `integrations.manage`), `createCalendarEvent` (behind `activities.write`; calendar/actions.ts; demos, meetings and room holds linked to a record), `sendGmailReply` (behind `inbox.reply` plus consent; gmail/send.ts). UI gate state: `gmailGate(env, optedIn)` returns `{ open, reasons, mode }`; strings in namespace `gmail`.
 - Room holds: CRM rows in `calendar_events` with status `tentative` linked to a custom object (`obj:<key>`) go to Google as tentative events stamped `crm_kind=room_hold`; any unlinked CRM row (integration_id null, not cancelled) is pushed to the primary user's calendar by the push stream.
+
+
+## T043 needs (Outlook / Microsoft 365 connector)
+No migration was written, nothing was applied. All idempotent and additive. Mail lands in `conversations` / `messages` (channel `email`, both have `workspace_id`) and the calendar in `calendar_events` (0019), so no new table is needed.
+```sql
+-- 1. Catalogue: the connector ships with a Showcase gateway and a sandbox how-to; the gate is now publisher verification (0015 seeded needs_client_credentials).
+update public.connector_catalog set sandbox_supported = true, gate = 'needs_vendor_approval' where id = 'outlook';
+insert into public.connector_availability (connector_id, env, mode, gate_status, note)
+select c.id, e.env, case when e.env = 'production' then 'disabled' when c.sandbox_supported then 'sandbox' else 'disabled' end, c.gate, null
+  from public.connector_catalog c cross join (values ('production'), ('staging'), ('demo')) e(env)
+ where c.id = 'outlook'
+on conflict (connector_id, env) do update set mode = excluded.mode, gate_status = excluded.gate_status;
+
+-- 2. One conversation per mail thread of a connection (the store reads then inserts and treats a unique violation as "already there").
+--    external_thread_id is written as 'outlook:<connection id>:<Graph conversationId>' so two connections never collide.
+create unique index if not exists conversations_ws_channel_thread
+  on public.conversations (workspace_id, channel, external_thread_id) where external_thread_id is not null;
+-- messages(tenant_id, external_id) is already unique (0021c / 0021e): a redelivered Graph message is a no-op.
+```
+Also needed by the integrator:
+- Entra ID: register ONE multi-tenant app (accounts in any organizational directory), redirect URI `<app>/api/oauth/outlook/callback`, delegated permissions `offline_access`, `User.Read`, `Mail.Read`, `Mail.Send`, `Calendars.Read`, a client secret. Env names only: `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_GRAPH_API_BASE` (stub / Cypress; unset = Microsoft). `APP_BASE_URL` must be a public https URL for Graph to deliver notifications (unset or localhost = polling only, reported as `no_public_url`).
+- Webhook receiver: already wired by T043 (one-line `graph` scheme + `outlook` mapping in `verify/index.ts`, and the `validationToken` handshake branch in `verify/receive.ts`). Nothing for the integrator to add there. The per-connection `clientState` is stored in the Vault as the connection's webhook secret (`webhook_secret`).
+- Admin-consent route (not in Owns): `buildAdminConsentUrl` / `parseAdminConsentReturn` in `microsoft/consent.ts` are pure. The integrator adds a route that stores a one-time state (like `oauth_states`), redirects an owner to the link, and on return (`admin_consent=True&tenant=<guid>&state=..`) shows "approved for your organization" and audits it. The existing `/api/oauth/outlook/callback` has no `code` on that return, so it must not be reused for it.
+- Server actions (not in Owns): `sendOutlookMail` (behind `inbox.reply`; consent purpose per tenant policy) and `subscribeOutlook` (behind `integrations.manage`; call after connecting and from a "Repair notifications" button). On disconnect call `dropSubscriptions` with the `subscriptions` cursor (best effort).
+- Jobs: streams `inbox`, `sent`, `calendar`, `subscriptions` are scheduled by the generic connector tick; `subscriptions` must run at least hourly (Graph mail/event subscriptions last under 71 h).
+- i18n: `outlook.sandbox` added to `integrations.json` (en only; Tamil not drafted).
