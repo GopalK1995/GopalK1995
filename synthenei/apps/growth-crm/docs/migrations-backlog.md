@@ -313,3 +313,50 @@ Also needed by the integrator:
 - Webhook URLs: `/api/hooks/calendly/<connection id>` and `/api/hooks/cal-com/<connection id>`.
 - Optional connection setting `display_timezone` (IANA name) controls how a start time is printed in notifications; default `Asia/Kolkata`.
 - A calendar page linked from the unmatched-booking notification (`/calendar`) should list `calendar_events` rows with a null `object_id` so the owner can link them to a lead.
+
+## T045 needs (Google Business Profile connector + reviews reply UI)
+No migration was written. All idempotent and additive. Reviews work on the 0019 `reviews` table as it is (its trigger enforces the reply state machine and the named approver). The optional columns below make the UI richer; the store falls back to the 0019 shape when they are missing. The daily stream needs the new table.
+```sql
+-- 1. Catalogue: the connector ships with a Showcase gateway and a sandbox how-to (gate stays needs_vendor_approval).
+update public.connector_catalog set sandbox_supported = true where id = 'google-business';
+insert into public.connector_availability (connector_id, env, mode, gate_status, note)
+select c.id, e.env, case when e.env = 'production' then 'disabled' when c.sandbox_supported then 'sandbox' else 'disabled' end, c.gate, null
+  from public.connector_catalog c cross join (values ('production'), ('staging'), ('demo')) e(env)
+ where c.id = 'google-business'
+on conflict (connector_id, env) do update set mode = excluded.mode, gate_status = excluded.gate_status;
+
+-- 2. reviews: optional columns (who/what drafted the reply, why a post failed, a reply that already exists on Google).
+alter table public.reviews add column if not exists reply_source text check (reply_source is null or reply_source in ('ai', 'template', 'human'));
+alter table public.reviews add column if not exists reply_error text check (reply_error is null or reply_error in ('credentials', 'rejected'));
+alter table public.reviews add column if not exists external_reply text check (external_reply is null or length(external_reply) <= 4096);
+alter table public.reviews add column if not exists external_reply_at timestamptz;
+
+-- 3. gbp_daily: daily Business Profile performance per listing. Counts are nullable: null = Google did not report it, never 0.
+create table if not exists public.gbp_daily (
+  tenant_id          uuid not null references public.tenants(id) on delete cascade,
+  workspace_id       uuid not null references public.workspaces(id) on delete cascade,
+  integration_id     uuid not null references public.integrations(id) on delete cascade,
+  location_id        text not null,
+  day                date not null,
+  impressions_search integer check (impressions_search is null or impressions_search >= 0),
+  impressions_maps   integer check (impressions_maps is null or impressions_maps >= 0),
+  call_clicks        integer check (call_clicks is null or call_clicks >= 0),
+  website_clicks     integer check (website_clicks is null or website_clicks >= 0),
+  direction_requests integer check (direction_requests is null or direction_requests >= 0),
+  conversations      integer check (conversations is null or conversations >= 0),
+  bookings           integer check (bookings is null or bookings >= 0),
+  food_orders        integer check (food_orders is null or food_orders >= 0),
+  source             text not null default 'api' check (source in ('api', 'mock')),
+  imported_at        timestamptz not null default now(),
+  primary key (workspace_id, integration_id, day)
+);
+create index if not exists gbp_daily_tenant on public.gbp_daily (tenant_id);
+alter table public.gbp_daily enable row level security;
+-- reads need analytics.read (same rule as 0021d); writes are service role only (the sync job). Mirror the 0021d private.rls_table call:
+-- its signature is the source of truth.
+```
+Also needed by the integrator:
+- OAuth: the same Google client as T039 (`GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`); add the redirect URI `<app>/api/oauth/google-business/callback`. Scope `https://www.googleapis.com/auth/business.manage` (sensitive; part of Google's OAuth app verification). **Vendor gate:** Google gives the Business Profile APIs (Account Management, Business Information, Performance, v4 reviews) to approved applications only (an access request per Cloud project). Until granted the connector stays `needs_vendor_approval`: Showcase and fixtures work, a live connection is refused by Google.
+- Env (names only, all optional, unset = Google's hosts): `GBP_ACCOUNTS_API_BASE`, `GBP_INFO_API_BASE`, `GBP_PERFORMANCE_API_BASE`, `GBP_REVIEWS_API_BASE` (stubs / Cypress).
+- Server actions (not in Owns, no page built): `listGbpLocations` / `selectGbpLocation` (behind `integrations.manage`); `draftReply` / `submitForApproval` / `decideReply` / `postApprovedReply` (behind `inbox.reply`; the code only requires a signed-in person and stamps them as the approver, so the action decides who may approve). All exported from `src/lib/connectors/google/business-profile/index.ts`. Build `ReplyDeps` with `{ rt: requestRuntime(audit), store: supabaseGbpStore(serviceDb()) }` (scoped by tenant and workspace); pass an AI-backed `ReplyDrafter` as `drafter` when a provider is chosen (default is a rule-based template). Mount `<ReviewsPanel>` from `src/components/reviews` (props: reviews, actions wrapping the four server actions, canReply, canApprove) on the inbox reviews view, and pass `CYPRESS_GBP_REVIEWS_PATH` to the spec.
+- i18n: namespace `reviews` is registered (en final, ta machine draft in `_review.json`); `google-business.sandbox` added to integrations.json.

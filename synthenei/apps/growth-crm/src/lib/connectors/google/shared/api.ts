@@ -6,7 +6,7 @@ import { BASE_DELAY_MS, MAX_DELAY_MS, MAX_RETRIES } from "./constants";
 import { classify, errorFromResponse } from "./errors";
 
 export interface GoogleHttpDeps { fetch?: typeof fetch; sleep?: (ms: number) => Promise<void>; random?: () => number; maxRetries?: number }
-export interface GoogleRequest { method: "GET" | "POST"; url: string; token: string; headers?: Record<string, string>; body?: unknown }
+export interface GoogleRequest { method: "GET" | "POST" | "PUT"; url: string; token: string; headers?: Record<string, string>; body?: unknown }
 
 export async function googleJson<T>(req: GoogleRequest, deps: GoogleHttpDeps = {}): Promise<T> {
   const doFetch = deps.fetch ?? fetch;

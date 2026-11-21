@@ -13,9 +13,10 @@ import { googleSheetsConnector } from "./google/sheets/connector";
 import { linkedinConnector } from "./linkedin/connector";
 import { calendlyConnector } from "./calendly/connector";
 import { calcomConnector } from "./calcom/connector";
+import { googleBusinessConnector } from "./google/business-profile/connector";
 
 /** Vendor connector defs go here (append only). */
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector];
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector];
 
 let done = false;
 export function registerAllConnectors(): void {

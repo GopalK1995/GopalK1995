@@ -1,0 +1,18 @@
+{
+  "_review": "T045 machine-drafted Tamil; needs native review.",
+  "empty": "இன்னும் மதிப்புரைகள் இல்லை.",
+  "showcase": "மாதிரி: மாதிரி மதிப்புரைகள் மட்டும்; Google-இலிருந்து எதுவும் படிக்கப்படவில்லை.",
+  "stars": "5-இல் {count} நட்சத்திரங்கள்",
+  "replyLabel": "உங்கள் பதில்",
+  "suggest": "பதிலை பரிந்துரை",
+  "saveDraft": "வரைவைச் சேமி",
+  "submit": "ஒப்புதலுக்கு அனுப்பு",
+  "approve": "ஒப்புதல்",
+  "post": "Google-இல் பதிவிடு",
+  "status.none": "பதில் இல்லை",
+  "status.draft": "வரைவு",
+  "status.pending_approval": "ஒப்புதலுக்காக காத்திருக்கிறது",
+  "status.approved": "ஒப்புதல் பெற்றது, பதிவிடவில்லை",
+  "status.posted": "பதிவிடப்பட்டது",
+  "status.failed": "தோல்வி"
+}

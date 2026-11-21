@@ -327,7 +327,8 @@
       "ga4.sandbox": true,
       "google-ads.sandbox": true,
       "google-sheets.sandbox": true,
-      "linkedin.sandbox": true
+      "linkedin.sandbox": true,
+      "google-business.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -879,6 +880,23 @@
       "state_error": true,
       "webhookUrlLabel": true,
       "webhookHelp": true
+    },
+    "reviews": {
+      "empty": true,
+      "showcase": true,
+      "stars": true,
+      "replyLabel": true,
+      "suggest": true,
+      "saveDraft": true,
+      "submit": true,
+      "approve": true,
+      "post": true,
+      "status.none": true,
+      "status.draft": true,
+      "status.pending_approval": true,
+      "status.approved": true,
+      "status.posted": true,
+      "status.failed": true
     }
   }
 }
