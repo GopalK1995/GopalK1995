@@ -17,6 +17,9 @@ Skipped on purpose, still open: ga4_daily primary key swap and the connector_cat
 - `can_contact_many(uuid[], purpose)` for batch consent checks. **Done in 0021 (T031).**
 - Audit trigger on `audience_segments`. **Done in 0021 (T031).**
 
+## Applied by T041 (21 Nov 2026, Lawsome, migrations 0022*)
+Done: 0022_fk_indexes (40 FK indexes), 0022b (value-free audit triggers on records, record_links, object_types, layouts, saved_views; layouts version trigger), 0022c (deferrable stage positions, colour check, archived-stage and archive guards, `save_pipeline_stages` RPC), 0022d (`private.purge_soft_deleted` plus a DISABLED scheduled_jobs row), 0022e (list composite indexes), 0022f (revoke EXECUTE on 3 trigger functions), 0022g (trigram search indexes). Still open: ga4_daily key swap (4,320 rows), T039 catalogue UPDATEs, DB enforcement of stage required_fields, webhook_inbox failed-signature purge. Details in docs/gates/advisors.md.
+
 ## 0022 (with T041)
 - 7-day purge of `webhook_inbox` rows whose signature failed (add to the maintenance job).
 
