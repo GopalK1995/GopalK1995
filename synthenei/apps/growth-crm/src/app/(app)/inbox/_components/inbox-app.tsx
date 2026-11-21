@@ -20,6 +20,7 @@ import { ConflictBanner } from "../../leads/_components/conflict-banner";
 import type { Verdict } from "../../accounts/_components/perms";
 import { assignConversation, linkConversation, markConversationRead, sendMessage, setConversationStatus } from "../actions";
 import { draftKey } from "../_lib/draft-key";
+import { ReplyDraft } from "../../ai/_components/reply-draft";
 import { fillTemplate } from "../_lib/fill";
 import type { Ch, ConvStatus, InboxConv, InboxMode, Msg, TemplateOpt } from "../_lib/types";
 
@@ -327,6 +328,7 @@ function Composer({ c, env, windowClosed, onSent, now }: { c: InboxConv; env: En
 
   return (
     <div className="border-t border-line bg-surface">
+      {real && mode === "reply" && !windowClosed && <ReplyDraft conversationId={c.id} onUse={(text, l) => { setText(text); setFromDraft({ lang: l, original: text }); setChecked(false); }} />}
       <AnimatePresence initial={false}>
         {hasAiDraft && showDraft && mode === "reply" && (
           <motion.div initial={reduce ? false : { height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={reduce ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">

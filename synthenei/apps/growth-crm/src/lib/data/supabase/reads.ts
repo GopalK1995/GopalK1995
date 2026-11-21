@@ -11,6 +11,7 @@ import { createAuditRepo } from "@/lib/db/repo/audit";
 import { createConversationsRepo } from "@/lib/db/repo/conversations";
 import { createIntegrationsRepo } from "@/lib/db/repo/integrations";
 import type { Page } from "@/lib/db/page";
+import { AI_OFF_SETTINGS, aiSettingsFromFeatures } from "@/lib/ai/settings";
 import type {
   Activity, AiSettings, AuditEntry, ConsentEntry, Conversation, Ga4Day, Ga4Page, Holiday, Integration, PrivacyRequest, SyncRun, TeamMember,
 } from "../types";
@@ -18,9 +19,9 @@ import * as m from "./mappers";
 import type { Row } from "./mappers";
 
 /** Entities still without a table (migrations 0001-0015). They stay listed in DataSource.notWired. */
-export const STILL_NOT_WIRED = ["privacyRequests", "aiSettings"] as const;
+export const STILL_NOT_WIRED = ["privacyRequests"] as const;
 
-export const AI_OFF: AiSettings = { scoring: true, summaries: false, nextBestAction: false, replyDrafts: false, campaignDigest: false, askCrm: false };
+export const AI_OFF: AiSettings = AI_OFF_SETTINGS;
 
 const PAGE = 200, MAX_PAGES = 25; // hard cap 5000 rows per entity, like the legacy reader
 async function drain<T>(list: (q: ListQuery) => Promise<Page<T>>, q: Omit<ListQuery, "cursor" | "limit"> = {}): Promise<T[]> {
@@ -110,8 +111,15 @@ export function createWiredReads(ws: string, getDb: DbProvider = dbForRequest, o
     /** No privacy_requests table before migration 0020: honest empty list. */
     async privacyRequests(): Promise<PrivacyRequest[]> { return []; },
 
-    /** No ai_policies table before migration 0021: everything generative stays off. */
-    async aiSettings(): Promise<AiSettings> { return AI_OFF; },
+    /** ai_policies (0021, T050): features absent or false are off; any read problem also reads as off. */
+    async aiSettings(): Promise<AiSettings> {
+      const db = await getDb();
+      const w = await from(db, "workspaces").select("tenant_id").eq("id", ws).maybeSingle();
+      const tid = (w.data as Row | null)?.tenant_id;
+      if (w.error || typeof tid !== "string") return AI_OFF;
+      const p = await from(db, "ai_policies").select("features").eq("tenant_id", tid).maybeSingle();
+      return p.error ? AI_OFF : aiSettingsFromFeatures((p.data as Row | null)?.features);
+    },
 
     async holidays(): Promise<Holiday[]> {
       const db = await getDb();

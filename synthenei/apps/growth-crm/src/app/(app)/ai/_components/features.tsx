@@ -29,7 +29,7 @@ export function FeatureCards({ features, toggle }: { features: Feature[]; toggle
   const [ticks, setTicks] = useState<boolean[]>([false, false, false]);
   const [pending, start] = useTransition();
   const commit = (f: Feature, on: boolean, terms: string[]) => start(async () => {
-    const r = await toggleFeature(f.name, on, terms);
+    const r = await toggleFeature(f.key, f.name, on, terms);
     toast(r.message, r.sub);
     if (r.ok) { setState((s) => ({ ...s, [f.key]: on })); setAsking(null); }
   });

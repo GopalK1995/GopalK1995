@@ -89,14 +89,21 @@ describe("view mappers (metrics.ts)", () => {
 
 describe("wired reads (mocked PostgREST)", () => {
   it("lists exactly the entities that still lack a table", () => {
-    expect([...STILL_NOT_WIRED]).toEqual(["privacyRequests", "aiSettings"]);
+    expect([...STILL_NOT_WIRED]).toEqual(["privacyRequests"]);
   });
 
-  it("privacy requests are empty and AI settings are the off default (no query issued)", async () => {
+  it("privacy requests are empty (no query issued)", async () => {
     const { r, calls } = reads([]);
     expect(await r.privacyRequests()).toEqual([]);
-    expect(await r.aiSettings()).toEqual(AI_OFF);
     expect(calls).toHaveLength(0);
+  });
+
+  it("AI settings come from ai_policies.features; any read problem reads as off", async () => {
+    const on = reads([ok({ tenant_id: "t1" }), ok({ features: { reply_draft: true, lead_summary: true, ask_crm: "yes" } })]);
+    expect(await on.r.aiSettings()).toEqual({ ...AI_OFF, replyDrafts: true, summaries: true });
+    expect(has(on.calls[1], "eq", "tenant_id", "t1")).toBe(true);
+    expect(await reads([ok(null)]).r.aiSettings()).toEqual(AI_OFF);
+    expect(await reads([ok({ tenant_id: "t1" }), err("42501")]).r.aiSettings()).toEqual(AI_OFF);
   });
 
   it("team joins memberships, profiles and targets, all scoped to the workspace", async () => {

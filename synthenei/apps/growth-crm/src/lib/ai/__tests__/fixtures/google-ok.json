@@ -1,0 +1,1 @@
+{"candidates":[{"content":{"role":"model","parts":[{"text":"Hello Asha, "},{"text":"thanks for your message."}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":412,"candidatesTokenCount":23,"totalTokenCount":435},"modelVersion":"gemini-2.5-flash"}

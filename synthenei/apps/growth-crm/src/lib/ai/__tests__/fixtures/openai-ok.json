@@ -1,0 +1,1 @@
+{"id":"chatcmpl-Example","object":"chat.completion","model":"gpt-4.1-2025-04-14","choices":[{"index":0,"message":{"role":"assistant","content":"Hello Asha, thanks for your message."},"finish_reason":"stop"}],"usage":{"prompt_tokens":412,"completion_tokens":23,"total_tokens":435}}

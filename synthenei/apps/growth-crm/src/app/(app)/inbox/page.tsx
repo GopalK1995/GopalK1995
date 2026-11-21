@@ -4,10 +4,9 @@ import { accessFor } from "@/lib/auth/roles";
 import { Badge, StatusChip } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/misc";
-import { verticalOf, vocabFor } from "@/lib/vertical";
+import { vocabFor } from "@/lib/vertical";
 import { verdict } from "../accounts/_components/perms";
 import { InboxApp } from "./_components/inbox-app";
-import { tamilDraft } from "./_lib/drafts";
 import { buildRealItems } from "./_lib/items";
 import { readInbox } from "./_lib/reads";
 import { itAll } from "./_lib/strings";
@@ -33,8 +32,7 @@ export default async function Inbox() {
   let loadError = false;
 
   if (demo) {
-    // Showcase: sample conversations from the mock data source. Tamil drafts are LAWSOME sample copy, gated by (demo, legal).
-    const legal = verticalOf(active.tenant) === "legal";
+    // Showcase: sample conversations from the mock data source. Live workspaces draft replies through the AI gateway (T050), never from sample copy.
     const mine = scope.conversations(convs, leads);
     items = mine.map((c) => {
       const l = leads.find((x) => x.id === c.leadId)!;
@@ -46,7 +44,7 @@ export default async function Inbox() {
       return {
         id: c.id, channel: c.channel, subject: c.subject, unread: c.unread, lastAt: c.lastAt,
         messages: c.messages.map((m) => ({ id: m.id, from: m.from, at: m.at, body: m.body, status: m.status, author: m.from === "us" ? nameOf(m.authorId).split(" ")[0] : first })),
-        draft: { en: c.aiDraft.body.replace(/I've blocked (\d+) minutes and will send/, "I can block $1 minutes and send").replace(/I'll load them/, "I can load them"), ta: tamilDraft({ demo, legal }, c.id, first), rationale: c.aiDraft.rationale, basedOn: c.aiDraft.basedOn.replace(/\b(Arun|Divya|Karthik)'s calendar/, `${nameOf(l.ownerId).split(" ")[0]}'s calendar`), needsReview: c.aiDraft.needsReview ?? null },
+        draft: { en: c.aiDraft.body.replace(/I've blocked (\d+) minutes and will send/, "I can block $1 minutes and send").replace(/I'll load them/, "I can load them"), ta: null, rationale: c.aiDraft.rationale, basedOn: c.aiDraft.basedOn.replace(/\b(Arun|Divya|Karthik)'s calendar/, `${nameOf(l.ownerId).split(" ")[0]}'s calendar`), needsReview: c.aiDraft.needsReview ?? null },
         lead: { id: l.id, name: l.name, first, title: l.title, stage: v.leadStage[l.stage], score: l.score, ownerId: l.ownerId, ownerName: nameOf(l.ownerId), consent: l.consent, phone: l.phone, email: l.email },
         firm: a ? { id: a.id, name: a.name, district: a.district, lawyers: a.lawyers } : null,
         deal: d ? { id: d.id, stage: v.dealStage[d.stage], value: d.value, plan: d.plan, seats: d.seats } : null,

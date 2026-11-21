@@ -1,0 +1,1 @@
+{"id":"msg_01Example","type":"message","role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"Hello Asha, thanks for your message."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":412,"output_tokens":23}}

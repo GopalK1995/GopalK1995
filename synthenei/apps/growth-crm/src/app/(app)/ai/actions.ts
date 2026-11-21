@@ -6,12 +6,20 @@ import { ask, type Answer, type QId } from "./_components/ask-engine";
 import { vocabFor } from "@/lib/vertical";
 import { datasetFor } from "@/lib/data/mock/generate-index";
 import { hospitalityCopilot } from "@/lib/data/mock/hospitality-copilot";
+import { askCrmGateway, setFeature } from "./gateway-actions";
 
 export async function askCrm(text: string, qid: QId | null): Promise<Answer> {
   const { ds, role, support, session, now, scope, active } = await pageCtx();
   if (!allowed("askCrm", { role, support })) return { question: text, refused: deniedReason("askCrm", { role, support }) };
   const q = text.trim().slice(0, 300);
   if (!q && !qid) return { question: "", refused: "Type a question or pick a suggestion." };
+  if (!session.demo) {
+    // Real workspaces: answered by the AI gateway from the approved summary views only (feature switch, caps, redaction and audit apply).
+    const r = await askCrmGateway(q);
+    if (!r.ok) return { question: q, refused: r.sub ? `${r.message} ${r.sub}` : r.message };
+    const d = r.data;
+    return d ? { question: q, headline: d.answer, filters: ["this workspace", "your role's access"], sources: d.views, scopeNote: "Summary views only; no lead, contact or message rows are sent to the model." } : { question: q, refused: r.message };
+  }
   const v = vocabFor(active.tenant);
   if (v.id === "hospitality") {
     // Guesthouse questions: canned answers computed from the workspace dataset (see lib/data/mock/hospitality-copilot.ts).
@@ -26,11 +34,18 @@ export async function askCrm(text: string, qid: QId | null): Promise<Answer> {
   return ask(q, qid, { role, uid: session.uid, now, leads: scope.leads(leads), deals: scope.deals(deals), tasks: scope.tasks(tasks), accounts, team, campaigns, days });
 }
 
-export async function toggleFeature(feature: string, on: boolean, terms: string[]): Promise<ActionResult> {
+/** Gateway feature keys behind the feature cards (scoring is rule-based and the digest is not a model call yet, so neither has a switch). */
+const GATEWAY_KEY: Record<string, string> = { summary: "lead_summary", nba: "next_best_action", drafts: "reply_draft", ask: "ask_crm" };
+
+export async function toggleFeature(key: string, feature: string, on: boolean, terms: string[]): Promise<ActionResult> {
   const { role, support, session } = await pageCtx();
   if (!allowed("aiToggle", { role, support })) return { ok: false, message: deniedReason("aiToggle", { role, support }), sub: "Checked on the server; nothing changed." };
   if (on && terms.length < 3) return { ok: false, message: "Tick all three data checks before turning this on." };
-  return { ok: true, message: `${feature} turned ${on ? "on" : "off"} for this workspace`, sub: session.demo ? "Demo: not saved. Showcase outputs stay sample-only." : "Saved and audit-logged." };
+  if (session.demo) return { ok: true, message: `${feature} turned ${on ? "on" : "off"} for this workspace`, sub: "Demo: not saved. Showcase outputs stay sample-only." };
+  const g = GATEWAY_KEY[key];
+  if (!g) return { ok: false, message: `${feature} has no switch: it does not call a model.` };
+  const r = await setFeature(g, on, terms);
+  return { ok: r.ok, message: r.message, sub: r.sub };
 }
 
 export async function saveWeights(changes: { label: string; from: number; to: number }[]): Promise<ActionResult> {

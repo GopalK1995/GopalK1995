@@ -238,9 +238,9 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         {/* Right column */}
         <div className="order-1 space-y-4 lg:order-none lg:col-span-4 lg:col-start-9 lg:row-start-1">
           <Card>
-            <CardHeader title={aiOn ? "Suggested next step" : hosp ? "Enquiry score" : "Lead score"} sub={aiOn ? "Draft from the lead's timeline and score" : "Rule-based; weights editable in AI settings"} action={aiOn ? <Badge tone="showcase">Showcase</Badge> : <Badge tone="outline">AI off</Badge>} />
+            <CardHeader title={aiOn ? "Suggested next step" : hosp ? "Enquiry score" : "Lead score"} sub={aiOn ? "Draft from the lead's timeline and score" : "Rule-based; weights editable in AI settings"} action={aiOn ? <Badge tone={session.demo ? "showcase" : "accent"}>{session.demo ? "Showcase" : "AI"}</Badge> : <Badge tone="outline">AI off</Badge>} />
             <CardBody>
-              {aiOn ? <AiPanel leadId={lead.id} summary={ai.summaries ? summary : []} suggestion={canWork && ai.nextBestAction ? suggestion : null} basedOn={basedOn} />
+              {aiOn ? <AiPanel leadId={lead.id} summary={ai.summaries ? summary : []} suggestion={canWork && ai.nextBestAction ? suggestion : null} basedOn={basedOn} real={!session.demo} enabled={{ summary: ai.summaries, next: canWork && ai.nextBestAction }} />
                 : <div className="space-y-3">
                     <p className="text-[13px] leading-5 text-ink-2">Summaries and next-best-action are off for this workspace. The Owner turns them on in <Link href="/ai" className="text-accent hover:underline">AI settings</Link> after ticking the data checklist.</p>
                     <div>

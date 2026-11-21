@@ -17,6 +17,12 @@ import { hospitalityCopilot } from "@/lib/data/mock/hospitality-copilot";
 import { AskBox } from "./_components/ask-box";
 import { FeatureCards, type Feature } from "./_components/features";
 import { WeightsEditor, type FactorRow } from "./_components/weights";
+import { GatewaySettings, type SettingsVM } from "./_components/gateway-settings";
+import { dbForRequest } from "@/lib/db/client";
+import { loadAiOverview } from "@/lib/ai/read";
+import { modelsOf } from "@/lib/ai/models";
+import { PROVIDER_IDS } from "@/lib/ai/types";
+import { getT } from "@/i18n/server";
 
 export const metadata = { title: "Copilot" };
 const DAY = 86400e3;
@@ -32,6 +38,11 @@ export default async function Copilot() {
   const canCampaigns = !!accessFor(role, "/campaigns");
   const canLog = verdict("viewAiLog", ctx).ok;
   const rep = role === "sales_rep";
+  // Real workspaces: policy, caps, providers and the audit trail come from the AI gateway tables (T050). Demo keeps the showcase content.
+  const real = !session.demo;
+  const tAi = await getT("ai");
+  const ov = real ? await loadAiOverview(await dbForRequest(), active.ws.uuid, session.uid) : null;
+  const canToggle = verdict("aiToggle", ctx).ok;
 
   // Lead scoring: factor table from stored score_factors (so the number is always explainable).
   const labels = [...new Set(leads.flatMap((l) => l.scoreFactors.map((f) => f.label)))];
@@ -88,24 +99,44 @@ export default async function Copilot() {
     digest: { status: "off", lastRun: "Never (off)", acceptance: "No data yet" },
     ask: { status: "showcase", lastRun: "Sample answers below", acceptance: "Not applicable" },
   };
-  const features: Feature[] = a_.features.map((f) => ({ ...f, ...runInfo[f.key] }));
+  const GW: Record<string, string> = { summary: "lead_summary", nba: "next_best_action", drafts: "reply_draft", ask: "ask_crm" };
+  const features: Feature[] = a_.features.map((f) => {
+    const base = { ...f, ...runInfo[f.key] };
+    if (!real || !GW[f.key]) return base;
+    const on = ov?.policy.features[GW[f.key]] === true, last = ov?.lastRun[GW[f.key]];
+    return { ...base, status: on ? "on" as const : "off" as const, lastRun: last ? fmtDateTime(last) : tAi("neverRun"), acceptance: tAi("noDataYet"), note: undefined };
+  });
   const guard = [
     { I: Gauge, t: "Off by default", d: "Each feature stays off until the Owner ticks the data checks for this workspace." },
     { I: UserCheck, t: "A person approves every output", d: "Nothing is sent, moved or assigned by itself. Every draft is accepted, edited or dismissed." },
     { I: EyeOff, t: "Phone and email are never sent", d: "Notes are redacted for phone, email, Aadhaar-like and PAN patterns before any call." },
     { I: Scale, t: a_.guardLegal[0], d: a_.guardLegal[1] },
     { I: ShieldCheck, t: "Numbers come from metric queries", d: "The model writes words around numbers the CRM passes in, with sources shown." },
-    { I: Ban, t: "Monthly cap: 2,000 calls", d: "0 used this month. Showcase outputs are sample text; no model is called." },
+    { I: Ban, ...(real
+      ? { t: ov?.policy.monthlyCallCap != null ? tAi("guard.cap", { n: ov.policy.monthlyCallCap.toLocaleString() }) : tAi("guard.noCap"), d: tAi("guard.capDetail", { used: ov?.caps?.usage.calls_month ?? 0 }) }
+      : { t: "Monthly cap: 2,000 calls", d: "0 used this month. Showcase outputs are sample text; no model is called." }) },
   ];
-  const log = convs.slice(0, 6).map((c) => {
+  const realLog = (ov?.audit ?? []).map((a) => ({ at: a.at, feature: tAi(`feature.${a.feature}`), object: a.id.slice(0, 8), for: a.model, outcome: a.excerpt?.startsWith("[failed") ? tAi("log.failed") : tAi("log.shown"), basedOn: a.model }));
+  const log = real ? realLog : convs.slice(0, 6).map((c) => {
     const l = allLeads.find((x) => x.id === c.leadId); const lastIn = [...c.messages].reverse().find((m) => m.from === "lead");
     return { at: lastIn?.at ?? c.lastAt, feature: "Reply draft", object: `${c.id} · ${l?.name ?? ""}`, for: team.find((t) => t.id === l?.ownerId)?.name ?? "—", outcome: c.aiDraft.needsReview ? a_.logHeld : "Shown, awaiting review", basedOn: c.aiDraft.basedOn };
   });
   const copilot = hosp ? hospitalityCopilot(datasetFor(active.ws.dataset)) : [];
-  const questions = hosp ? copilot.map((c) => ({ id: c.id as QId, q: c.question, metric: "" })) : QUESTIONS;
-  const initial = hosp
+  const questions = real ? [] : hosp ? copilot.map((c) => ({ id: c.id as QId, q: c.question, metric: "" })) : QUESTIONS;
+  const initial = real ? null : hosp
     ? copilot[0] ? { question: copilot[0].question, qid: copilot[0].id as QId, headline: copilot[0].answer, bullets: copilot[0].bullets, filters: ["this workspace", "sample dataset, last 90 days"], sources: ["leads", "deals", "campaign_daily_metrics"], scopeNote: "Workspace-wide figures; they match the Command Center and Campaigns pages." } : null
     : ask("", "demos_week", { role, uid: session.uid, now, leads, deals, tasks, accounts, team, campaigns, days });
+
+  const LABEL: Record<string, string> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google" };
+  const settingsVm: SettingsVM = {
+    canEdit: canToggle,
+    policy: { monthlyCallCap: ov?.policy.monthlyCallCap ?? null, monthlyTokenCap: ov?.policy.monthlyTokenCap ?? null, perUserDailyCap: ov?.policy.perUserDailyCap ?? null, piiRedaction: ov?.policy.piiRedaction ?? true, storePrompts: ov?.policy.storePrompts ?? "redacted" },
+    usage: ov?.caps ? { calls: ov.caps.usage.calls_month, tokens: ov.caps.usage.tokens_month, userToday: ov.caps.usage.user_calls_today, planCalls: ov.caps.caps.plan_calls } : null,
+    providers: PROVIDER_IDS.map((id) => {
+      const row = ov?.providers.find((x) => x.provider === id);
+      return { provider: id, label: LABEL[id], enabled: row ? row.enabled : id === "anthropic", defaultModel: row?.defaultModel ?? null, hasSecret: row?.hasSecret ?? false, models: modelsOf(id).map((m) => ({ id: m.id, label: m.label })) };
+    }),
+  };
 
   return (
     <>
@@ -114,7 +145,7 @@ export default async function Copilot() {
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="lg:col-span-8">
           <Card className="h-full">
-            <CardHeader title="Ask the CRM" sub="Questions map to approved metrics only. Each answer shows the metric ID, filters and source tables." action={<Badge tone="showcase">Showcase</Badge>} />
+            <CardHeader title="Ask the CRM" sub="Questions map to approved metrics only. Each answer shows the metric ID, filters and source tables." action={real ? <Badge tone="accent">AI</Badge> : <Badge tone="showcase">Showcase</Badge>} />
             <CardBody><AskBox questions={questions} initial={initial} /></CardBody>
           </Card>
         </StaggerItem>
@@ -139,6 +170,15 @@ export default async function Copilot() {
             <CardBody><FeatureCards features={features} toggle={verdict("aiToggle", ctx)} /></CardBody>
           </Card>
         </StaggerItem>
+
+        {real && ov && (
+          <StaggerItem className="lg:col-span-12">
+            <Card>
+              <CardHeader title={tAi("settings.title")} sub={tAi("settings.sub")} action={<Badge tone="outline">{tAi("settings.offDefault")}</Badge>} />
+              <CardBody><GatewaySettings vm={settingsVm} /></CardBody>
+            </Card>
+          </StaggerItem>
+        )}
 
         <StaggerItem className="lg:col-span-12">
           <Card>
