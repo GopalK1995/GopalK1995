@@ -18,7 +18,7 @@ import { UsersTab, type MemberRow } from "./_components/users-tab";
 import { BrandingTab } from "./_components/branding-tab";
 import { PipelineTab, type Stage } from "./_components/pipeline-tab";
 import { ConfigTab } from "./_components/config-tab";
-import { EraseButton } from "./_components/privacy-controls";
+import { EraseButton, PrivacyHubLink } from "./_components/privacy-controls";
 import { stageList } from "@/lib/config/types";
 
 export const metadata = { title: "Settings" };
@@ -72,6 +72,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     const withdrawn30 = consent.filter((c) => c.action === "withdrawn" && new Date(now).getTime() - new Date(c.at).getTime() < 30 * 864e5).length;
     return (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-12"><PrivacyHubLink /></div>
         <Card className="lg:col-span-12">
           <CardHeader title="Requests" sub="DPDP Act requests from data principals. Due 30 days after receipt. Erasure is Owner-only and never available in a support session." />
           <DataTable rows={requests} rowKey={(r) => r.id} minWidth={820} caption="Privacy requests"

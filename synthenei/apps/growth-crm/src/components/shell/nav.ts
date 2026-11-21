@@ -1,6 +1,6 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, type LucideIcon,
+  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, FileLock2, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
@@ -25,6 +25,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" },
     { href: "/settings/pipelines", label: "Pipelines", icon: Workflow, perm: "pipelines.manage" },
     { href: "/settings/email", label: "Email sending", icon: MailCheck, perm: "integrations.manage" },
+    { href: "/settings/privacy", label: "Privacy requests", icon: FileLock2, perm: "privacy.fulfil" },
     { href: "/settings/fields", label: "Custom fields", icon: ListPlus, perm: "fields.manage" },
     { href: "/settings/objects", label: "Custom objects", icon: Boxes, perm: "objects.manage" },
     { href: "/settings/layouts", label: "Layouts", icon: LayoutTemplate, perm: "layouts.manage" }] },

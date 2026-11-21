@@ -20,10 +20,10 @@ export type StepStatus = "done" | "none" | "kept" | "manual" | "failed";
 export interface ErasureStep { id: string; status: StepStatus; count?: number; detail?: string }
 export interface ErasureReport { leadId: string; erasedLeadCore: boolean; steps: ErasureStep[]; complete: boolean }
 
-interface DelQb extends PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }> {
+export interface DelQb extends PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }> {
   eq(c: string, v: unknown): DelQb; in(c: string, v: unknown[]): DelQb; ilike(c: string, v: string): DelQb; select(c?: string): DelQb;
 }
-const del = (db: Db, t: string): DelQb => (db as unknown as { from(t: string): { delete(): DelQb } }).from(t).delete();
+export const del = (db: Db, t: string): DelQb => (db as unknown as { from(t: string): { delete(): DelQb } }).from(t).delete();
 const escLike = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 
 export interface ErasureDeps {

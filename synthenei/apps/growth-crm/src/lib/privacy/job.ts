@@ -19,3 +19,25 @@ export const retentionHandler: JobHandler<RetentionPayload> = async (p, ctx) => 
 };
 
 registerHandler("maintenance", RETENTION_KIND, retentionHandler);
+
+// ---------- purge of rows that retention already soft-deleted ----------
+// Same pattern as T041's maintenance.purge_soft_deleted: a SQL function does the removal, a scheduled_jobs row (DISABLED) triggers it.
+// The function public.privacy_purge(p_days) is a service-role wrapper from docs/migrations-backlog.md "T052 needs"; until it is applied
+// the handler logs that and does nothing. A minimum of 30 days between soft delete and purge is enforced here AND in SQL.
+export const PURGE_KIND = "privacy.purge";
+export const PURGE_MIN_DAYS = 30;
+export interface PurgePayload { retention_days?: number }
+
+export const purgeHandler: JobHandler<PurgePayload> = async (p, ctx) => {
+  const days = Math.floor(Number(p?.retention_days ?? 90));
+  if (!Number.isFinite(days) || days < PURGE_MIN_DAYS) { ctx.log.warn("privacy.purge refused: retention below the minimum", { min: PURGE_MIN_DAYS }); return "done"; }
+  const r = await (ctx.db as unknown as { rpc(fn: string, a: Record<string, unknown>): PromiseLike<{ data: unknown; error: { code?: string } | null }> }).rpc("privacy_purge", { p_days: days });
+  if (r.error) {
+    // 42883 / PGRST202: the function is not applied yet. Not a failure worth retrying in a loop.
+    ctx.log.warn("privacy.purge did not run", { code: r.error.code ?? null });
+    return r.error.code === "42883" || r.error.code === "PGRST202" ? "done" : "retry";
+  }
+  ctx.log.info("privacy.purge", { counts: r.data as Record<string, unknown> });
+  return "done";
+};
+registerHandler("maintenance", PURGE_KIND, purgeHandler);

@@ -585,3 +585,85 @@ Also for the integrator (not SQL):
 - **Zero vs unknown in `campaign_daily_metrics`**: `reach`, `impressions`, `clicks`, `engagements`-style columns are `not null default 0`, so "the platform did not report reach" (for example LinkedIn) cannot be told apart from a real 0. The dashboard shows No data only when a side has no rows at all in the window. A real fix is additive: `alter table public.campaign_daily_metrics alter column reach drop not null;` (same for `reactions`, `comments`, `shares`) plus connectors writing null for unreported measures. Owner decision, left unapplied.
 - **First/last touch**: there is no per-touch table. Attribution reads `leads.first_touch_channel` / `last_touch_channel`. The shared lead mapper (`src/lib/data/supabase/mappers.ts`, not T054 territory) defaults a missing touch to `organic`; the analytics page works around it by reading the two columns itself (`analytics/_lib/load-touches.ts`). Other pages that use `Lead.firstTouch` still credit Organic for untagged leads.
 - **Tamil**: `messages/en/dashboard.json` has no `messages/ta/dashboard.json` yet (falls back to English).
+
+## T052 needs (DPDP: privacy requests, consent capture, retention)
+Nothing below has run. All additive and idempotent; no existing row is changed or deleted. `privacy_requests`, `retention_policies`, `consent_log` and `erase_lead` already exist (0001, 0007, 0020) and are used as they are: **erasure stays on `erase_lead`** (owner-only, audited, writes `erasure_completed`); the app never replaces it with a delete.
+```sql
+-- 1. Breach register (the page /settings/privacy/breaches shows a setup message until this exists). Owners of the workspace only.
+create table if not exists public.breach_register (
+  id                      uuid primary key default gen_random_uuid(),
+  tenant_id               uuid not null references public.tenants(id) on delete cascade,
+  workspace_id            uuid not null references public.workspaces(id) on delete cascade,
+  detected_at             timestamptz not null,
+  occurred_at             timestamptz,
+  summary                 text not null check (length(summary) between 5 and 2000),
+  data_categories         text[] not null default '{}',
+  affected_count          int check (affected_count is null or affected_count >= 0),
+  severity                text not null default 'medium' check (severity in ('low', 'medium', 'high')),
+  status                  text not null default 'open' check (status in ('open', 'contained', 'closed')),
+  board_notified_at       timestamptz,
+  individuals_notified_at timestamptz,
+  remediation             text check (remediation is null or length(remediation) <= 2000),
+  created_by              uuid default auth.uid(),
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+create index if not exists breach_register_ws_detected on public.breach_register (workspace_id, detected_at desc);
+create index if not exists breach_register_tenant on public.breach_register (tenant_id);
+drop trigger if exists a00_breach_register_tenant on public.breach_register;
+create trigger a00_breach_register_tenant before insert or update of workspace_id, tenant_id on public.breach_register
+  for each row execute function public.set_tenant_from_workspace();
+drop trigger if exists trg_breach_register_updated on public.breach_register;
+create trigger trg_breach_register_updated before update on public.breach_register for each row execute function public.set_updated_at();
+drop trigger if exists trg_breach_register_audit on public.breach_register;
+create trigger trg_breach_register_audit after insert or update or delete on public.breach_register for each row execute function public.audit_row_change();
+alter table public.breach_register enable row level security;
+drop policy if exists breach_register_select on public.breach_register;
+create policy breach_register_select on public.breach_register for select to authenticated
+  using (workspace_id in (select authz.ws_with_member('privacy.fulfil', 'all')));
+drop policy if exists breach_register_insert on public.breach_register;
+create policy breach_register_insert on public.breach_register for insert to authenticated
+  with check (workspace_id in (select authz.ws_with_member('privacy.fulfil', 'all')));
+drop policy if exists breach_register_update on public.breach_register;
+create policy breach_register_update on public.breach_register for update to authenticated
+  using (workspace_id in (select authz.ws_with_member('privacy.fulfil', 'all')))
+  with check (workspace_id in (select authz.ws_with_member('privacy.fulfil', 'all')));
+-- no delete policy and no delete grant: the register is kept
+revoke all on public.breach_register from anon, authenticated;
+grant select, insert, update on public.breach_register to authenticated;
+grant select, insert, update, delete on public.breach_register to service_role;
+
+-- 2. Purge of rows that retention already soft-deleted. Service role only (the app handler `privacy.purge` calls it through RPC).
+--    Records go through the existing private.purge_soft_deleted (0022d). Soft-deleted leads and contacts are removed after the same minimum of
+--    30 days; consent_log keeps its rows (lead_id becomes null, subject_ref survives), privacy_requests keep theirs (lead_id set null).
+create or replace function public.privacy_purge(p_days int default 90) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_records jsonb; v_leads int := 0; v_contacts int := 0;
+begin
+  if p_days is null or p_days < 30 then raise exception 'retention must be at least 30 days' using errcode = '22023'; end if;
+  v_records := private.purge_soft_deleted(p_days);
+  with d as (delete from public.leads where deleted_at is not null and deleted_at < now() - make_interval(days => p_days) returning 1) select count(*) into v_leads from d;
+  with d as (delete from public.contacts where deleted_at is not null and deleted_at < now() - make_interval(days => p_days) returning 1) select count(*) into v_contacts from d;
+  return v_records || jsonb_build_object('leads', v_leads, 'contacts', v_contacts);
+end $$;
+revoke all on function public.privacy_purge(int) from public, anon, authenticated;
+grant execute on function public.privacy_purge(int) to service_role;
+
+-- 3. Scheduled jobs. BOTH ARE DISABLED. An owner decision enables them (update public.scheduled_jobs set enabled = true where kind = ...).
+--    privacy.retention applies the rules in retention_policies (soft delete first, or clear personal fields); payload mode "plan" is a dry run.
+--    privacy.purge then removes what has been soft deleted for 90+ days. Run the dry run on the retention page and read the counts before enabling.
+insert into public.scheduled_jobs (tenant_id, workspace_id, kind, cron, tz, payload, enabled)
+select null, null, 'privacy.retention', '15 3 * * *', 'Asia/Kolkata', '{"mode": "apply"}'::jsonb, false
+ where not exists (select 1 from public.scheduled_jobs where kind = 'privacy.retention' and tenant_id is null and workspace_id is null);
+insert into public.scheduled_jobs (tenant_id, workspace_id, kind, cron, tz, payload, enabled)
+select null, null, 'privacy.purge', '45 3 * * *', 'Asia/Kolkata', '{"retention_days": 90}'::jsonb, false
+ where not exists (select 1 from public.scheduled_jobs where kind = 'privacy.purge' and tenant_id is null and workspace_id is null);
+```
+Also needed by the integrator (not SQL):
+- **Env** (names only): `PRIVACY_VERIFY_SECRET` (long random string; the public form says "unavailable" without it), `APP_BASE_URL` (origin used in the verification link), and the platform system sender `EMAIL_FROM` + `RESEND_API_KEY` (the form also says "unavailable" without them: it never pretends a link was mailed).
+- **Public URL** per workspace: `<APP_BASE_URL>/privacy/<workspace slug>`. Put it in the tenant's website footer and in Meta/Google privacy-policy fields. Workspace slugs are globally unique (`workspaces_slug_global`).
+- **Notice wording** per tenant: `tenant_config.config.privacy` = `{ noticeVersion, effectiveDate, orgName, intro, purposes: [{key,label,text}], collects, sharing, retention, transfers, grievance: {name,email,hours}, extraSections: [{heading,body}] }`; every field optional (generic wording otherwise). Contact falls back to `tenants.dpo_contact` then `tenants.support_email`; response window = `tenants.privacy_response_days`; region = `tenants.data_region`. If T006 ever validates unknown config keys, allow `privacy`. Legal review of the notice text is B-13.
+- **Public route**: `/privacy/` is added to the public list in `src/middleware.ts` (one line); no cookies are set. The page uses the service-role client for read-only workspace/tenant lookups and for writing the request after verification (same sanctioned use as the unsubscribe page).
+- **Audit gap**: the retention and purge jobs run without a user, so they write no `audit_record` row (T046 notes the same open question for the service role); counts are in the job logs and row changes are covered by the table audit triggers. Confirm `audit_record` accepts `p_actor_kind = 'system'` with no user, then add job audit rows.
+- **Cypress env** (specs written, not run): `CYPRESS_PRIVACY_WS` (slug), `CYPRESS_PRIVACY_ERASURE_REQUEST`, `CYPRESS_PRIVACY_ACCESS_REQUEST` (request ids on the staging branch DB), `CYPRESS_OWNER_EMAIL` / `CYPRESS_OWNER_PASSWORD`; add the same names to `expose` in `cypress.config.ts`.
+- **Owner decisions**: (1) enable `privacy.retention` / `privacy.purge` only after a dry run; (2) the default retention rules (none ship); (3) whether payment records and the unsubscribe list are kept after erasure (built as kept: tax law, and so opt-outs hold); (4) how an access bundle reaches the requester (built as a manual download, no automatic email); (5) breach duty wording with counsel (the 72 hour Board report clock is shown, not enforced).

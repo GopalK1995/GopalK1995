@@ -31,8 +31,8 @@ export default async function VerifyPage({ params, searchParams }: { params: Pro
   const deps = intakeDeps(t);
   const p = await previewConfirm(deps, token);
   if (p.status === "expired") return shell(t("verify.expiredTitle"), t("verify.expiredBody", { hours }));
-  if (p.status === "invalid") return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
   if (p.status === "unavailable") return shell(t("verify.invalidTitle"), t("verify.unavailable"));
+  if (p.status !== "ready") return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
   if (p.slug !== slug) return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
 
   const due = q.due ? fmtDue(q.due) : "";
