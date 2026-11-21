@@ -53,7 +53,7 @@ describe.each(PROVIDER_IDS)("adapter contract: %s", (id) => {
 
   it("does not retry a 401 and the error text carries neither key nor prompt", async () => {
     const fetchImpl = vi.fn(async () => res(401, { error: { message: `bad key ${KEY} for SECRET PROMPT TEXT` } })) as unknown as typeof fetch;
-    const e = await a.complete(REQ, { apiKey: KEY, fetchImpl, sleep }).catch((x) => x as AiError);
+    const e = await a.complete(REQ, { apiKey: KEY, fetchImpl, sleep }).then(() => null as never, (x: AiError) => x);
     expect(e).toBeInstanceOf(AiError);
     expect(e.code).toBe("provider_error");
     expect(fetchImpl).toHaveBeenCalledTimes(1);

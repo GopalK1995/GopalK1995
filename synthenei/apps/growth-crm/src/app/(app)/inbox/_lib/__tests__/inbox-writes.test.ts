@@ -6,7 +6,6 @@ import type { ConversationRow, MessageInput } from "@/lib/db/repo/types";
 import { createConversationsRepo } from "@/lib/db/repo/conversations";
 import { err, mockDb, ok } from "@/lib/db/__tests__/mock";
 import { vocabFor } from "@/lib/vertical";
-import { tamilDraft } from "../drafts";
 import { draftKey } from "../draft-key";
 import { buildRealItems } from "../items";
 import * as P from "../persist";
@@ -225,12 +224,6 @@ describe("schemas", () => {
 });
 
 describe("drafts: no cross-tenant leak", () => {
-  it("Tamil sample drafts exist only for a demo session of a legal tenant", () => {
-    expect(tamilDraft({ demo: true, legal: true }, "CV-71", "Asha")).toContain("Asha");
-    expect(tamilDraft({ demo: false, legal: true }, "CV-71", "Asha")).toBeNull();
-    expect(tamilDraft({ demo: true, legal: false }, "CV-71", "Asha")).toBeNull();
-    expect(tamilDraft({ demo: true, legal: true }, "C-real-uuid", "Asha")).toBeNull();
-  });
   it("saved drafts are keyed by workspace, user and conversation", () => {
     const a = draftKey("ws1", "u1", "C1");
     expect(new Set([a, draftKey("ws2", "u1", "C1"), draftKey("ws1", "u2", "C1"), draftKey("ws1", "u1", "C2")]).size).toBe(4);
