@@ -2,6 +2,10 @@
 
 Items found while building T019 to T030 that need SQL. Nothing here has run on real Supabase. Numbers are the planned migrations.
 
+## Applied at gate 4 (21 Nov 2026, Lawsome, migrations 0021e_batch4_needs_*)
+Done: T035 (wa_numbers phone unique, messages attachments/error columns, `wa-media` bucket + policy), T036 (0021c, already applied), T037 (payment event types, payments columns), T038 (email_suppressions + audit trigger, email event types, subject/error columns), T039 (ga4_daily.campaign and workspace/day index only), T034 (`imports` bucket + storage policies, import_jobs realtime + audit triggers), T033 (record.* event types, records title-mirror trigger), T032 (pipelines.version + bump trigger).
+Skipped on purpose, still open: ga4_daily primary key swap and the connector_catalog / connector_availability updates (T039, change existing rows or constraints); audit triggers on records, record_links, object_types, layouts, saved_views (audit_row_change stores records.data values; the app writes value-free audit rows itself); layouts version trigger (app bumps version itself); soft-delete purge job (deletes data); save_pipeline_stages RPC, deferrable position constraint, deals/leads stage-guard triggers, stage colour check (T032: behaviour change, needs design); Tamil `imports` namespace.
+
 ## 0021 (with T031)
 - `mock` connector catalogue row plus availability rows, so the Integrations page lists it per workspace. **Done in 0021 (T031).**
 - Unique (workspace_id, connector_id) on `integrations`. **Done in 0021 (T031).**
