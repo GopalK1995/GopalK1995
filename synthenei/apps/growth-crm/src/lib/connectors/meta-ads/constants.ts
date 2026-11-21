@@ -20,6 +20,7 @@ export const OAUTH_TOKEN_URL = "https://graph.facebook.com/v21.0/oauth/access_to
 /** Permissions requested together with the rest of the Meta review (docs/META-PERMISSIONS.md). */
 export const SCOPES = [
   "pages_show_list", "pages_manage_metadata", "pages_read_engagement", "leads_retrieval", "ads_read", "instagram_basic", "instagram_manage_messages",
+  "instagram_manage_insights", "read_insights",
 ] as const;
 
 /** Credential bundle keys kept in the Vault (never returned to a client, never logged). */

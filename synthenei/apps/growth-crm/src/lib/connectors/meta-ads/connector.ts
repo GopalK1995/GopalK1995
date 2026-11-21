@@ -14,6 +14,7 @@ import { dispatchQueued } from "./outbound";
 import { parseWebhook, type MetaEvent } from "./payload";
 import type { MetaDeps } from "./store";
 import { refreshUserToken } from "./token";
+import { socialStream } from "../meta/organic/stream";
 
 type Env = Record<string, string | undefined>;
 export interface MetaRuntime { deps: MetaDeps; env: Env; fetchImpl?: typeof fetch }
@@ -46,6 +47,7 @@ const streams: StreamDef[] = [
   { key: "insights", schedule: { cron: "25 * * * *", tz: "Asia/Kolkata" }, run: async (ctx, cursor) => insightsStep((await streamCtx(ctx)).c, cursor) },
   { key: "health", schedule: { cron: "35 * * * *", tz: "Asia/Kolkata" }, run: async (ctx, cursor) => healthStep((await streamCtx(ctx)).c, cursor) },
   { key: "dispatch", schedule: { cron: "*/15 * * * *", tz: "Asia/Kolkata" }, run: (ctx) => dispatchStream(ctx) },
+  socialStream,   // T071 organic Instagram + Facebook metrics, every 3 hours
 ];
 
 export const metaAdsConnector: ConnectorDef = {

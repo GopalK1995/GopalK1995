@@ -1,6 +1,6 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, type LucideIcon,
+  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
@@ -15,7 +15,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { href: "/leads", label: "Leads", icon: Users }, { href: "/import", label: "Import", icon: Upload, perm: "leads.import", permOnly: true }, { href: "/pipeline", label: "Pipeline", icon: SquareKanban },
     { href: "/accounts", label: "Law firms", icon: Building2 }, { href: "/inbox", label: "Inbox", icon: Inbox, badge: "Showcase" }, { href: "/tasks", label: "Tasks", icon: ListChecks },
   ] },
-  { group: "Market", items: [{ href: "/campaigns", label: "Campaigns", icon: Megaphone }, { href: "/audience", label: "Audience", icon: Crosshair }, { href: "/analytics", label: "Web analytics", icon: ChartLine }] },
+  { group: "Market", items: [{ href: "/campaigns", label: "Campaigns", icon: Megaphone }, { href: "/audience", label: "Audience", icon: Crosshair }, { href: "/analytics", label: "Web analytics", icon: ChartLine }, { href: "/analytics/social", label: "Social", icon: Share2, perm: "analytics.read", permOnly: true }] },
   { group: "Assist", items: [{ href: "/ai", label: "Copilot", icon: MessagesSquare }] },
   { group: "Admin", items: [{ href: "/integrations", label: "Integrations", icon: Plug }, { href: "/data-health", label: "Data health", icon: Database }, { href: "/settings", label: "Settings", icon: Settings },
     { href: "/settings/notifications", label: "Notification settings", icon: BellRing },
