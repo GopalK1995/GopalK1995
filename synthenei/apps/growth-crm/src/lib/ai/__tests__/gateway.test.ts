@@ -146,7 +146,7 @@ describe("runAi", () => {
   it("passes the resolved key to the adapter but never into usage, audit or the result", async () => {
     const r = rig({ key: { key: "k-byok-secret-value", byok: true } });
     const out = await runAi(r.deps, WHO, REQ);
-    expect(r.complete.mock.calls[0]![1].apiKey).toBe("k-byok-secret-value");
+    expect((r.complete.mock.calls[0] as unknown as [unknown, { apiKey: string }])[1].apiKey).toBe("k-byok-secret-value");
     expect(JSON.stringify([r.usage, r.audits, out])).not.toContain("k-byok-secret-value");
   });
 
