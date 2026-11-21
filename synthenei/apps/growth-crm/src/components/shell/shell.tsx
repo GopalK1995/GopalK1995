@@ -17,6 +17,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/
 import { Tip } from "@/components/ui/tooltip";
 import { logout } from "@/lib/auth/actions";
 import { Toaster } from "@/components/ui/toast";
+import { CommandPalette } from "@/components/command";
 
 const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
@@ -175,6 +176,7 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
           </div>
         </header>
         <Toaster />
+        <CommandPalette />
         <main key={path} className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">{children}</main>
       </div>
 

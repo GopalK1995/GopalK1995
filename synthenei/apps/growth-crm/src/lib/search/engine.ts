@@ -24,15 +24,16 @@ export interface RealDeps {
 export interface SourceResult { hits: SearchHit[]; failed: boolean }
 
 const ref = (type: "lead" | "contact" | "account", d: RealDeps, ownerId: unknown) => ({ type, workspaceId: d.ws.id, ownerId: typeof ownerId === "string" ? ownerId : null });
-const piiOk = (p: Principal, ws: string) => can(p, "pii.read", { type: "lead", workspaceId: ws });
+const piiOk = (p: Principal) => can(p, "pii.read");
 
 /** Which hit types and custom objects this viewer may search. Used for the bootstrap response and to skip queries. */
-export function searchableTypes(p: Principal, ws: string, objects: ObjectSearchDef[]): { types: HitType[]; objects: ObjectSearchDef[] } {
+export function searchableTypes(p: Principal, objects: ObjectSearchDef[]): { types: HitType[]; objects: ObjectSearchDef[] } {
+  // List-level checks (no record): a scoped grant (own, team) passes here and is applied per row by RLS and by the row filters below.
   const types: HitType[] = [];
-  if (can(p, "leads.read", { type: "lead", workspaceId: ws })) types.push("lead");
-  if (can(p, "accounts.read", { type: "account", workspaceId: ws })) types.push("account");
-  if (can(p, "contacts.read", { type: "contact", workspaceId: ws })) types.push("contact");
-  const objs = objects.filter((o) => can(p, `obj:${o.object.key}.read`, { type: `obj:${o.object.key}`, workspaceId: ws }));
+  if (can(p, "leads.read")) types.push("lead");
+  if (can(p, "accounts.read")) types.push("account");
+  if (can(p, "contacts.read")) types.push("contact");
+  const objs = objects.filter((o) => can(p, `obj:${o.object.key}.read`));
   if (objs.length) types.push("record");
   return { types, objects: objs };
 }
@@ -44,7 +45,7 @@ async function guarded(fn: () => Promise<SearchHit[]>): Promise<SourceResult> {
 export async function searchLeads(d: RealDeps, q: string): Promise<SourceResult> {
   return guarded(async () => {
     const pat = likePattern(q);
-    const pii = piiOk(d.principal, d.ws.id);
+    const pii = piiOk(d.principal);
     const b = from(await d.db(), pii ? "leads" : "v_leads_masked")
       .select(pii ? "id,full_name,role_title,firm_name,city,owner_id" : "id,display_name,role_title,firm_name,city,owner_id")
       .eq("workspace_id", d.ws.uuid);
@@ -72,7 +73,7 @@ export async function searchAccounts(d: RealDeps, q: string): Promise<SourceResu
 export async function searchContacts(d: RealDeps, q: string): Promise<SourceResult> {
   return guarded(async () => {
     const pat = likePattern(q);
-    const pii = piiOk(d.principal, d.ws.id);
+    const pii = piiOk(d.principal);
     const b = from(await d.db(), pii ? "contacts" : "v_contacts_masked")
       .select(pii ? "id,full_name,role_title,account_id,owner_id" : "id,display_name,role_title,account_id,owner_id").eq("workspace_id", d.ws.uuid);
     const r = await (pii ? b.is("deleted_at", null).or(`full_name.ilike.${pat},role_title.ilike.${pat}`) : b.or(`display_name.ilike.${pat},role_title.ilike.${pat}`)).limit(HIT_LIMIT);
@@ -90,7 +91,7 @@ export function searchableKeys(o: ObjectSearchDef, pii: boolean): string[] {
 }
 
 export async function searchRecords(d: RealDeps, q: string, objs: ObjectSearchDef[], locale: "en" | "ta"): Promise<SourceResult> {
-  const pii = piiOk(d.principal, d.ws.id);
+  const pii = piiOk(d.principal);
   const per = await Promise.all(objs.slice(0, 8).map((o) => guarded(async () => {
     const pat = likePattern(q);
     const primary = o.fields.find((f) => f.key === o.object.primaryField);
@@ -112,7 +113,7 @@ export async function searchRecords(d: RealDeps, q: string, objs: ObjectSearchDe
 }
 
 export async function searchReal(d: RealDeps, q: string, locale: "en" | "ta"): Promise<{ hits: SearchHit[]; partial: boolean }> {
-  const { types, objects } = searchableTypes(d.principal, d.ws.id, d.objects);
+  const { types, objects } = searchableTypes(d.principal, d.objects);
   const jobs: Promise<SourceResult>[] = [];
   if (types.includes("lead")) jobs.push(searchLeads(d, q));
   if (types.includes("account")) jobs.push(searchAccounts(d, q));

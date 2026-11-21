@@ -32,11 +32,11 @@ export async function runSearch(q: string): Promise<SearchResponse> {
     const objDef = { object: obj, fields: demoFields() };
     const recordsOk = demoAccess(active.role).read;
     const types: HitType[] = [];
-    const leadsOk = can(principal, "leads.read", { type: "lead", workspaceId: ws.id }), accountsOk = can(principal, "accounts.read", { type: "account", workspaceId: ws.id });
+    const leadsOk = can(principal, "leads.read"), accountsOk = can(principal, "accounts.read");
     if (leadsOk) types.push("lead");
     if (accountsOk) types.push("account");
     if (recordsOk) types.push("record");
-    const base = { actions: allowedActions(principal, ws.id), types, objects: recordsOk ? [obj.key] : [] };
+    const base = { actions: allowedActions(principal), types, objects: recordsOk ? [obj.key] : [] };
     if (!q) return { hits: [], ...base };
     const pii = roleCan("seePersonalData", { role: active.role, support: active.support });
     const ds = getDataSource(active.ws, { demo: true, piiRead: pii });
@@ -53,8 +53,8 @@ export async function runSearch(q: string): Promise<SearchResponse> {
   let partial = false;
   try { objects = await realObjects(ws.uuid); } catch { partial = true; }
   const deps = { db: dbForRequest, principal, ws, objects };
-  const { types, objects: allowed } = searchableTypes(principal, ws.id, objects);
-  if (!q) return { hits: [], actions: allowedActions(principal, ws.id), types, objects: allowed.map((o) => o.object.key), ...(partial ? { partial } : {}) };
+  const { types, objects: allowed } = searchableTypes(principal, objects);
+  if (!q) return { hits: [], actions: allowedActions(principal), types, objects: allowed.map((o) => o.object.key), ...(partial ? { partial } : {}) };
   const r = await searchReal(deps, q, locale);
   return { hits: r.hits, types, objects: allowed.map((o) => o.object.key), ...(partial || r.partial ? { partial: true } : {}) };
 }

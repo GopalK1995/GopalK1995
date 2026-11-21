@@ -12,7 +12,8 @@ const DEFS: Def[] = [
   { id: "import-leads", href: "/import", perm: "leads.import" },
 ];
 
-export function allowedActions(p: Principal, workspaceId: string): SearchAction[] {
-  return DEFS.filter((d) => can(p, d.perm, { type: d.perm.startsWith("tasks") ? "task" : d.perm.startsWith("activities") ? "activity" : "lead", workspaceId }))
+// List-level check (no record): "may this person do this at all". The destination re-checks against the actual record.
+export function allowedActions(p: Principal): SearchAction[] {
+  return DEFS.filter((d) => can(p, d.perm))
     .map(({ id, href }) => ({ id, href }));
 }

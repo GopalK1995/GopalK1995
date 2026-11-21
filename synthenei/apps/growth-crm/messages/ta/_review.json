@@ -1107,6 +1107,31 @@
       "reason_blocked_address": true,
       "reason_other": true,
       "feedFailing_message": true
+    },
+    "search": {
+      "title": true,
+      "description": true,
+      "placeholder": true,
+      "chip": true,
+      "recent": true,
+      "actions": true,
+      "pages": true,
+      "results": true,
+      "contacts": true,
+      "loading": true,
+      "empty": true,
+      "emptyHint": true,
+      "tooShort": true,
+      "error": true,
+      "retry": true,
+      "partial": true,
+      "rateLimited": true,
+      "masked": true,
+      "newItem": true,
+      "logCall": true,
+      "newTask": true,
+      "importItems": true,
+      "keys": true
     }
   }
 }
