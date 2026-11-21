@@ -535,3 +535,21 @@ Also needed by the integrator (none of this is in T046's Owns):
 - **Timezone**: the iCal connection reads the optional connection setting `timezone` (IANA name) and falls back to UTC; each feed can carry its own. Set it from the workspace's configured zone when the connection is created.
 - **Cypress gate** (specs written, not run): `connectors/ical-import.cy.ts` needs `CYPRESS_ICAL_TOKEN` and the route above; `connectors/channel-manager-fixture.cy.ts` needs `CYPRESS_CM_CONNECTION` plus a pre-signed body and headers.
 - **Owner decision (B-6)**: which channel manager (STAAH, eZee, AxisRooms ...); sandbox and partner agreement; then one adapter implementing `ChannelManager` (four methods) replaces `generic.ts` in `channelManagerServiceRuntime()`.
+
+
+
+## T048 needs (Zoho CRM + HubSpot two-way sync and migration import)
+No new table or column: links use `external_links` (its `content_hash` holds a small JSON of per-column hashes for these two connectors, see docs/tasks/T048.md), settings use `integrations.settings`, field rules use `integration_field_maps` (`direction`, `conflict_owner`). Only indexes are needed (push stream keyset scan by `updated_at, id` per workspace; link lookups by local row). Idempotent.
+```sql
+create index if not exists leads_ws_updated    on public.leads    (workspace_id, updated_at, id) where deleted_at is null;
+create index if not exists contacts_ws_updated on public.contacts (workspace_id, updated_at, id) where deleted_at is null;
+create index if not exists accounts_ws_updated on public.accounts (workspace_id, updated_at, id) where deleted_at is null;
+create index if not exists deals_ws_updated    on public.deals    (workspace_id, updated_at, id) where deleted_at is null;
+create index if not exists external_links_integration_local on public.external_links (integration_id, local_table, local_id);
+```
+Still open from T022: `integrations` unique (workspace_id, connector_id). Catalog and availability rows for `zoho-crm` and `hubspot` exist since 0015.
+Also needed by the integrator (not SQL):
+- Env (names only): `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_DEFAULT_REGION`, `ZOHO_ACCOUNTS_URL` / `ZOHO_API_BASE` (stubs), `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `HUBSPOT_API_BASE` (stub). `APP_BASE_URL` builds the Zoho notification URL. Redirect URIs: `<app>/api/oauth/zoho-crm/callback`, `<app>/api/oauth/hubspot/callback`.
+- Server actions (not in Owns, no page): `finishZohoSetup` (region + org check after the OAuth callback), `finishHubspotSetup` (portal binding + webhook secret), `saveSyncOptions`. Behind `integrations.manage`, support-blocked.
+- Verifier/router gaps in `verify/**`: (1) Zoho sends its shared token in the JSON body, not an `x-zoho-token` header, so the current verifier will 401 real deliveries until it also accepts the body token. (2) HubSpot app webhooks have ONE subscription URL for all portals (the v3 signature covers it), so a per-connection URL cannot be used: a platform router mapping `portalId` to the connection is needed; until then HubSpot syncs by polling every 15 minutes.
+- No shared mock vendor server yet; Cypress points `ZOHO_API_BASE`, `ZOHO_ACCOUNTS_URL`, `HUBSPOT_API_BASE` at a stub.

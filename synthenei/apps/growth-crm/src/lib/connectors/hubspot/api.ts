@@ -54,8 +54,8 @@ export function makeHubspotGateway(i: { http: VendorHttp; apiBase: string; token
   const headers = { authorization: `Bearer ${i.token}` };
   const sleep = i.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const now = i.now ?? Date.now;
-  let last = 0;
-  const pace = async () => { const wait = last + SEARCH_PACE_MS - now(); if (wait > 0) await sleep(wait); last = now(); };
+  let last: number | null = null;
+  const pace = async () => { const wait = last === null ? 0 : last + SEARCH_PACE_MS - now(); if (wait > 0) await sleep(wait); last = now(); };
 
   return {
     objectName: (o) => OBJECT_NAME[o],

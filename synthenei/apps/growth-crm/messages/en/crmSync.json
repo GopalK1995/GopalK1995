@@ -1,0 +1,60 @@
+{
+  "_review": "T048. English only; Tamil falls back to English (no ta file, so the shared Tamil review test is untouched).",
+  "title": "CRM sync",
+  "gate": "Needs the vendor app credentials in the deployment before it can go live",
+  "options": {
+    "objects": "Records to sync",
+    "pushNew": "Create records at the vendor for CRM records that have no match",
+    "pushNewHelp": "Off by default. Edits to records that are already linked always sync; this only decides whether brand-new CRM records are sent out.",
+    "importMode": "When an imported record matches one already in the CRM",
+    "importModeSkip": "Keep the CRM's record and link them",
+    "importModeMerge": "Write the vendor's non-empty values over the CRM's record",
+    "importSince": "Import only records changed since",
+    "importSinceHelp": "Leave blank to import everything.",
+    "contactTarget": "HubSpot contacts become",
+    "contactTargetLead": "Leads",
+    "contactTargetContact": "Contacts"
+  },
+  "region": {
+    "label": "Zoho data centre",
+    "help": "Choose the data centre your Zoho account lives in. India (.in) is the default.",
+    "in": "India (zoho.in)", "us": "United States (zoho.com)", "eu": "Europe (zoho.eu)", "au": "Australia (zoho.com.au)",
+    "jp": "Japan (zoho.jp)", "ca": "Canada (zohocloud.ca)", "sa": "Saudi Arabia (zoho.sa)", "cn": "China (zoho.com.cn)"
+  },
+  "conflict": {
+    "title": "When both sides changed the same field",
+    "crm": "The CRM's value wins",
+    "external": "The vendor's value wins",
+    "last_write": "The most recent edit wins",
+    "help": "Only a field changed on both sides since the last sync is a conflict. Any other change simply travels to the other side."
+  },
+  "setup": {
+    "not_found": "This connection no longer exists.",
+    "not_connected": "Connect the account first.",
+    "invalid_region": "Choose one of the listed data centres.",
+    "token_rejected": "The vendor rejected the saved authorisation. Reconnect and try again.",
+    "not_configured": "The vendor app credentials are missing in this deployment.",
+    "vault_failed": "The settings could not be stored safely. Nothing was changed.",
+    "audit_failed": "The change could not be recorded in the audit log, so it was not made."
+  },
+  "reasons": {
+    "import_contact_required": "No email or phone to reach the person",
+    "import_name_required": "No name",
+    "import_email_invalid": "Invalid email",
+    "import_phone_invalid": "Invalid phone number",
+    "duplicate_in_file": "Same person as another record in this import",
+    "duplicate_of_linked": "Same person as a record that is already linked",
+    "stage_unmapped": "The deal's stage has no mapping. Map it in the field map and sync again",
+    "lookup_pending": "A linked record has not been imported yet; it is picked up on a later pass",
+    "link_table_mismatch": "This record was imported into a different object earlier",
+    "local_missing": "The CRM record was deleted",
+    "remote_missing": "The record was deleted at the vendor",
+    "remote_deleted": "Deleted at the vendor. The CRM record was kept",
+    "vendor_rejected": "The vendor refused the change",
+    "transform_failed": "A value could not be converted",
+    "channel_mismatch": "A notification meant for another connection was ignored",
+    "portal_mismatch": "A notification from a different HubSpot account was ignored",
+    "portal_unbound": "Finish the HubSpot setup to receive notifications",
+    "watch_failed": "Zoho notifications could not be registered; syncing continues on the schedule"
+  }
+}

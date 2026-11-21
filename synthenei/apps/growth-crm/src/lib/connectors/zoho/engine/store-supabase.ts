@@ -36,8 +36,11 @@ export function supabaseCrmStore(db: Db, core: ConnectorStore): CrmStore {
       return (await rows(b.order("updated_at", { ascending: true }).order("id", { ascending: true }).limit(limit), `list changed ${table}`)).map((r) => toRow(r, cols));
     },
     existingIndex: (workspaceId, object) => loadExistingIndex(db, workspaceId, object),
+    /** Stage keys are unique per pipeline, not per workspace: deals map onto the workspace's default deal pipeline. */
     async listStages(workspaceId) {
-      return (await rows(q("pipeline_stages").select("id, key").eq("workspace_id", workspaceId).limit(200), "read stages")).map((r) => ({ id: String(r.id), key: String(r.key) }));
+      const pipe = (await rows(q("pipelines").select("id").eq("workspace_id", workspaceId).eq("object_type", "deal").eq("is_default", true).is("archived_at", null).limit(1), "read pipeline"))[0];
+      const b = q("pipeline_stages").select("id, key").eq("workspace_id", workspaceId);
+      return (await rows((pipe ? b.eq("pipeline_id", pipe.id) : b).limit(200), "read stages")).map((r) => ({ id: String(r.id), key: String(r.key) }));
     },
     async updateSettings(connectionId, patch) {
       const cur = (await rows(q("integrations").select("settings").eq("id", connectionId).limit(1), "read settings"))[0];
