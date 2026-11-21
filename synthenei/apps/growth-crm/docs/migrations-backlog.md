@@ -574,3 +574,14 @@ Also needed by the integrator (not SQL):
 - The `/api/search` rate limit uses the in-memory store (per server instance). Moving it to the DB-backed `rate_limit_hit()` store needs no change here: pass the store to `rateLimit` in `src/lib/search/handler.ts`.
 - The lead and task pages should read `?new=1` (open the create dialog) and `/leads?log=call` (open the log-call dialog); the palette only navigates.
 - The top-bar search chip belongs to T059: call `openCommandPalette()` from `@/components/command` (or dispatch the `gcrm:open-palette` window event). The existing `/` focus shortcut and the inline search box in `shell.tsx` are untouched.
+
+## T054 needs (dashboards on real data)
+No new table, view or function is required for the pages to work: they read `leads`, `deals`, `tasks`, `campaigns`, `campaign_daily_metrics`, `social_*` and `team` through the existing request client. Only indexes for the 5,000-row reads (idempotent, additive; apply when convenient):
+```sql
+create index if not exists cdm_ws_day on public.campaign_daily_metrics (workspace_id, day);
+create index if not exists leads_ws_created on public.leads (workspace_id, created_at desc) where deleted_at is null;
+```
+Also for the integrator (not SQL):
+- **Zero vs unknown in `campaign_daily_metrics`**: `reach`, `impressions`, `clicks`, `engagements`-style columns are `not null default 0`, so "the platform did not report reach" (for example LinkedIn) cannot be told apart from a real 0. The dashboard shows No data only when a side has no rows at all in the window. A real fix is additive: `alter table public.campaign_daily_metrics alter column reach drop not null;` (same for `reactions`, `comments`, `shares`) plus connectors writing null for unreported measures. Owner decision, left unapplied.
+- **First/last touch**: there is no per-touch table. Attribution reads `leads.first_touch_channel` / `last_touch_channel`. The shared lead mapper (`src/lib/data/supabase/mappers.ts`, not T054 territory) defaults a missing touch to `organic`; the analytics page works around it by reading the two columns itself (`analytics/_lib/load-touches.ts`). Other pages that use `Lead.firstTouch` still credit Organic for untagged leads.
+- **Tamil**: `messages/en/dashboard.json` has no `messages/ta/dashboard.json` yet (falls back to English).
