@@ -21,11 +21,7 @@ import { slackConnector } from "./slack/connector";
 import { zapierConnector, makeConnector } from "./automation/connector";
 
 /** Vendor connector defs go here (append only). */
-<<<<<<< HEAD
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector, slackConnector, zapierConnector, makeConnector];
-=======
-export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector, googleCalendarConnector, gmailConnector];
->>>>>>> 39a909d (T042: Gmail (gated, testing mode) + Google Calendar two-way connectors)
+export const ALL_CONNECTORS: ConnectorDef[] = [whatsappConnector, razorpayConnector, metaAdsConnector, resendConnector, smtpConnector, mailchimpConnector, ga4Connector, googleAdsConnector, googleSheetsConnector, linkedinConnector, calendlyConnector, calcomConnector, googleBusinessConnector, slackConnector, zapierConnector, makeConnector, googleCalendarConnector, gmailConnector];
 
 let done = false;
 export function registerAllConnectors(): void {
