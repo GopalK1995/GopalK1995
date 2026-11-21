@@ -331,7 +331,9 @@
       "google-business.sandbox": true,
       "slack.sandbox": true,
       "zapier.sandbox": true,
-      "make.sandbox": true
+      "make.sandbox": true,
+      "google-calendar.sandbox": true,
+      "gmail.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -1069,6 +1071,26 @@
         "audit_failed": true,
         "no_channel": true
       }
+    },
+    "gmail": {
+      "calendar.name": true,
+      "gmail.name": true,
+      "calendar.scopeNote": true,
+      "calendar.users": true,
+      "calendar.reconnect": true,
+      "calendar.privateIgnored": true,
+      "gmail.gateTitle": true,
+      "gmail.gateBody": true,
+      "gmail.reason.app_mode_unknown": true,
+      "gmail.reason.app_in_production_unverified": true,
+      "gmail.reason.not_opted_in": true,
+      "gmail.optIn.restricted": true,
+      "gmail.optIn.testUser": true,
+      "gmail.optIn.cta": true,
+      "gmail.testing": true,
+      "gmail.scopeNote": true,
+      "gmail.synced": true,
+      "gmail.send.noContact": true
     }
   }
 }
