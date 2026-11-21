@@ -1,0 +1,64 @@
+[
+  {
+    "name": "id",
+    "type": "text",
+    "label": "Event ID"
+  },
+  {
+    "name": "type",
+    "type": "text",
+    "label": "Event type"
+  },
+  {
+    "name": "created_at",
+    "type": "date",
+    "label": "Occurred at"
+  },
+  {
+    "name": "workspace_id",
+    "type": "text",
+    "label": "Workspace ID"
+  },
+  {
+    "name": "object_type",
+    "type": "text",
+    "label": "Object type"
+  },
+  {
+    "name": "object_id",
+    "type": "text",
+    "label": "Object ID"
+  },
+  {
+    "name": "actor",
+    "type": "collection",
+    "label": "Done by",
+    "spec": [
+      {
+        "name": "kind",
+        "type": "text",
+        "label": "Kind"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "label": "User ID"
+      }
+    ]
+  },
+  {
+    "name": "data",
+    "type": "collection",
+    "label": "Data",
+    "spec": [
+      {
+        "name": "changed_fields",
+        "type": "array",
+        "label": "Changed fields",
+        "spec": {
+          "type": "text"
+        }
+      }
+    ]
+  }
+]

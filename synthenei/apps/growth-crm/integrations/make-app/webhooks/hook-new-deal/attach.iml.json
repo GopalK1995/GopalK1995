@@ -1,0 +1,19 @@
+{
+  "url": "/webhooks",
+  "method": "POST",
+  "headers": {
+    "Idempotency-Key": "{{sha256(webhook.url)}}"
+  },
+  "body": {
+    "url": "{{webhook.url}}",
+    "event_types": [
+      "deal.created"
+    ],
+    "description": "Make"
+  },
+  "response": {
+    "data": {
+      "id": "{{body.data.id}}"
+    }
+  }
+}

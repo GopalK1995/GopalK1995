@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "New Lead",
+  "description": "Triggers when a lead is created.",
+  "group": "triggers",
+  "webhook": "hook-new-lead",
+  "response": {
+    "output": "{{body}}"
+  }
+}

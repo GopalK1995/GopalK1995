@@ -1,0 +1,10 @@
+{
+  "name": "growth-crm-zapier",
+  "version": "1.0.0",
+  "description": "Private Zapier app for the Growth CRM public REST API v1 (REST-hook triggers, create/update actions).",
+  "private": true,
+  "main": "index.js",
+  "scripts": { "validate": "zapier validate", "test": "zapier test" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "zapier-platform-core": "16.5.1" }
+}

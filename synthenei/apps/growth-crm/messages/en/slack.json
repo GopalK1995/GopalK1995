@@ -1,0 +1,41 @@
+{
+  "name": "Slack",
+  "showcase": "Sample",
+  "showcaseSub": "Sandbox: sample channels only; nothing is posted to a real Slack workspace.",
+  "gate": "Works with your Slack workspace once the platform's Slack app is set up",
+  "pickChannelTitle": "Choose the alert channel",
+  "pickChannelHelp": "The CRM posts alerts here. Private channels appear only if the Slack app was invited to them.",
+  "alertsTitle": "Alerts",
+  "alertNewEnquiry": "New enquiry",
+  "alertSlaBreached": "SLA breached",
+  "alertAdvanceReceived": "Advance received",
+  "alertSyncFailed": "Sync failed",
+  "includeNames": "Show lead names in alerts",
+  "includeNamesHelp": "Off by default: alerts then show the source and a link, not a person's name.",
+  "sendTest": "Send a test alert",
+  "reconnect": "Slack access was revoked. Reconnect Slack to resume alerts.",
+  "alert": {
+    "new_enquiry": "New enquiry",
+    "new_enquiry_named": "New enquiry: {name}",
+    "sla_breached": "SLA breached: first response overdue",
+    "sla_breached_named": "SLA breached: {name}",
+    "advance_received": "Advance received",
+    "advance_received_amount": "Advance received: {amount}",
+    "sync_failed": "Sync failed: {connector}",
+    "test": "Test alert from the CRM"
+  },
+  "field": { "source": "Source", "city": "City", "status": "Status", "amount": "Amount", "connection": "Connection", "reason": "Reason", "stream": "Stream" },
+  "button": { "lead": "Open lead", "payment": "Open payments", "integration": "Open integrations", "test": "Open the CRM" },
+  "context": "Sent by your CRM",
+  "testContext": "If you can read this, alerts are reaching this channel.",
+  "errors": {
+    "not_found": "That Slack connection was not found.",
+    "not_connected": "Slack is not connected.",
+    "token_rejected": "Slack rejected the access token. Reconnect Slack.",
+    "channel_not_available": "That channel is not available to the Slack app.",
+    "cannot_join": "The Slack app could not join that channel. Invite it from Slack and try again.",
+    "vault_failed": "Could not store the Slack settings. Try again.",
+    "audit_failed": "Could not record the change in the audit log, so it was not applied.",
+    "no_channel": "Choose an alert channel first."
+  }
+}

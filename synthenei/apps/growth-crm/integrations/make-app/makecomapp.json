@@ -1,0 +1,33 @@
+{
+  "name": "growth-crm",
+  "label": "Growth CRM",
+  "description": "Make custom app for the Growth CRM public REST API v1: instant triggers (REST hooks through /api/v1/webhooks) and create/update actions.",
+  "version": 1,
+  "theme": "#3b82f6",
+  "language": "en",
+  "audience": "private",
+  "components": {
+    "connections": [
+      "crm-api-key"
+    ],
+    "webhooks": [
+      "hook-new-lead",
+      "hook-lead-stage-changed",
+      "hook-new-deal",
+      "hook-deal-stage-changed",
+      "hook-deal-won",
+      "hook-payment-received"
+    ],
+    "modules": [
+      "watch-new-lead",
+      "watch-lead-stage-changed",
+      "watch-new-deal",
+      "watch-deal-stage-changed",
+      "watch-deal-won",
+      "watch-payment-received",
+      "create-lead",
+      "update-deal",
+      "move-deal"
+    ]
+  }
+}

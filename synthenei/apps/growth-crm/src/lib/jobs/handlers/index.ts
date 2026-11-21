@@ -11,3 +11,4 @@ import "@/lib/connectors/email/jobs"; // T038: email.campaign | email.batch
 import "@/lib/connectors/mailchimp/jobs"; // T038: mailchimp.push_segment
 import "@/lib/webhooks/handler"; // T024: webhook.deliver (outbound webhooks) + webhook.housekeeping
 import "./import"; // T034: import.run (CSV and XLSX import)
+import "@/lib/connectors/slack/jobs"; // T049: slack.alert (alerts from events to a Slack channel)

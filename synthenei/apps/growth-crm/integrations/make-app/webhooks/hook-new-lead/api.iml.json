@@ -1,0 +1,5 @@
+{
+  "label": "New Lead (CRM event)",
+  "type": "web",
+  "url": "{{webhook.url}}"
+}

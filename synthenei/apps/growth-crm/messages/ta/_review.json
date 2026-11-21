@@ -328,7 +328,10 @@
       "google-ads.sandbox": true,
       "google-sheets.sandbox": true,
       "linkedin.sandbox": true,
-      "google-business.sandbox": true
+      "google-business.sandbox": true,
+      "slack.sandbox": true,
+      "zapier.sandbox": true,
+      "make.sandbox": true
     },
     "leads": {
       "saved": true,
@@ -1011,6 +1014,60 @@
         "saveKey": true,
         "removeKey": true,
         "saveProvider": true
+      }
+    },
+    "slack": {
+      "name": true,
+      "showcase": true,
+      "showcaseSub": true,
+      "gate": true,
+      "pickChannelTitle": true,
+      "pickChannelHelp": true,
+      "alertsTitle": true,
+      "alertNewEnquiry": true,
+      "alertSlaBreached": true,
+      "alertAdvanceReceived": true,
+      "alertSyncFailed": true,
+      "includeNames": true,
+      "includeNamesHelp": true,
+      "sendTest": true,
+      "reconnect": true,
+      "alert": {
+        "new_enquiry": true,
+        "new_enquiry_named": true,
+        "sla_breached": true,
+        "sla_breached_named": true,
+        "advance_received": true,
+        "advance_received_amount": true,
+        "sync_failed": true,
+        "test": true
+      },
+      "field": {
+        "source": true,
+        "city": true,
+        "status": true,
+        "amount": true,
+        "connection": true,
+        "reason": true,
+        "stream": true
+      },
+      "button": {
+        "lead": true,
+        "payment": true,
+        "integration": true,
+        "test": true
+      },
+      "context": true,
+      "testContext": true,
+      "errors": {
+        "not_found": true,
+        "not_connected": true,
+        "token_rejected": true,
+        "channel_not_available": true,
+        "cannot_join": true,
+        "vault_failed": true,
+        "audit_failed": true,
+        "no_channel": true
       }
     }
   }

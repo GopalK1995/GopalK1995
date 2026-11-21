@@ -1,0 +1,15 @@
+{
+  "type": "action",
+  "label": "Create Lead",
+  "description": "Creates a lead in the CRM.",
+  "group": "actions",
+  "url": "/leads",
+  "method": "POST",
+  "headers": {
+    "Idempotency-Key": "{{sha256(executionId + ':' + bundleId)}}"
+  },
+  "body": "{{omit(parameters, emptyvalues)}}",
+  "response": {
+    "output": "{{body.data}}"
+  }
+}

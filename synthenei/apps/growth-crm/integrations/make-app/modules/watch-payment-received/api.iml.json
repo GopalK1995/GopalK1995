@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "Payment Received",
+  "description": "Triggers when a payment is received.",
+  "group": "triggers",
+  "webhook": "hook-payment-received",
+  "response": {
+    "output": "{{body}}"
+  }
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "base_url",
+    "type": "url",
+    "label": "CRM URL",
+    "required": true,
+    "help": "The https address your CRM runs on, e.g. https://crm.your-company.example (no trailing path)."
+  },
+  {
+    "name": "api_key",
+    "type": "password",
+    "label": "API key",
+    "required": true,
+    "help": "Create one in the CRM under Settings > API keys. Scopes needed: leads:write, deals:write, webhooks:write (plus read scopes of the objects you trigger on)."
+  }
+]

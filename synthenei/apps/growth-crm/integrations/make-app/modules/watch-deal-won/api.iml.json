@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "Deal Won",
+  "description": "Triggers when a deal is marked won.",
+  "group": "triggers",
+  "webhook": "hook-deal-won",
+  "response": {
+    "output": "{{body}}"
+  }
+}

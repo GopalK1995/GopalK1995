@@ -1,0 +1,5 @@
+{
+  "label": "Payment Received (CRM event)",
+  "type": "web",
+  "url": "{{webhook.url}}"
+}

@@ -1,0 +1,42 @@
+{
+  "_review": "Draft Tamil by the build agent; needs native review before release.",
+  "name": "Slack",
+  "showcase": "மாதிரி",
+  "showcaseSub": "சோதனை: மாதிரி சேனல்கள் மட்டும்; உண்மையான Slack-இல் எதுவும் அனுப்பப்படாது.",
+  "gate": "தளத்தின் Slack செயலி அமைக்கப்பட்டதும் உங்கள் Slack-உடன் வேலை செய்யும்",
+  "pickChannelTitle": "எச்சரிக்கை சேனலைத் தேர்ந்தெடுக்கவும்",
+  "pickChannelHelp": "CRM எச்சரிக்கைகளை இங்கே அனுப்பும். தனிப்பட்ட சேனல்கள், Slack செயலி அழைக்கப்பட்டிருந்தால் மட்டுமே தெரியும்.",
+  "alertsTitle": "எச்சரிக்கைகள்",
+  "alertNewEnquiry": "புதிய விசாரணை",
+  "alertSlaBreached": "SLA மீறப்பட்டது",
+  "alertAdvanceReceived": "முன்பணம் பெறப்பட்டது",
+  "alertSyncFailed": "ஒத்திசைவு தோல்வி",
+  "includeNames": "எச்சரிக்கைகளில் லீட் பெயர்களைக் காட்டு",
+  "includeNamesHelp": "இயல்பாக அணைந்திருக்கும்: எச்சரிக்கையில் மூலமும் இணைப்பும் மட்டும் இருக்கும்.",
+  "sendTest": "சோதனை எச்சரிக்கை அனுப்பு",
+  "reconnect": "Slack அணுகல் ரத்து செய்யப்பட்டது. எச்சரிக்கைகளைத் தொடர Slack-ஐ மீண்டும் இணைக்கவும்.",
+  "alert": {
+    "new_enquiry": "புதிய விசாரணை",
+    "new_enquiry_named": "புதிய விசாரணை: {name}",
+    "sla_breached": "SLA மீறப்பட்டது: முதல் பதில் தாமதம்",
+    "sla_breached_named": "SLA மீறப்பட்டது: {name}",
+    "advance_received": "முன்பணம் பெறப்பட்டது",
+    "advance_received_amount": "முன்பணம் பெறப்பட்டது: {amount}",
+    "sync_failed": "ஒத்திசைவு தோல்வி: {connector}",
+    "test": "CRM-இலிருந்து சோதனை எச்சரிக்கை"
+  },
+  "field": { "source": "மூலம்", "city": "நகரம்", "status": "நிலை", "amount": "தொகை", "connection": "இணைப்பு", "reason": "காரணம்", "stream": "ஓட்டம்" },
+  "button": { "lead": "லீட்டைத் திற", "payment": "கட்டணங்களைத் திற", "integration": "ஒருங்கிணைப்புகளைத் திற", "test": "CRM-ஐத் திற" },
+  "context": "உங்கள் CRM அனுப்பியது",
+  "testContext": "இதைப் படிக்க முடிந்தால், எச்சரிக்கைகள் இந்தச் சேனலுக்கு வருகின்றன.",
+  "errors": {
+    "not_found": "அந்த Slack இணைப்பு கிடைக்கவில்லை.",
+    "not_connected": "Slack இணைக்கப்படவில்லை.",
+    "token_rejected": "Slack அணுகல் டோக்கனை மறுத்தது. Slack-ஐ மீண்டும் இணைக்கவும்.",
+    "channel_not_available": "அந்தச் சேனல் Slack செயலிக்குக் கிடைக்கவில்லை.",
+    "cannot_join": "Slack செயலியால் அந்தச் சேனலில் சேர முடியவில்லை. Slack-இல் அழைத்துவிட்டு மீண்டும் முயலவும்.",
+    "vault_failed": "Slack அமைப்புகளைச் சேமிக்க முடியவில்லை. மீண்டும் முயலவும்.",
+    "audit_failed": "மாற்றத்தை தணிக்கைப் பதிவில் சேர்க்க முடியவில்லை, எனவே பயன்படுத்தப்படவில்லை.",
+    "no_channel": "முதலில் எச்சரிக்கை சேனலைத் தேர்ந்தெடுக்கவும்."
+  }
+}

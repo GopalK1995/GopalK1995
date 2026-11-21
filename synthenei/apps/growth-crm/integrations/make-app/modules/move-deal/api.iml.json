@@ -1,0 +1,25 @@
+{
+  "type": "action",
+  "label": "Move Deal to Stage",
+  "description": "Moves a deal to a pipeline stage (by stage key).",
+  "group": "actions",
+  "url": "/deals/{{encodeURL(parameters.id)}}/move",
+  "method": "POST",
+  "pre": {
+    "url": "/deals/{{encodeURL(parameters.id)}}",
+    "method": "GET",
+    "response": {
+      "temp": {
+        "version": "{{body.data.version}}"
+      }
+    }
+  },
+  "body": {
+    "stage_key": "{{parameters.stage_key}}",
+    "expected_version": "{{temp.version}}",
+    "lost_reason": "{{ifempty(parameters.lost_reason; null)}}"
+  },
+  "response": {
+    "output": "{{body.data}}"
+  }
+}

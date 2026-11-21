@@ -1,0 +1,12 @@
+{
+  "type": "action",
+  "label": "Update Deal",
+  "description": "Changes fields of an existing deal. To change its stage use Move Deal.",
+  "group": "actions",
+  "url": "/deals/{{encodeURL(parameters.id)}}",
+  "method": "PATCH",
+  "body": "{{omit(parameters, 'id', emptyvalues)}}",
+  "response": {
+    "output": "{{body.data}}"
+  }
+}

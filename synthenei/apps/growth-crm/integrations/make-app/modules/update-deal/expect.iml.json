@@ -1,0 +1,43 @@
+[
+  {
+    "name": "id",
+    "type": "text",
+    "label": "Deal ID",
+    "required": true
+  },
+  {
+    "name": "name",
+    "type": "text",
+    "label": "Name"
+  },
+  {
+    "name": "value_inr",
+    "type": "number",
+    "label": "Value (INR)"
+  },
+  {
+    "name": "next_step",
+    "type": "text",
+    "label": "Next step"
+  },
+  {
+    "name": "next_step_at",
+    "type": "date",
+    "label": "Next step at"
+  },
+  {
+    "name": "expected_close_on",
+    "type": "date",
+    "label": "Expected close date"
+  },
+  {
+    "name": "plan",
+    "type": "text",
+    "label": "Plan"
+  },
+  {
+    "name": "seats",
+    "type": "integer",
+    "label": "Seats"
+  }
+]

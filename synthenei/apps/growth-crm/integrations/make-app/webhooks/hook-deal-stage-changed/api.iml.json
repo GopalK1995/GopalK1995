@@ -1,0 +1,5 @@
+{
+  "label": "Deal Stage Changed (CRM event)",
+  "type": "web",
+  "url": "{{webhook.url}}"
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "id",
+    "type": "text",
+    "label": "Deal ID",
+    "required": true
+  },
+  {
+    "name": "stage_key",
+    "type": "text",
+    "label": "Stage key",
+    "required": true
+  },
+  {
+    "name": "lost_reason",
+    "type": "text",
+    "label": "Lost reason",
+    "help": "Only when moving to a lost stage."
+  }
+]

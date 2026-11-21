@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "New Deal",
+  "description": "Triggers when a deal is created.",
+  "group": "triggers",
+  "webhook": "hook-new-deal",
+  "response": {
+    "output": "{{body}}"
+  }
+}

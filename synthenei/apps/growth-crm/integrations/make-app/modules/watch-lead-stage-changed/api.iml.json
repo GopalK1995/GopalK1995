@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "Lead Status Changed",
+  "description": "Triggers when a lead moves to another status.",
+  "group": "triggers",
+  "webhook": "hook-lead-stage-changed",
+  "response": {
+    "output": "{{body}}"
+  }
+}

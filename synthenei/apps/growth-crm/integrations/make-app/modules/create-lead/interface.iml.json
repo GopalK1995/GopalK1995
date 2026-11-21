@@ -1,0 +1,22 @@
+[
+  {
+    "name": "id",
+    "type": "uuid",
+    "label": "Lead ID"
+  },
+  {
+    "name": "full_name",
+    "type": "text",
+    "label": "Full name"
+  },
+  {
+    "name": "source",
+    "type": "text",
+    "label": "Source"
+  },
+  {
+    "name": "status",
+    "type": "text",
+    "label": "Status"
+  }
+]

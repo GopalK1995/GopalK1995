@@ -1,0 +1,17 @@
+[
+  {
+    "name": "id",
+    "type": "uuid",
+    "label": "Deal ID"
+  },
+  {
+    "name": "name",
+    "type": "text",
+    "label": "Name"
+  },
+  {
+    "name": "value_inr",
+    "type": "number",
+    "label": "Value (INR)"
+  }
+]

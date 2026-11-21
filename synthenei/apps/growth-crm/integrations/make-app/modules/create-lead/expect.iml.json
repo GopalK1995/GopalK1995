@@ -1,0 +1,49 @@
+[
+  {
+    "name": "full_name",
+    "type": "text",
+    "label": "Full name",
+    "required": true
+  },
+  {
+    "name": "email",
+    "type": "email",
+    "label": "Email"
+  },
+  {
+    "name": "phone",
+    "type": "text",
+    "label": "Phone",
+    "help": "With country code, e.g. +91..."
+  },
+  {
+    "name": "city",
+    "type": "text",
+    "label": "City"
+  },
+  {
+    "name": "district",
+    "type": "text",
+    "label": "District"
+  },
+  {
+    "name": "source",
+    "type": "text",
+    "label": "Source"
+  },
+  {
+    "name": "firm_name",
+    "type": "text",
+    "label": "Firm name"
+  },
+  {
+    "name": "practice_area",
+    "type": "text",
+    "label": "Practice area"
+  },
+  {
+    "name": "role_title",
+    "type": "text",
+    "label": "Role title"
+  }
+]

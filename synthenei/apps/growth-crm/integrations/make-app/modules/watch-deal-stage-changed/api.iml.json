@@ -1,0 +1,10 @@
+{
+  "type": "instant_trigger",
+  "label": "Deal Stage Changed",
+  "description": "Triggers when a deal moves to another stage.",
+  "group": "triggers",
+  "webhook": "hook-deal-stage-changed",
+  "response": {
+    "output": "{{body}}"
+  }
+}

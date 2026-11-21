@@ -1,0 +1,15 @@
+{
+  "type": "basic",
+  "label": "Growth CRM API key",
+  "communication": {
+    "url": "/me",
+    "method": "GET",
+    "response": {
+      "uid": "{{body.data.workspace_id}}",
+      "metadata": {
+        "type": "text",
+        "value": "Growth CRM"
+      }
+    }
+  }
+}
