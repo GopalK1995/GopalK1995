@@ -17,7 +17,7 @@ export function makeMockCalendar(now: () => Date = () => new Date()): CalendarGa
     async profile() { return { email: "showcase@calendar.invalid", timeZone: "Asia/Kolkata" }; },
     async listEvents(i) { return { items: [...store.values()], nextSyncToken: i.syncToken ? i.syncToken : "mock-sync-1", timeZone: "Asia/Kolkata" }; },
     async getEvent(_t, id) { return store.get(id) ?? null; },
-    async insertEvent(_t, body) { const e = { ...(body as GEvent), id: `mock-new-${++n}`, updated: now().toISOString() }; store.set(e.id, e); return e; },
-    async patchEvent(_t, id, body) { const e = { ...(store.get(id) ?? { id }), ...(body as GEvent), id, updated: now().toISOString() }; store.set(id, e); return e; },
+    async insertEvent(_t, body) { const e = { ...(body as unknown as GEvent), id: `mock-new-${++n}`, updated: now().toISOString() }; store.set(e.id, e); return e; },
+    async patchEvent(_t, id, body) { const e = { ...(store.get(id) ?? { id }), ...(body as unknown as GEvent), id, updated: now().toISOString() }; store.set(id, e); return e; },
   };
 }
