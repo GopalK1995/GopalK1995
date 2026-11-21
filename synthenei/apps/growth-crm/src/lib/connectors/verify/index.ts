@@ -20,7 +20,7 @@ export const VERIFIERS: Record<Scheme, Verifier> = { meta, razorpay, slack, cale
 const SCHEME_OF: Record<string, Scheme> = {
   whatsapp: "meta", "meta-ads": "meta", razorpay: "razorpay", slack: "slack", calendly: "calendly", "cal-com": "calcom",
   gmail: "google-pubsub", "google-calendar": "google-pubsub", mailchimp: "mailchimp", hubspot: "hubspot", "zoho-crm": "zoho",
-  resend: "svix", outlook: "graph", zapier: "standard", make: "standard", mock: "standard",
+  resend: "svix", outlook: "graph", zapier: "standard", make: "standard", "channel-manager": "standard", mock: "standard",
 };
 /** The verification scheme a connector declares, or undefined when it does not receive webhooks (receiver answers 404). */
 export const schemeFor = (connectorId: string): Scheme | undefined => SCHEME_OF[connectorId];

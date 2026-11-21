@@ -7,7 +7,9 @@ import { requireActive } from "@/lib/auth/server";
 import { AuthzError } from "@/lib/authz";
 import { assertCan } from "@/lib/authz/load";
 import { buildAuthorizeUrl, cookieName, OAUTH_COOKIE_TTL_S, pkcePair, randomToken, resolveRedirectUri, signCookie, stateHash } from "@/lib/connectors/core/oauth";
-import { vendorEnv } from "@/lib/connectors/core/runtime";
+import { runtimeFromDb, vendorEnv } from "@/lib/connectors/core/runtime";
+import { startGmailConnect } from "@/lib/connectors/google/gmail/start";
+import { actorFromPrincipal, audit } from "@/lib/audit/record";
 import { supabaseStore } from "@/lib/connectors/core/store-supabase";
 import { deriveChip } from "@/lib/connectors/core/status";
 import { envConfigured, getConnector, isUsableIn } from "@/lib/connectors/registry";
@@ -26,7 +28,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ connector: 
   if (env.demoMode || !env.supabaseConfigured) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { session, active } = await requireActive();
   if (session.demo) return NextResponse.json({ error: "not found" }, { status: 404 });
-  try { await assertCan("integrations.manage"); } catch (e) { if (e instanceof AuthzError) return back(req, connector, "denied"); throw e; }
+  let principal;
+  try { principal = await assertCan("integrations.manage"); } catch (e) { if (e instanceof AuthzError) return back(req, connector, "denied"); throw e; }
 
   const def = getConnector(connector);
   if (!def || def.auth !== "oauth2" || !def.oauth || !isUsableIn(def, env.appEnv)) return back(req, connector, "unknown_connector");
@@ -48,11 +51,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ connector: 
   const tenant = await from(db, "workspaces").select("tenant_id").eq("id", active.ws.uuid).maybeSingle();
   const tenantId = (tenant.data as { tenant_id?: string } | null)?.tenant_id;
   if (!tenantId) return back(req, connector, "wrong_workspace");
+  // Gmail: a restricted scope is requested ONLY through the gated start (both acknowledgements + testing mode / CASA). Closed gate = no consent screen.
+  let spec = def.oauth;
+  if (connector === "gmail") {
+    const q = req.nextUrl.searchParams;
+    const rt = { ...runtimeFromDb(serviceDb()), audit: async (e: { action: string; summary: string; connectionId: string; detail?: Record<string, unknown> }) => { await audit(actorFromPrincipal(principal), { action: e.action, summary: e.summary, object: { table: "integrations", id: e.connectionId }, detail: e.detail }); } };
+    const g = await startGmailConnect(rt, { uid: session.uid, tenantId, workspaceId: active.ws.uuid }, { restrictedScopes: q.get("ack_restricted") === "1", testUserListed: q.get("ack_test_user") === "1" });
+    if (!g.ok) return back(req, connector, g.code);
+    spec = { ...def.oauth, scopes: g.scopes };
+  }
   const stored = await from(serviceDb(), "oauth_states").insert({ state_hash: stateHash(state), tenant_id: tenantId, workspace_id: active.ws.uuid, connector_id: connector, user_id: session.uid, redirect_to: `/integrations/${connector}`, expires_at: new Date(Date.now() + OAUTH_COOKIE_TTL_S * 1000).toISOString() });
   if (stored.error) return back(req, connector, "oauth_failed");
 
   const clientId = vEnv[def.oauth.clientIdEnv] ?? "";
-  const url = buildAuthorizeUrl(def.oauth, { clientId, redirectUri, state, challenge: pkce?.challenge });
+  const url = buildAuthorizeUrl(spec, { clientId, redirectUri, state, challenge: pkce?.challenge });
   const res = NextResponse.redirect(url, { status: 303, headers: { "cache-control": "no-store" } });
   res.cookies.set(cookieName(connector), signCookie({ state, verifier: pkce?.verifier ?? null, ws: active.ws.uuid, uid: session.uid, connector, conn: req.nextUrl.searchParams.get("conn"), exp: Date.now() + OAUTH_COOKIE_TTL_S * 1000, returnTo: `/integrations/${connector}` }, secret), {
     httpOnly: true, secure: env.appEnv !== "test" && req.nextUrl.protocol === "https:", sameSite: "lax", path: "/api/oauth", maxAge: OAUTH_COOKIE_TTL_S,

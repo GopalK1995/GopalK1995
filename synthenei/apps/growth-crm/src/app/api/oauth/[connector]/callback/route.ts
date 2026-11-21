@@ -8,6 +8,9 @@ import { AuthzError } from "@/lib/authz";
 import { assertCan } from "@/lib/authz/load";
 import { actorFromPrincipal, audit } from "@/lib/audit/record";
 import { completeOAuth } from "@/lib/connectors/core/lifecycle";
+import { connectGoogleUser } from "@/lib/connectors/google/calendar/grants";
+import { OPT_IN_KEY } from "@/lib/connectors/google/gmail/constants";
+import { gmailGate } from "@/lib/connectors/google/gmail/gate";
 import { cookieName, exchangeCode, resolveRedirectUri, safeReturnPath } from "@/lib/connectors/core/oauth";
 import { checkCallback } from "@/lib/connectors/core/oauth-flow";
 import { CredentialError, TransientError } from "@/lib/connectors/core/types";
@@ -64,7 +67,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ connector: 
     const tenantId = (tenant.data as { tenant_id?: string } | null)?.tenant_id;
     if (!tenantId) return fail(req, connector, "oauth_failed");
     const rt = { ...runtimeFromDb(svc), audit: async (e: { action: string; summary: string; connectionId: string; detail?: Record<string, unknown> }) => { await audit(actorFromPrincipal(principal), { action: e.action, summary: e.summary, object: { table: "integrations", id: e.connectionId }, detail: e.detail }); } };
-    const r = await completeOAuth(rt, { uid: session.uid, tenantId, workspaceId: active.ws.uuid }, connector, tokens);
+    const actor = { uid: session.uid, tenantId, workspaceId: active.ws.uuid };
+    // Per-user Google grants: calendar and Gmail keep each user's own grant beside the first. Gmail is stamped as opted in only while its gate is open.
+    if (connector === "gmail" && !gmailGate(vEnv, true).open) return fail(req, connector, "gate_closed");
+    const r = connector === "google-calendar" || connector === "gmail"
+      ? await connectGoogleUser(rt, actor, connector, tokens, connector === "gmail" ? { flags: { [OPT_IN_KEY]: new Date().toISOString() } } : {})
+      : await completeOAuth(rt, actor, connector, tokens);
     if (!r.ok) return fail(req, connector, r.code);
     return done(req, connector, "connected=1", check.cookie.returnTo);
   } catch (e) {
