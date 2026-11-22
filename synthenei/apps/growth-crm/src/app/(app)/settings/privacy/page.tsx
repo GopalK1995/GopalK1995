@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { dueState } from "@/lib/privacy/due";
-import { getPrT } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 import { DueChip } from "./_components/due-chip";
 import { PrivacyNav } from "./_components/privacy-nav";
 import { loadInbox } from "./_lib/view";

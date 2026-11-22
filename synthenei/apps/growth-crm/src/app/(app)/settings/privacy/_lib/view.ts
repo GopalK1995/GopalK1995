@@ -5,7 +5,7 @@ import type { Db } from "@/lib/db/client";
 import { breachRepo, type Breach } from "@/lib/privacy/breach";
 import { DEMO_RULES, demoBreaches, demoRequests } from "@/lib/privacy/demo";
 import { ownerRepo, RequestError } from "@/lib/privacy/owner";
-import { getPrT } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 import { inboxCompare } from "@/lib/privacy/due";
 import type { PrivacyRequest } from "@/lib/privacy/types";
 import { gate, type Gate } from "./ctx";

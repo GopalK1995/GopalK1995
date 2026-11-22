@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { buildNotice } from "@/lib/privacy/notice";
-import { getPrT, prAll } from "@/lib/privacy/strings";
+import { prAll } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 import { REQUEST_KINDS } from "@/lib/privacy/types";
 import { RequestForm } from "./_components/request-form";
 

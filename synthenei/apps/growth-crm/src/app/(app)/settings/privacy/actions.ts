@@ -12,7 +12,7 @@ import { captureConsent, CAPTURE_CHANNELS } from "@/lib/privacy/consent";
 import { breachRepo, BREACH_SEVERITIES, BREACH_STATUSES } from "@/lib/privacy/breach";
 import { OBJECT_RE, runRetention, supabaseRetentionPort, type PolicyOutcome } from "@/lib/privacy/retention";
 import { CONSENT_PURPOSES, type RequestStatus } from "@/lib/privacy/types";
-import { getPrT } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 import { from } from "@/lib/db/query";
 import { throwIfError } from "@/lib/db/errors";
 import { fulfilCtx, type PrCtx } from "./_lib/ctx";
