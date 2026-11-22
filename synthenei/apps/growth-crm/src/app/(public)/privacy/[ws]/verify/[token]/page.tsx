@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { VERIFY_TTL_MS, previewConfirm } from "@/lib/privacy/intake";
-import { getPrT } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 import { confirmVerification } from "../../../actions";
 
 // The link in the verification email. GET never writes (mail scanners prefetch links): the person presses a button, which posts to a

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { clientKey } from "@/lib/security/rate-limit";
 import { confirmRequest, requestVerification } from "@/lib/privacy/intake";
-import { getPrT } from "@/lib/privacy/strings";
+import { getPrT } from "@/lib/privacy/strings-server";
 
 export type SubmitState =
   | { status: "sent" }
