@@ -13,3 +13,4 @@ import "@/lib/webhooks/handler"; // T024: webhook.deliver (outbound webhooks) + 
 import "./import"; // T034: import.run (CSV and XLSX import)
 import "@/lib/connectors/slack/jobs"; // T049: slack.alert (alerts from events to a Slack channel)
 import "@/lib/privacy/job"; // T052: privacy.retention (retention_policies; dry run unless the scheduled row says apply)
+import "@/lib/backups/jobs"; // T055: backup.heartbeat (nightly) + backup.evaluate (alert rules, notifies via notifications)

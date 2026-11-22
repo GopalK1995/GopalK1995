@@ -1,65 +1,91 @@
 "use client";
+// Permission is decided on the server (the page passes `blocked`, a reason or null; every action re-checks with assertCan).
 import { cloneElement, useState, useTransition, type ReactElement } from "react";
-import { ClipboardCheck, RefreshCw } from "lucide-react";
+import { ClipboardCheck, HeartPulse, ListPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/dropdown";
-import { useSession } from "@/components/shell/providers";
-import { ROLE_LABEL } from "@/lib/auth/roles";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Field, Input, Textarea } from "@/components/ui/form";
+import { Select } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
-import { logRestoreDrill, runHealthCheck, setAlertRule } from "./actions";
+import { createDefaultRules, logRestoreDrill, recordHeartbeatNow, runHealthCheck, setAlertRule } from "./actions";
 
 function Blocked({ reason, children }: { reason: string; children: ReactElement<{ disabled?: boolean }> }) {
   return <Tip content={reason}><span tabIndex={0} className="inline-flex rounded-sm">{cloneElement(children, { disabled: true })}</span></Tip>;
 }
-function useOperator() {
-  const { role, support } = useSession();
-  if (support?.mode === "read_only") return "Not available in a read-only support session.";
-  if (!(role === "owner" || role === "data")) return `Owner or Data only. Your role: ${ROLE_LABEL[role]}.`;
-  return null;
-}
+const show = (r: { message: string; sub?: string }) => toast(r.message, r.sub);
 
-export function RunCheckButton() {
-  const blocked = useOperator();
+export function RunCheckButton({ blocked }: { blocked: string | null }) {
   const [pending, start] = useTransition();
   const btn = (
-    <Button variant="primary" disabled={pending} onClick={() => start(async () => { const r = await runHealthCheck(); toast(r.message, r.detail); })}>
+    <Button variant="primary" disabled={pending} onClick={() => start(async () => show(await runHealthCheck()))}>
       <RefreshCw className={cn(pending && "motion-safe:animate-spin")} />{pending ? "Checking" : "Run check"}
     </Button>
   );
   return blocked ? <Blocked reason={blocked}>{btn}</Blocked> : btn;
 }
 
-export function LogDrillButton() {
-  const blocked = useOperator();
+export function HeartbeatButton({ blocked }: { blocked: string | null }) {
+  const [pending, start] = useTransition();
+  const btn = <Button disabled={pending} onClick={() => start(async () => show(await recordHeartbeatNow()))}><HeartPulse />{pending ? "Recording" : "Record heartbeat"}</Button>;
+  return blocked ? <Blocked reason={blocked}>{btn}</Blocked> : btn;
+}
+
+export function DefaultRulesButton({ blocked }: { blocked: string | null }) {
+  const [pending, start] = useTransition();
+  const btn = <Button variant="primary" disabled={pending} onClick={() => start(async () => show(await createDefaultRules()))}><ListPlus />Create default rules</Button>;
+  return blocked ? <Blocked reason={blocked}>{btn}</Blocked> : btn;
+}
+
+export function LogDrillButton({ blocked }: { blocked: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<"pass" | "fail">("pass");
+  const [minutes, setMinutes] = useState("20");
+  const [notes, setNotes] = useState("");
+  const [pending, start] = useTransition();
   const btn = <Button><ClipboardCheck />Log restore drill</Button>;
   if (blocked) return <Blocked reason={blocked}>{btn}</Blocked>;
-  const log = async (r: "pass" | "fail") => { const x = await logRestoreDrill(r); toast(x.message, x.detail); };
+  const mins = Number(minutes);
+  const valid = Number.isInteger(mins) && mins >= 0 && mins <= 1440;
   return (
-    <Menu>
-      <MenuTrigger asChild>{btn}</MenuTrigger>
-      <MenuContent>
-        <MenuItem onSelect={() => log("pass")}>Passed: counts matched</MenuItem>
-        <MenuItem onSelect={() => log("fail")}>Failed: needs follow-up</MenuItem>
-      </MenuContent>
-    </Menu>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{btn}</DialogTrigger>
+      <DialogContent title="Log restore drill" description="Restore the latest full dump into a scratch database, compare row counts, then record the outcome here.">
+        <form className="flex flex-col gap-4" onSubmit={(e) => {
+          e.preventDefault();
+          start(async () => { const r = await logRestoreDrill({ result, durationMin: mins, notes }); show(r); if (r.ok) { setOpen(false); setNotes(""); } });
+        }}>
+          <Field label="Outcome">
+            {(p) => <Select {...p} value={result} onValueChange={(v) => setResult(v as "pass" | "fail")} options={[{ value: "pass", label: "Passed: counts matched" }, { value: "fail", label: "Failed: needs follow-up" }]} />}
+          </Field>
+          <Field label="Minutes it took" error={valid ? undefined : "Whole minutes, 0 to 1440"}>
+            {(p) => <Input {...p} inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} />}
+          </Field>
+          <Field label="Notes" help="What was restored, anything that differed. No personal data.">
+            {(p) => <Textarea {...p} rows={3} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />}
+          </Field>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild><Button type="button">Cancel</Button></DialogClose>
+            <Button type="submit" variant="primary" disabled={pending || !valid}>{pending ? "Saving" : "Save to drill log"}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/** Owner-only toggle (Data reads alert rules but does not edit them, spec 5). */
-export function RuleToggle({ id, name, enabled }: { id: number; name: string; enabled: boolean }) {
-  const { role, support } = useSession();
+/** Owner-only toggle (backups.manage; Data reads alert rules but does not edit them). Persists through setAlertRule. */
+export function RuleToggle({ id, name, enabled, blocked }: { id: string; name: string; enabled: boolean; blocked: string | null }) {
   const [on, set] = useState(enabled);
   const [pending, start] = useTransition();
-  const reason = support?.mode === "read_only" ? "Not available in a read-only support session." : role !== "owner" ? `Only the Owner edits alert rules. Your role: ${ROLE_LABEL[role]}.` : null;
   const sw = (
     <button type="button" role="switch" aria-checked={on} aria-label={`${name}: ${on ? "on" : "off"}`} disabled={pending}
-      onClick={() => { const n = !on; set(n); start(async () => { const r = await setAlertRule(id, n); if (!r.ok) set(!n); toast(r.message, r.detail); }); }}
+      onClick={() => { const n = !on; set(n); start(async () => { const r = await setAlertRule(id, n); if (!r.ok) set(!n); show(r); }); }}
       className={cn("relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:opacity-50",
         on ? "border-accent bg-accent" : "border-line-strong bg-paper-2")}>
       <span className={cn("absolute size-3.5 rounded-full bg-surface shadow-1 transition-transform duration-150", on ? "translate-x-[18px]" : "translate-x-[2px]")} />
     </button>
   );
-  return reason ? <Blocked reason={reason}>{sw}</Blocked> : sw;
+  return blocked ? <Blocked reason={blocked}>{sw}</Blocked> : sw;
 }

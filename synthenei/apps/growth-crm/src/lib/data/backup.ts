@@ -1,24 +1,33 @@
 // Backup monitor data access. The screen depends ONLY on BackupMonitorAdapter.
 //
-// To go real (Krishna):
-//  1. Write a class implementing BackupMonitorAdapter that reads backup_checks (see supabase/schema.sql) and live row counts.
-//  2. backup_checks rows are written by (a) our own scheduled `supabase db dump` / pg_dump job to separate storage (heartbeat + size + row counts)
-//     and (b) optionally a Supabase Management API call IF its backup endpoints are confirmed (not verified at time of writing).
-//  3. Supabase does not back up Storage objects or Edge Functions, so the real adapter must report them as "not covered".
-//  4. Select it with BACKUP_ADAPTER=supabase in getBackupAdapter().
+// Real sessions read backup_checks, backup_alert_rules, sync_runs and live row counts (src/lib/backups/adapter.ts).
+// Demo sessions and the platform console (no workspace) read the labelled mock below. What writes the rows:
+//  - heartbeat: the nightly `backup.heartbeat` job (schema fingerprint + per-workspace row counts, src/lib/backups/heartbeat.ts);
+//  - logical_dump: the integrator machine after a full pg_dump (docs/backups-runbook.md);
+//  - restore_drill: the "Log restore drill" action;
+//  - supabase_daily: nothing yet. Supabase has no API for backup status, so the page says "not recorded" instead of inventing it.
+// Supabase does not back up Storage objects or Edge Functions, so the snapshot reports them as "not covered".
 import { datasetFor } from "./mock/generate-index";
+import { computeFreshness } from "../backups/freshness";
+import type { AlertRule as BackupAlertRule, ConnectorFreshness, RuleState, TableCount } from "../backups/types";
 import type { Workspace } from "../tenancy";
+import { loadEnv } from "../env";
 import type { Dataset } from "./types";
 
 export type CheckStatus = "success" | "failed" | "missing" | "unknown";
-export interface BackupCheck { kind: "supabase_daily" | "logical_dump" | "restore_drill"; status: CheckStatus; takenAt: string | null; sizeBytes: number | null; location: string; detail: string }
-export interface TableCount { table: string; current: number; atLastDump: number }
-export interface AlertRule { id: number; name: string; condition: string; maxAgeHours: number | null; notifyTo: string; enabled: boolean }
+export interface BackupCheck { kind: "supabase_daily" | "logical_dump" | "restore_drill" | "heartbeat"; status: CheckStatus; takenAt: string | null; sizeBytes: number | null; location: string; detail: string }
+export type { TableCount } from "../backups/types";
+export type AlertRule = BackupAlertRule & { state: RuleState; detail: string | null };
 export interface DrillLogEntry { at: string; result: "pass" | "fail"; durationMin: number; notes: string }
 export interface BackupSnapshot {
   isMock: boolean; generatedAt: string;
   retentionDays: number | null; pitrEnabled: boolean | null;
   checks: BackupCheck[]; tableCounts: TableCount[]; alertRules: AlertRule[]; drillLog: DrillLogEntry[];
+  /** False when the workspace has no persisted rules yet (the first job run, or "Create default rules", writes them). */
+  rulesPersisted: boolean;
+  /** Per connector and stream, from sync_runs (sample runs in demo). */
+  freshness: ConnectorFreshness[];
+  heartbeat: { at: string | null; schemaHash: string | null; tables: number | null; columns: number | null } | null;
   notCovered: string[]; staleAfterHours: number;
 }
 export interface BackupMonitorAdapter { readonly name: string; getSnapshot(): Promise<BackupSnapshot> }
@@ -46,16 +55,22 @@ export const mockBackupAdapter = (dataset: Dataset): BackupMonitorAdapter => ({
     return {
       isMock: true, generatedAt: NOW_ISO, retentionDays: 7, pitrEnabled: false, staleAfterHours: 26,
       checks: [
+        { kind: "heartbeat", status: "success", takenAt: iso(now - 10 * H), sizeBytes: null, location: "logical heartbeat", detail: "Mock value. Schema fingerprint and row counts." },
         { kind: "supabase_daily", status: "success", takenAt: iso(now - 6 * H), sizeBytes: 18_400_000, location: "supabase-managed", detail: "Mock value. Supabase daily backup; Free/Pro keep 7 days." },
-        { kind: "logical_dump", status: "success", takenAt: iso(now - 10 * H), sizeBytes: 6_200_000, location: "offsite bucket (not chosen yet)", detail: "Mock value. Our own pg_dump job; not built yet." },
+        { kind: "logical_dump", status: "success", takenAt: iso(now - 10 * H), sizeBytes: 6_200_000, location: "offsite bucket (not chosen yet)", detail: "Mock value. Full pg_dump from the integrator machine." },
         { kind: "restore_drill", status: "success", takenAt: iso(now - 44 * D), sizeBytes: null, location: "scratch database", detail: "Mock value. Dump restored and row counts matched." },
       ],
       tableCounts: counts,
+      rulesPersisted: true,
+      heartbeat: { at: iso(now - 10 * H), schemaHash: "sample", tables: null, columns: null },
+      freshness: computeFreshness(
+        dataset.integrations.map((i) => ({ id: i.id, label: i.name, connectorId: i.id, status: "sandbox" })),
+        dataset.syncRuns.map((r) => ({ integrationId: r.integrationId, stream: null, status: r.status, startedAt: r.startedAt, mode: "sandbox" })), now),
       alertRules: [
-        { id: 1, name: "Backup is stale", condition: "No successful backup in 26 hours", maxAgeHours: 26, notifyTo: "Owner (email)", enabled: true },
-        { id: 2, name: "Row-count drop", condition: "Any table 5% below last dump", maxAgeHours: null, notifyTo: "Owner (email)", enabled: true },
-        { id: 3, name: "Restore drill overdue", condition: "No passing drill in 90 days", maxAgeHours: 2160, notifyTo: "Owner, Data", enabled: true },
-        { id: 4, name: "Sync failed twice", condition: "Integration sync failed on 2 consecutive runs", maxAgeHours: null, notifyTo: "Marketing, Data", enabled: false },
+        { id: "1", kind: "heartbeat_stale", name: "Backup is stale", condition: "No successful backup in 26 hours", maxAgeHours: 26, maxDropPct: null, notifyTo: "Owner (email)", enabled: true, state: "ok", detail: null },
+        { id: "2", kind: "row_drop", name: "Row-count drop", condition: "Any table 5% below last dump", maxAgeHours: null, maxDropPct: 5, notifyTo: "Owner (email)", enabled: true, state: "ok", detail: null },
+        { id: "3", kind: "drill_overdue", name: "Restore drill overdue", condition: "No passing drill in 90 days", maxAgeHours: 2160, maxDropPct: null, notifyTo: "Owner, Data", enabled: true, state: "ok", detail: null },
+        { id: "4", kind: "sync_failed", name: "Sync failed twice", condition: "Integration sync failed on 2 consecutive runs", maxAgeHours: null, maxDropPct: null, notifyTo: "Marketing, Data", enabled: false, state: "paused", detail: null },
       ],
       drillLog: [
         { at: iso(now - 44 * D), result: "pass", durationMin: 22, notes: "Mock entry. Restored latest dump into scratch DB; counts matched." },
@@ -66,7 +81,9 @@ export const mockBackupAdapter = (dataset: Dataset): BackupMonitorAdapter => ({
   },
 });
 
-export function getBackupAdapter(ws?: Workspace): BackupMonitorAdapter {
-  if (process.env.BACKUP_ADAPTER === "supabase") throw new Error("Supabase backup adapter is not implemented yet. See comments in src/lib/backup.ts.");
-  return mockBackupAdapter(datasetFor(ws?.dataset ?? "tn"));
+/** Real adapter for real sessions of a workspace; the mock for demo sessions and for callers with no workspace (platform console). */
+export function getBackupAdapter(ws?: Workspace, opts: { demo?: boolean } = {}): BackupMonitorAdapter {
+  const real = !!ws && opts.demo === false && loadEnv().dataSourceSupabase;
+  if (!real) return mockBackupAdapter(datasetFor(ws?.dataset ?? "tn"));
+  return { name: "supabase", async getSnapshot() { return (await import("../backups/adapter")).realSnapshot({ uuid: ws.uuid, tenantId: ws.tenantId }); } };
 }
