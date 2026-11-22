@@ -8,6 +8,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
   "/import": "leads.import",
   "/settings/pipelines": "pipelines.manage", "/settings/objects": "objects.manage", "/settings/layouts": "layouts.manage",
   "/settings/fields": "fields.manage", "/settings/email": "integrations.manage", "/settings/privacy": "privacy.fulfil",
+  "/settings/billing": "billing.read",
 };
 export const ALWAYS_ALLOWED_PAGES = ["/notifications", "/profile", "/forbidden", "/onboarding"];
 
