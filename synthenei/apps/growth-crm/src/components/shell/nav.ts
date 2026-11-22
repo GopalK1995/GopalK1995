@@ -1,6 +1,6 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, FileLock2, type LucideIcon,
+  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, FileLock2, CreditCard, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
@@ -21,6 +21,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { href: "/settings/notifications", label: "Notification settings", icon: BellRing },
     { href: "/settings/roles", label: "Roles & access", icon: ShieldCheck, perm: "members.manage" },
     { href: "/settings/audit", label: "Audit log", icon: ScrollText, perm: "audit.read" },
+    { href: "/settings/billing", label: "Billing", icon: CreditCard, perm: "billing.read", permOnly: true },
     { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" },
     { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" },
     { href: "/settings/pipelines", label: "Pipelines", icon: Workflow, perm: "pipelines.manage" },

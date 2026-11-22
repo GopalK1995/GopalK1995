@@ -7,6 +7,7 @@ import { isModuleEnabled } from "../vertical";
 import { AuthzError, decide } from "./engine";
 import { principalFromMyGrants, systemPrincipal } from "./principal";
 import { SYSTEM_ROLES } from "./catalog/system-roles";
+import { withBilling } from "../billing/runtime";
 import type { Principal, RecordRef } from "./types";
 
 /** Cached per request. Demo sessions: built from the fixture roles. Real sessions: `authz.my_grants(ws)` RPC. */
@@ -24,7 +25,7 @@ export const loadPrincipal = cache(async (ws?: string): Promise<Principal> => {
       const { data, error } = await sb.schema("authz").rpc("my_grants", { p_ws: active.ws.uuid });
       if (!error && data) {
         const p = principalFromMyGrants(data, { uid: session.uid, workspaceId: active.ws.id });
-        return { ...p, modulesOff: [...new Set([...p.modulesOff, ...modulesOff])] };
+        return withBilling({ ...p, modulesOff: [...new Set([...p.modulesOff, ...modulesOff])] });
       }
       // Transitional: until migration 0013 is applied the RPC does not exist; fall back to the membership role.
     }
