@@ -107,7 +107,9 @@ export function ObjectsView(p: ObjectsViewProps) {
           </table>
         </div>
       )}
-      <p className="text-12 text-ink-3">{t("permissionsNote")} <Link href="/settings/roles?tab=roles" className="text-accent underline-offset-4 hover:underline">{t("permissionsLink")}</Link></p>
+      {/* Inline link needs its own non-color distinguishing feature at rest (axe link-in-text-block): underline
+          always-on, not hover-only, since it sits inside body text the same color family otherwise tells apart only by hue. */}
+      <p className="text-12 text-ink-3">{t("permissionsNote")} <Link href="/settings/roles?tab=roles" className="text-accent underline underline-offset-4">{t("permissionsLink")}</Link></p>
 
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o) setDialog(null); }}>
         <DialogContent title={dialog?.mode === "edit" ? t("editTitle") : t("createTitle")} description={dialog?.mode === "edit" ? t("editBody") : t("createBody")}>

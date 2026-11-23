@@ -127,5 +127,6 @@ export function CustomFieldsPanel(p: CustomFieldsPanelProps) {
 }
 
 export function CustomFieldsSkeleton() {
-  return <div className="zone-working grid gap-2" aria-busy="true" aria-label="Loading"><div className="h-4 w-32 rounded-chip bg-paper-2" /><div className="h-8 rounded-control bg-paper-2" /><div className="h-8 rounded-control bg-paper-2" /></div>;
+  // role="status" is required for aria-label to be valid on a bare div (axe aria-prohibited-attr), same fix as skeleton.tsx's PageSkeleton.
+  return <div role="status" className="zone-working grid gap-2" aria-busy="true" aria-label="Loading"><div className="h-4 w-32 rounded-chip bg-paper-2" /><div className="h-8 rounded-control bg-paper-2" /><div className="h-8 rounded-control bg-paper-2" /></div>;
 }

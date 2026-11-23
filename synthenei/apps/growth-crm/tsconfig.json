@@ -31,14 +31,17 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-T059/types/**/*.ts",
+    ".next-T059b/types/**/*.ts",
     ".next-admin/types/**/*.ts",
     ".next-build/types/**/*.ts",
     ".next-engage/types/**/*.ts",
     ".next-marketing/types/**/*.ts",
+    ".next-sales/types/**/*.ts",
     ".next-system/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-sales/types/**/*.ts"
+    ".next-resume/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

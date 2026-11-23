@@ -129,7 +129,7 @@ function Webhook({ s, c, url }: { s: S; c: ConnView; url: string | null }) {
       <h2 id="em-hook" className="text-15 font-semibold text-ink">{s.webhookTitle}</h2>
       <p className="text-13 text-ink-2">{s.webhookHelp}</p>
       {url && <Field label={s.webhookUrl}><Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} /></Field>}
-      <p className={`text-13 ${c.webhookSecretSet ? "text-ink-2" : "text-warn"}`} role="status">{c.webhookSecretSet ? s.webhookSecretPresent : s.webhookSecretMissing}</p>
+      <p className={`text-13 ${c.webhookSecretSet ? "text-ink-2" : "text-warn-ink"}`} role="status">{c.webhookSecretSet ? s.webhookSecretPresent : s.webhookSecretMissing}</p>
       <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); a.run(async () => { const r = await saveWebhookSecret(c.id, secret); if (r.ok) setSecret(""); return r; }); }}>
         <Field label={s.webhookSecret} help={s.webhookSecretHelp}><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" /></Field>
         <div className="flex items-center gap-3"><Button type="submit" disabled={a.pending || !secret}>{s.webhookSecretSave}</Button><Msg m={a.msg} /></div>
@@ -143,7 +143,7 @@ function Suppressions({ s, rows, missing }: { s: S; rows: SuppressionRow[]; miss
     <section aria-labelledby="em-sup" className="grid gap-3">
       <h2 id="em-sup" className="text-15 font-semibold text-ink">{s.suppressionTitle}</h2>
       <p className="text-13 text-ink-2">{s.suppressionHelp}</p>
-      {missing && <p className="text-13 text-warn" role="status">{s.suppressionMissing}</p>}
+      {missing && <p className="text-13 text-warn-ink" role="status">{s.suppressionMissing}</p>}
       {!rows.length && !missing && <p className="text-13 text-ink-2" data-testid="suppression-empty">{s.suppressionEmpty}</p>}
       {rows.length > 0 && (
         <Table minWidth={560}>
@@ -165,7 +165,7 @@ function Mailchimp({ s, m, audiences, segments, demo }: { s: S; m: McView | null
       <p className="text-13 text-ink-2">{s["mailchimp.help"]}</p>
       {!m && <p className="text-13 text-ink-2">{demo ? s["mailchimp.demoNote"] : s["mailchimp.notConnected"]} {!demo && <Link className="font-medium text-accent underline" href="/integrations/mailchimp">{s["mailchimp.connect"]}</Link>}</p>}
       {m && (<>
-        {audiences === null && <p className="text-13 text-warn" role="status">{s["mailchimp.audiencesFailed"]}</p>}
+        {audiences === null && <p className="text-13 text-warn-ink" role="status">{s["mailchimp.audiencesFailed"]}</p>}
         {audiences && (
           <div className="flex items-end gap-2">
             <Field label={s["mailchimp.audience"]} className="flex-1">{(cp) => <Select {...cp} value={aud} onValueChange={setAud} placeholder={s["mailchimp.audienceNone"]} options={audiences.map((x) => ({ value: x.id, label: `${x.name} (${fill(s["mailchimp.audienceMembers"], { count: x.members })})` }))} />}</Field>

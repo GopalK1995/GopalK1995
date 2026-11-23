@@ -112,13 +112,13 @@
 .state-success { --st: var(--success); }
 .state-warn { --st: var(--warn); color: var(--warn-ink); }
 .state-danger { --st: var(--danger); }
-.state-info { --st: var(--info); }
+.state-info { --st: var(--info); color: var(--info-ink); } /* text-safe variant, same pattern as .state-warn below (axe color-contrast) */
 .state-accent { --st: var(--accent); }
 :is(.state-success, .state-warn, .state-danger, .state-info, .state-accent) {
   background: color-mix(in oklch, var(--st) var(--state-fill), transparent);
   border-color: color-mix(in oklch, var(--st) var(--state-border), transparent);
 }
-.state-success { color: var(--success); } .state-danger { color: var(--danger); } .state-info { color: var(--info); } .state-accent { color: var(--accent-strong); }
+.state-success { color: var(--success); } .state-danger { color: var(--danger); } .state-accent { color: var(--accent-strong); }
 
 /* Recharts: recessive chrome */
 .recharts-cartesian-grid line { stroke: var(--chart-grid); }

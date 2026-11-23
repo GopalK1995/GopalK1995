@@ -181,7 +181,9 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <ol aria-label={pl.shareAria} className="scrollbar-thin flex min-w-0 items-center gap-1 overflow-x-auto text-[11px] text-ink-3">
+        {/* tabIndex so this scrollable strip is keyboard-reachable (axe scrollable-region-focusable): arrow/Tab-scrollable
+            without a mouse, same as the board's other overflow-x-auto regions. */}
+        <ol tabIndex={0} aria-label={pl.shareAria} className="scrollbar-thin flex min-w-0 items-center gap-1 overflow-x-auto text-[11px] text-ink-3">
           {open.slice(0, -1).map((s, i) => (
             <li key={s} className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-line bg-surface px-2 py-1">
               <span>{DEAL_STAGE_LABEL[s]} → {DEAL_STAGE_LABEL[open[i + 1]]}</span>

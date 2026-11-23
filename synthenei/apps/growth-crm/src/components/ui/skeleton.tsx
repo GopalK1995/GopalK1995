@@ -31,9 +31,11 @@ export function SkeletonChart({ className }: { className?: string }) {
     </div>
   );
 }
+// role="status" matches every other loading.tsx in this codebase -- aria-label on a bare div with no ARIA role is
+// prohibited (axe aria-prohibited-attr); role="status" is what makes it valid here.
 export function PageSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading">
+    <div role="status" aria-busy="true" aria-label="Loading">
       <Skeleton className="mb-2 h-3 w-40" /><Skeleton className="mb-6 h-7 w-72" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-30" />)}</div>
       <div className="mt-4 grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>

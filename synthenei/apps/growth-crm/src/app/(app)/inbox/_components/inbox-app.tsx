@@ -235,7 +235,8 @@ function Thread({ c, env, now, extra, status, readOnlyRole, onBack, onSent, cont
       </header>
       {c.windowLeftH !== null && <WindowBar h={c.windowLeftH} label={env.strings.window} />}
 
-      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto bg-paper/50 px-3 py-4 sm:px-5" aria-live="polite">
+      {/* tabIndex so this scrollable message list is keyboard-reachable (axe scrollable-region-focusable). */}
+      <div tabIndex={0} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto bg-paper/50 px-3 py-4 sm:px-5" aria-live="polite">
         {!msgs.length && <p className="py-8 text-center text-[13px] text-ink-3" data-cy="thread-empty">No messages in this conversation yet.</p>}
         <ol className="space-y-2.5">
           {msgs.map((m) => {

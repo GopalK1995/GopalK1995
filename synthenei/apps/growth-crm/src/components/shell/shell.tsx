@@ -1,23 +1,27 @@
 "use client";
-import { SyncStatusChip } from "@/components/realtime";
+import { SyncStatusChip, PresenceFacesView } from "@/components/realtime";
+import { usePresence } from "@/lib/realtime/hooks";
+import { tableTopic } from "@/lib/realtime/topics";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import * as D from "@radix-ui/react-dialog";
 import { ChevronDown, Database, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isActive, mobileNavFor, navFor, navGroup, navLabel } from "./nav";
 import { WorkspaceSwitcher } from "./switcher";
 import { endSupport } from "@/lib/auth/actions";
-import { fmtTime } from "@/lib/format";
+import { fmtTime, initials } from "@/lib/format";
 import { useSession, useVocab } from "./providers";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
 import { Tip } from "@/components/ui/tooltip";
 import { logout } from "@/lib/auth/actions";
 import { Toaster } from "@/components/ui/toast";
-import { CommandPalette } from "@/components/command";
+import { Kbd } from "@/components/ui/kbd";
+import { CommandPalette, openCommandPalette } from "@/components/command";
 
 const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
@@ -87,10 +91,15 @@ function UserMenu() {
   const router = useRouter();
   return (
     <Menu>
-      <MenuTrigger className="flex items-center gap-2 rounded-sm py-1 pl-1 pr-1.5 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring" aria-label="User menu">
-        <Avatar name={s.name} size={28} />
+      {/* aria-label mirrors the visible content in order -- avatar initials, name, role (adjacent spans render with
+          no literal whitespace between them -- only CSS gap -- which fuses their text into one unsplittable token
+          for axe's label-content-name-mismatch check and for screen readers reading raw text content; the Avatar's
+          initials count as visible text for this check despite being aria-hidden) -- plus "User menu" as a trailing
+          purpose hint. */}
+      <MenuTrigger className="flex items-center gap-2 rounded-sm py-1 pl-1 pr-1.5 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${initials(s.name)} ${s.name} ${v.role[s.role]}. User menu`}>
+        <Avatar name={s.name} size={28} />{" "}
         <span className="hidden text-left leading-tight md:block">
-          <span className="block text-[12px] font-medium text-ink">{s.name}</span>
+          <span className="block text-[12px] font-medium text-ink">{s.name}</span>{" "}
           <span className="block text-[11px] text-ink-3">{v.role[s.role]}</span>
         </span>
         <ChevronDown className="hidden size-3.5 text-ink-3 md:block" aria-hidden />
@@ -107,18 +116,46 @@ function UserMenu() {
   );
 }
 
-function GlobalSearch() {
-  const router = useRouter();
+/** Command chip: the primary global search and action surface (§3.2 chrome). An input-like trigger that opens the palette; shows the ⌘K / Ctrl K hint. */
+function CommandChip() {
   const v = useVocab();
-  const [q, setQ] = useState("");
+  const [keys, setKeys] = useState("Ctrl K");
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? (navigator.platform || navigator.userAgent) : "";
+    if (/Mac|iPhone|iPad|iPod/.test(ua)) setKeys("⌘ K");
+  }, []);
   return (
-    <form role="search" onSubmit={(e) => { e.preventDefault(); router.push(`/leads?q=${encodeURIComponent(q)}`); }} className="relative hidden w-full max-w-sm sm:block">
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={v.search} aria-label={v.search}
-        className="h-8 w-full rounded-sm border border-line bg-paper pl-8 pr-10 text-[13px] text-ink placeholder:text-ink-3 outline-none focus:border-ring focus:bg-surface" />
-      <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-[3px] border border-line px-1 text-[10px] text-ink-3">/</kbd>
-    </form>
+    // aria-label mirrors the full visible content (incl. the shortcut hint) with real spaces: the visible <span> and
+    // <Kbd> are adjacent JSX siblings with only CSS gap between them, no literal whitespace, which fuses their text
+    // into one unsplittable token for axe's label-content-name-mismatch check (and for screen readers reading raw
+    // text content). A constant aria-label also keeps a sensible name when the text/kbd are responsively hidden below `sm`.
+    <button type="button" onClick={() => openCommandPalette()} aria-keyshortcuts="Meta+K Control+K" aria-label={`${v.search} ${keys}`}
+      className="inline-flex h-8 items-center gap-2 rounded-control border border-line bg-paper px-2.5 text-[13px] text-ink-3 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring sm:w-full sm:max-w-sm">
+      <Search className="size-4 shrink-0" aria-hidden />
+      <span className="hidden min-w-0 flex-1 truncate text-left sm:block">{v.search}</span>{" "}
+      <Kbd className="ml-auto hidden sm:inline-flex" aria-hidden>{keys}</Kbd>
+    </button>
   );
+}
+
+/** Page title in the top bar (§3.2 chrome). A label derived from the active nav item, not the page's own <h1>, so it never competes with the document heading. */
+function PageTitle() {
+  const path = usePathname();
+  const { role, tenant, objects } = useSession();
+  const v = useVocab();
+  const match = navFor(role, tenant, objects).flatMap((g) => g.items).filter((it) => isActive(it.href, path)).sort((a, b) => b.href.length - a.href.length)[0];
+  const seg = path.replace(/^\//, "").split("/")[0].replace(/-/g, " ");
+  const title = match ? navLabel(v, match) : seg ? `${seg[0].toUpperCase()}${seg.slice(1)}` : navLabel(v, { href: "/", label: "Command Center", icon: Database });
+  return <div className="hidden min-w-0 items-center lg:flex"><span className="truncate text-[14px] font-semibold text-ink">{title}</span></div>;
+}
+
+/** Workspace presence in the chrome (§3.2): colleagues currently in this workspace (sample colleagues in demo). Renders nothing when you are alone. */
+function ShellPresence() {
+  const { ws } = useSession();
+  const topic = useMemo(() => { try { return tableTopic(ws.id, "presence"); } catch { return null; } }, [ws.id]);
+  const users = usePresence(topic, { authorize: true });
+  if (users.length === 0) return null;
+  return <span className="hidden md:inline-flex"><PresenceFacesView users={users} max={3} /></span>;
 }
 
 export function AppShell({ children, bell }: { children: ReactNode; /** Server-rendered <BellSlot/> from the layout. */ bell?: ReactNode }) {
@@ -126,16 +163,18 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
   const [open, setOpen] = useState(false);
   const { role, support, tenant } = useSession();
   const v = useVocab();
+  const t = useTranslations("shell");
   const path = usePathname();
   useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* ignore */ } }, []);
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "/" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); document.querySelector<HTMLInputElement>('input[role="search"], form[role="search"] input')?.focus(); } };
+    const h = (e: KeyboardEvent) => { if (e.key === "/" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); openCommandPalette(); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
   }, []);
   const toggle = () => setCollapsed((c) => { try { localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1"); } catch { /* ignore */ } return !c; });
 
   return (
     <div className="flex min-h-dvh">
+      <a href="#main-content" className="sr-only rounded-control bg-surface px-3 py-2 text-[13px] font-medium text-ink shadow-pop outline-none focus-visible:not-sr-only focus-visible:fixed focus-visible:left-3 focus-visible:top-3 focus-visible:z-[60] focus-visible:ring-2 focus-visible:ring-ring">{t("skipToContent")}</a>
       <aside className={cn("hidden shrink-0 self-stretch bg-navy-900 transition-[width] duration-200 ease-out lg:block", collapsed ? "w-16" : "w-60")}>
         <div className="sticky top-0 flex h-dvh flex-col">
         <div className={cn("flex h-14 items-center border-b border-navy-line", collapsed ? "justify-center px-2" : "px-2.5")}><WorkspaceSwitcher collapsed={collapsed} /></div>
@@ -165,11 +204,13 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
             </D.Portal>
           </D.Root>
           <div className="min-w-0 max-w-[200px] lg:hidden"><WorkspaceSwitcher onNavy={false} /></div>
-          <GlobalSearch />
+          <PageTitle />
+          <CommandChip />
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-[4px] border border-line px-2 py-1 text-[11px] text-ink-3 md:inline-flex" title="All figures are synthetic sample data">
+            <span className="hidden items-center gap-1.5 rounded-chip border border-line px-2 py-1 text-[11px] text-ink-3 md:inline-flex" title="All figures are synthetic sample data">
               <Database className="size-3" aria-hidden />Sample data · IST
             </span>
+            <ShellPresence />
             <SyncStatusChip />
             {bell}
             <UserMenu />
@@ -177,7 +218,7 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
         </header>
         <Toaster />
         <CommandPalette />
-        <main key={path} className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">{children}</main>
+        <main id="main-content" tabIndex={-1} key={path} className="mx-auto w-full max-w-[1400px] flex-1 scroll-mt-16 px-4 pb-24 pt-6 outline-none sm:px-6 lg:px-8 lg:pb-10">{children}</main>
       </div>
 
       <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-navy-line bg-navy-900 pb-[env(safe-area-inset-bottom)] lg:hidden">

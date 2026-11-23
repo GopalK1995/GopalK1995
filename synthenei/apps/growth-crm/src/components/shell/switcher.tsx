@@ -25,16 +25,27 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
   }, [s.workspaces, q]);
   return (
     <M.Root>
-      <M.Trigger data-testid="ws-switcher" disabled={!!s.support} aria-label={`Workspace: ${s.tenant.name} · ${s.ws.name}. Switch workspace`}
+      {/* No aria-label override: an override has to literal-match every piece of visible text (monogram letter,
+          tenant name, workspace name, role badge -- all of it counts, even the aria-hidden monogram) as a
+          contiguous word sequence (WCAG 2.5.3 / axe's label-content-name-mismatch), which is brittle to keep in
+          sync by hand. Native content-derived naming can't drift out of sync since it IS the visible text. The
+          sr-only span supplies the "Switch workspace" action hint plus a fallback description for the collapsed
+          (icon-only) state, where the visible text block below isn't rendered at all. */}
+      <M.Trigger data-testid="ws-switcher" disabled={!!s.support}
         className={cn("group flex w-full items-center gap-2.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
           onNavy ? "p-1.5 hover:bg-navy-800" : "p-1 hover:bg-paper-2", collapsed && "justify-center", pending && "opacity-60")}>
-        <Monogram letter={s.tenant.monogram} />
+        <Monogram letter={s.tenant.monogram} />{" "}
+        <span className="sr-only">{`${s.tenant.name}, ${s.ws.name}, ${vv.role[s.role]}. Switch workspace`}</span>
         {!collapsed && (
           <>
+            {/* Explicit {" "} between adjacent spans: JSX renders zero whitespace between sibling elements (only
+                CSS gap, no text), which fused "LAWSOME"+"Tamil Nadu"+"Viewer" into unsplittable tokens like
+                "lawsometamil" for any word-based text comparison (axe's label-content-name-mismatch, and screen
+                readers reading raw text content) -- a real literal space is needed, not just visual gap. */}
             <span className="min-w-0 flex-1 leading-tight">
-              <span className={cn("block truncate text-[13px] font-semibold", onNavy ? "text-navy-ink" : "text-ink")}>{s.tenant.name}</span>
+              <span className={cn("block truncate text-[13px] font-semibold", onNavy ? "text-navy-ink" : "text-ink")}>{s.tenant.name}</span>{" "}
               <span className={cn("flex items-center gap-1.5 truncate text-[11px]", onNavy ? "text-navy-ink-3" : "text-ink-3")}>
-                <span className="truncate">{s.ws.name}</span>
+                <span className="truncate">{s.ws.name}</span>{" "}
                 <span className={cn("shrink-0 rounded-[3px] px-1 text-[10px]", onNavy ? "bg-navy-800 text-navy-ink-2" : "bg-paper-2 text-ink-2")}>{vv.role[s.role]}</span>
               </span>
             </span>

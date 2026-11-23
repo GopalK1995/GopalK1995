@@ -77,6 +77,7 @@
   --danger: oklch(0.5 0.19 27);
   --danger-soft: oklch(0.96 0.03 25);
   --info: oklch(0.5 0.1 220);
+  --info-ink: oklch(0.38 0.09 220);
   --info-soft: oklch(0.95 0.03 220);
   /* state fills sit behind text at 12%, borders of state chips at 50% */
   --state-fill: 12%;
