@@ -27,7 +27,7 @@ export async function middleware(req: NextRequest) {
 
   const isClientLink = pathname.startsWith("/g/");
   // /auth/* (invite, reset, set-password, MFA, callback) must be reachable before a gcrm_session exists; each page checks Supabase itself.
-  if (pathname.startsWith("/auth/") || pathname.startsWith("/unsubscribe/") || pathname.startsWith("/privacy/")) return NextResponse.next();   // /unsubscribe/<token>: public, signed link in every email (T038); /privacy/<workspace>: public notice and DPDP request form (T052)
+  if (pathname.startsWith("/auth/") || pathname.startsWith("/unsubscribe/") || pathname.startsWith("/privacy/") || pathname.startsWith("/docs/")) return NextResponse.next();   // /unsubscribe/<token>: public, signed link in every email (T038); /privacy/<workspace>: public notice and DPDP request form (T052); /docs/api: public API reference (T063)
   if (PUBLIC.includes(pathname) || isClientLink) {
     if (session && (pathname === "/login" || isClientLink) && !session.platformAdmin) return NextResponse.redirect(new URL("/", req.url));
     if (session && pathname === "/admin/login" && session.platformAdmin) return NextResponse.redirect(new URL("/admin", req.url));
