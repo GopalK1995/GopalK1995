@@ -106,7 +106,32 @@ export function makeGraphGateway(o: GraphOpts): MetaGateway {
         after = isObj(j.paging) && isObj(j.paging.cursors) && typeof j.paging.next === "string" ? str(j.paging.cursors.after, 500) : undefined;
         if (!after) break;
       }
-      if (out.length === 0) console.warn(`meta.listPages: me/accounts returned ${rawCount} item(s), ${noToken} without a page token`);
+      if (out.length === 0) {
+        console.warn(`meta.listPages: me/accounts returned ${rawCount} item(s), ${noToken} without a page token`);
+        // Fallback: Pages reached through a Business portfolio are left out of me/accounts. The token still records which Pages the user
+        // granted (debug_token granular_scopes), so ask Meta for each of those directly with the user token.
+        if (o.appId && o.appSecret) {
+          try {
+            const dj = await call<R>("GET", "debug_token", { query: { input_token: need(o.userToken, "user token"), access_token: `${o.appId}|${o.appSecret}` } });
+            const dd = isObj(dj.data) ? dj.data : {};
+            const ids = new Set<string>();
+            for (const g of arr(dd.granular_scopes)) {
+              if (!isObj(g) || !["pages_show_list", "pages_read_engagement", "pages_manage_metadata"].includes(String(g.scope))) continue;
+              for (const t of arr(g.target_ids)) { const pid = str(t, 64); if (pid) ids.add(pid); }
+            }
+            for (const pid of Array.from(ids).slice(0, 20)) {
+              try {
+                const x = await call<R>("GET", pid, { token: need(o.userToken, "user token"), query: { fields: "id,name,access_token,instagram_business_account{id,username}" } });
+                const id = str(x.id, 64), token = str(x.access_token, 1000);
+                if (!id || !token) continue;
+                const ig = isObj(x.instagram_business_account) ? x.instagram_business_account : undefined;
+                out.push({ id, name: str(x.name, 200) ?? id, pageToken: token, igUserId: str(ig?.id, 64), igUsername: str(ig?.username, 100) });
+              } catch { /* a Page the user can no longer reach is simply skipped */ }
+            }
+            console.warn(`meta.listPages fallback: ${ids.size} granted page id(s), ${out.length} usable`);
+          } catch { /* diagnostics must never break listing */ }
+        }
+      }
       return out;
     },
     async listAdAccounts() {
