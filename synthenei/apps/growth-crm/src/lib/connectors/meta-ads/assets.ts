@@ -67,7 +67,10 @@ export async function selectMetaAssets(d: RuntimeDeps, meta: MetaStore, actor: A
     if (!reg.ok) return { ok: false, code: reg.reason };
 
     // 4. Webhook subscription: leads always, Instagram messages when an Instagram account is linked.
-    await gw.subscribePage(page.id, page.pageToken, page.igUserId ? ["leadgen", "messages"] : ["leadgen"]);
+    // Best effort: webhooks need leads_retrieval / pages_manage_metadata. Without them (e.g. a Meta app that has no Lead Ads use case yet)
+    // the page is still stored and the metrics sync (polling) works; only instant lead and DM delivery is off until the scopes exist.
+    try { await gw.subscribePage(page.id, page.pageToken, page.igUserId ? ["leadgen", "messages"] : ["leadgen"]); }
+    catch (e) { if (!(e instanceof CredentialError)) throw e; console.warn("meta.subscribePage skipped:", String(e.message).slice(0, 200)); }
 
     // 5. Secrets: credential bundle (tokens + chosen ids) and the webhook bundle the edge verifies with.
     let verifyToken = "";
@@ -92,7 +95,7 @@ export async function selectMetaAssets(d: RuntimeDeps, meta: MetaStore, actor: A
     }
     return { ok: true, value: { pageName: page.name, igUsername: page.igUsername, adAccountName: ad?.name, verifyToken } };
   } catch (e) {
-    if (e instanceof CredentialError) return { ok: false, code: "token_rejected" };
+    if (e instanceof CredentialError) { console.warn("meta.selectAssets rejected:", String(e.message).slice(0, 200)); return { ok: false, code: "token_rejected" }; }
     if (e instanceof TransientError) throw e;
     throw e;
   }
