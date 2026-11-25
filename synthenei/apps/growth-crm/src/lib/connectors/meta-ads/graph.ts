@@ -91,12 +91,14 @@ export function makeGraphGateway(o: GraphOpts): MetaGateway {
     },
     async listPages() {
       const out: PageWithToken[] = [];
-      let after: string | undefined;
+      let after: string | undefined, rawCount = 0, noToken = 0;
       for (let i = 0; i < 5; i++) {
         const j = await call<R>("GET", "me/accounts", { token: need(o.userToken, "user token"), query: { fields: "id,name,access_token,instagram_business_account{id,username}", limit: "100", after } });
         for (const x of arr(j.data)) {
           if (!isObj(x)) continue;
           const id = str(x.id, 64), token = str(x.access_token, 1000);
+          rawCount++;
+          if (id && !token) noToken++;
           if (!id || !token) continue;
           const ig = isObj(x.instagram_business_account) ? x.instagram_business_account : undefined;
           out.push({ id, name: str(x.name, 200) ?? id, pageToken: token, igUserId: str(ig?.id, 64), igUsername: str(ig?.username, 100) });
@@ -104,6 +106,7 @@ export function makeGraphGateway(o: GraphOpts): MetaGateway {
         after = isObj(j.paging) && isObj(j.paging.cursors) && typeof j.paging.next === "string" ? str(j.paging.cursors.after, 500) : undefined;
         if (!after) break;
       }
+      if (out.length === 0) console.warn(`meta.listPages: me/accounts returned ${rawCount} item(s), ${noToken} without a page token`);
       return out;
     },
     async listAdAccounts() {
