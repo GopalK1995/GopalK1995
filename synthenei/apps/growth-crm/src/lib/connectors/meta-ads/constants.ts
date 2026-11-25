@@ -23,6 +23,16 @@ export const SCOPES = [
   "instagram_manage_insights", "read_insights",
 ] as const;
 
+/**
+ * Scopes actually requested on the OAuth dialog. META_OAUTH_SCOPES (comma separated) overrides the default list, so a Meta app that has not
+ * been granted every use case yet (for example leads_retrieval needs the Lead Ads use case) can still connect: Meta rejects the whole
+ * dialog with "Invalid Scopes" if even one scope is not enabled for the app. Unknown names are passed through; Meta is the judge.
+ */
+export function effectiveScopes(raw: string | undefined = process.env.META_OAUTH_SCOPES): string[] {
+  const listed = (raw ?? "").split(",").map((x) => x.trim()).filter((x) => /^[a-z_]+$/.test(x));
+  return listed.length ? Array.from(new Set(listed)) : [...SCOPES];
+}
+
 /** Credential bundle keys kept in the Vault (never returned to a client, never logged). */
 export const CRED = {
   accessToken: "access_token", refreshToken: "refresh_token", pageId: "page_id", pageToken: "page_token", igUserId: "ig_user_id", adAccountId: "ad_account_id",

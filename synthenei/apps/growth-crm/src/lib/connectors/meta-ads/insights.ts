@@ -2,7 +2,7 @@
 // step. The sync is resumable (cursor = last day loaded + the page being read), idempotent (upsert on campaign + day), re-reads
 // the trailing days because Meta restates attribution, and never invents a number: an unparseable row is rejected, not zeroed.
 import { CredentialError, type ConnectionRow, type ConnectionSecrets, type SyncResult } from "../core/types";
-import { CRED, INSIGHTS_AFTER_HOUR_IST, INSIGHTS_BACKFILL_DAYS, INSIGHTS_LOOKBACK_DAYS, SCOPES, TOKEN_WARN_DAYS } from "./constants";
+import { CRED, INSIGHTS_AFTER_HOUR_IST, INSIGHTS_BACKFILL_DAYS, INSIGHTS_LOOKBACK_DAYS, effectiveScopes, TOKEN_WARN_DAYS } from "./constants";
 import type { MetaGateway, RawAction, RawInsight } from "./gateway";
 import { scopeOf } from "./leads";
 import type { DailyMetricRow, MetaDeps } from "./store";
@@ -125,7 +125,7 @@ export async function healthStep(c: StreamCtx, cursorIn: unknown): Promise<SyncR
   if (last === day) return { cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "checked_today" } };
   const d = await c.gateway.debugToken();
   if (!d.valid) throw new CredentialError("Meta says this access token is no longer valid");   // -> needs_attention, visible to the owner
-  const missing = SCOPES.filter((s) => d.scopes.length > 0 && !d.scopes.includes(s));
+  const missing = effectiveScopes().filter((s) => d.scopes.length > 0 && !d.scopes.includes(s));
   const daysLeft = d.expiresAt && d.expiresAt > 0 ? Math.floor((d.expiresAt * 1000 - c.deps.now().getTime()) / DAY_MS) : null;
   return { cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true, sample: { valid: true, days_left: daysLeft, missing_scopes: missing, mode: c.gateway.kind } };
 }

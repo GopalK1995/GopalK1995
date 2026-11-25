@@ -5,7 +5,7 @@
 import type { ConnectorDef, ConnectionRow, ConnectionSecrets, StreamDef, SyncContext, SyncResult } from "../core/types";
 import { CredentialError } from "../core/types";
 import { gatewayFor, isMockCredentials } from "./config";
-import { CRED, DEFAULT_API_BASE, META_CONNECTOR_ID, META_ENV, OAUTH_DIALOG_URL, OAUTH_TOKEN_URL, SCOPES } from "./constants";
+import { CRED, DEFAULT_API_BASE, META_CONNECTOR_ID, META_ENV, OAUTH_DIALOG_URL, OAUTH_TOKEN_URL, effectiveScopes } from "./constants";
 import type { MetaGateway } from "./gateway";
 import { healthStep, insightsStep } from "./insights";
 import { handleIgMessage } from "./inbound";
@@ -52,7 +52,7 @@ const streams: StreamDef[] = [
 
 export const metaAdsConnector: ConnectorDef = {
   id: META_CONNECTOR_ID, name: "Meta (Lead Ads, Instagram, Ads)", category: "ads", auth: "oauth2",
-  oauth: { authorizeUrl: OAUTH_DIALOG_URL, tokenUrl: OAUTH_TOKEN_URL, scopes: [...SCOPES], pkce: false, clientIdEnv: META_ENV.appId, clientSecretEnv: META_ENV.appSecret },
+  oauth: { authorizeUrl: OAUTH_DIALOG_URL, tokenUrl: OAUTH_TOKEN_URL, scopes: effectiveScopes(), pkce: false, clientIdEnv: META_ENV.appId, clientSecretEnv: META_ENV.appSecret },
   gate: "needs_vendor_approval",
   sandbox: { supported: true, howTo: "meta-ads.sandbox" },
   capabilities: { inbound: true, outbound: true, webhooks: true },
