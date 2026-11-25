@@ -21,7 +21,10 @@ export function AssetPicker({ connectionId }: { connectionId: string }) {
     let live = true;
     void listSocialAssets(connectionId).then((r) => {
       if (!live) return;
-      if (r.ok && r.data) { setPages(r.data.pages); setAds(r.data.adAccounts); setPageId(r.data.pages[0]?.id ?? ""); }
+      if (r.ok && r.data) {
+        setPages(r.data.pages); setAds(r.data.adAccounts); setPageId(r.data.pages[0]?.id ?? "");
+        if (r.data.pages.length === 0) setMsg({ ok: false, text: t("pickNoPages") });
+      }
       else if (!r.ok) setMsg({ ok: false, text: r.message });
     });
     return () => { live = false; };

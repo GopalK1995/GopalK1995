@@ -33,6 +33,12 @@ export async function listMetaAssets(d: RuntimeDeps, actor: Actor, connectionId:
   const gw = gatewayFor({ connectionId: conn.id, secrets: await loadSecrets(d.vault, conn), env: d.env, fetchImpl });
   try {
     const [pages, adAccounts] = [await gw.listPages(), await gw.listAdAccounts()];
+    if (pages.length === 0) {
+      // Diagnostic only (names of granted scopes, never tokens): why does Meta return no Pages for this login?
+      let granted = "unknown";
+      try { const dbg = await gw.debugToken(); granted = `valid=${dbg.valid} scopes=${dbg.scopes.join("|")}`; } catch { /* ignore */ }
+      console.warn(`meta.listAssets: 0 pages, ${adAccounts.length} ad accounts; token ${granted}`);
+    }
     return { ok: true, value: { pages: pages.map(({ pageToken: _t, ...p }) => p), adAccounts } };
   } catch (e) { if (e instanceof CredentialError) return { ok: false, code: "token_rejected" }; throw e; }
 }

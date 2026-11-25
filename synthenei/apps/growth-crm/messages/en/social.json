@@ -66,6 +66,7 @@
   "pickAds": "Ad account (optional)",
   "pickNone": "None",
   "pickWithIg": "Instagram @{name} linked",
+  "pickNoPages": "Meta returned no Facebook Pages for this login. Reconnect, choose Edit access, tick your Page, and make sure you are an admin of it.",
   "pickNoIg": "No Instagram account linked",
   "pickSave": "Use this Page",
   "pickDone": "Now tracking {name}",
