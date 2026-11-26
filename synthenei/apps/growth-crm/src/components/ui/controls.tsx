@@ -9,8 +9,9 @@ import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { DisabledReason } from "./disabled-reason";
+import { fieldBase } from "./field-styles";
 
-const field = "h-8 rounded-control border border-line-strong bg-surface px-2.5 text-13 text-ink placeholder:text-ink-3 aria-invalid:border-danger disabled:opacity-45 aria-disabled:opacity-45";
+const field = cn(fieldBase, "h-8 rounded-control px-2.5 text-13 disabled:opacity-45 aria-disabled:opacity-45");
 
 export type Option = { value: string; label: string; disabled?: boolean };
 
@@ -55,7 +56,7 @@ export function PopoverContent({ children, className, align = "start" }: { child
 export function Switch({ className, disabledReason, ...p }: SW.SwitchProps & { disabledReason?: string }) {
   return (
     <DisabledReason reason={disabledReason}>
-      <SW.Root {...p} disabled={p.disabled} className={cn("relative h-5 w-9 shrink-0 rounded-round border border-line-strong bg-paper-2 transition-colors duration-150 data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:opacity-45 aria-disabled:opacity-45", className)}>
+      <SW.Root {...p} disabled={p.disabled} className={cn("relative h-5 w-9 shrink-0 rounded-round border border-field-line bg-paper-2 focus-ring transition-colors duration-150 data-[state=checked]:border-accent data-[state=checked]:bg-accent disabled:opacity-45 aria-disabled:opacity-45", className)}>
         <SW.Thumb className="block size-3.5 translate-x-0.5 rounded-round bg-surface shadow-none ring-1 ring-line-strong transition-transform duration-150 data-[state=checked]:translate-x-[18px] data-[state=checked]:ring-0" />
       </SW.Root>
     </DisabledReason>
@@ -65,7 +66,7 @@ export function Switch({ className, disabledReason, ...p }: SW.SwitchProps & { d
 export function Checkbox({ className, disabledReason, ...p }: CB.CheckboxProps & { disabledReason?: string }) {
   return (
     <DisabledReason reason={disabledReason}>
-      <CB.Root {...p} className={cn("grid size-4 shrink-0 place-items-center rounded-chip border border-line-strong bg-surface data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent disabled:opacity-45 aria-disabled:opacity-45", className)}>
+      <CB.Root {...p} className={cn("grid size-4 shrink-0 place-items-center rounded-chip border border-field-line bg-surface focus-ring data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent disabled:opacity-45 aria-disabled:opacity-45", className)}>
         <CB.Indicator className="text-accent-ink"><Check className="size-3" strokeWidth={2.5} aria-hidden /></CB.Indicator>
       </CB.Root>
     </DisabledReason>
@@ -79,7 +80,7 @@ export function RadioGroup({ options, className, ...p }: RG.RadioGroupProps & { 
         const id = `${p.name ?? "rg"}-${o.value}`;
         return (
           <div key={o.value} className="flex items-center gap-2">
-            <RG.Item id={id} value={o.value} disabled={o.disabled} className="grid size-4 place-items-center rounded-round border border-line-strong bg-surface data-[state=checked]:border-accent disabled:opacity-45">
+            <RG.Item id={id} value={o.value} disabled={o.disabled} className="grid size-4 place-items-center rounded-round border border-field-line bg-surface focus-ring data-[state=checked]:border-accent disabled:opacity-45">
               <RG.Indicator className="size-2 rounded-round bg-accent" />
             </RG.Item>
             <label htmlFor={id} className="text-13 text-ink">{o.label}</label>

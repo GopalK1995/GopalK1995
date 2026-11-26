@@ -7,6 +7,7 @@
   --color-surface: var(--surface);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-field-line: var(--field-line);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
@@ -79,7 +80,7 @@
     -webkit-font-smoothing: antialiased;
   }
   * { border-color: var(--line); }
-  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  :focus-visible { outline: var(--focus-ring-width) solid var(--ring); outline-offset: var(--focus-ring-offset); }
   ::selection { background: var(--accent-soft); color: var(--ink); }
   h1, h2, h3 { letter-spacing: -0.015em; }
 }
@@ -88,6 +89,14 @@
 @utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
+}
+/* The shared keyboard focus indicator. Pair it with any element that would otherwise suppress the browser outline. Never use bare outline-none. */
+@utility focus-ring {
+  &:focus-visible { outline: var(--focus-ring-width) solid var(--ring); outline-offset: var(--focus-ring-offset); }
+}
+/* Same ring drawn inside the box, for controls that sit flush against an overflow-hidden parent (dialog search inputs, table cells). */
+@utility focus-ring-inset {
+  &:focus-visible { outline: var(--focus-ring-width) solid var(--ring); outline-offset: calc(var(--focus-ring-width) * -1); }
 }
 @utility eyebrow {
   font-size: 12px; line-height: 16px; font-weight: 550; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);

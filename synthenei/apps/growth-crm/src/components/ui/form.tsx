@@ -3,6 +3,7 @@
 import { Children, cloneElement, isValidElement, useId, type FormHTMLAttributes, type InputHTMLAttributes, type ReactElement, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { Controller, FormProvider, useFormContext, type FieldValues, type UseFormReturn, type Control, type FieldPath } from "react-hook-form";
 import { cn } from "@/lib/utils";
+import { fieldBase } from "./field-styles";
 
 export type ControlProps = { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean };
 
@@ -26,7 +27,7 @@ export function Field({ label, help, error, required, className, children }: {
   );
 }
 
-const inputCls = "h-8 w-full rounded-control border border-line-strong bg-surface px-2.5 text-13 text-ink placeholder:text-ink-3 aria-invalid:border-danger disabled:opacity-45";
+const inputCls = cn(fieldBase, "h-8 w-full rounded-control px-2.5 text-13 disabled:opacity-45");
 export function Input({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(inputCls, className)} {...p} />;
 }

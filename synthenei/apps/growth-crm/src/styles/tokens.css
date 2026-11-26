@@ -27,6 +27,8 @@
   --surface: oklch(0.995 0.002 90);
   --line: oklch(0.905 0.009 90);
   --line-strong: oklch(0.84 0.011 90);
+  /* form-control border (WCAG 1.4.11, 3:1 non-text): 3.89 on --surface, 3.67 on --paper, 3.46 on --paper-2. --line and --line-strong stay decorative dividers. */
+  --field-line: oklch(0.6 0.011 90);
   --ink: oklch(0.2 0.02 var(--brand-h));
   --ink-2: oklch(0.42 0.018 var(--brand-h));
   --ink-3: oklch(0.52 0.014 var(--brand-h));
@@ -48,6 +50,9 @@
   --accent-ink: oklch(0.99 0.005 var(--brand-h));
   --accent-on-navy: oklch(0.74 0.13 var(--brand-h));
   --ring: oklch(0.6 0.15 var(--brand-h));
+  /* ONE keyboard focus indicator: 2 px ring, 2 px offset, drawn with --ring (3.86 on --surface, 3.64 on --paper). Use the .focus-ring utility. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
 
   /* Chart family, derived from the accent by fixed hue offsets. Validated with the dataviz
      validator at --brand-h 245 on white: lightness band, chroma floor, CVD (worst adjacent dE 12.7),
