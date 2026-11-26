@@ -50,14 +50,14 @@ export function WizardShell(p: Props) {
               className="flex items-center gap-2 rounded-control px-2.5 py-2 text-left text-13 aria-current:bg-paper-2 aria-current:font-medium hover:bg-paper-2">
               {s === "done" ? <Check className="size-4 text-success" aria-hidden /> : s === "skipped" ? <Circle className="size-4 text-ink-3" aria-hidden /> : open === d.id ? <CircleDot className="size-4 text-accent" aria-hidden /> : <Circle className="size-4 text-ink-3" aria-hidden />}
               <span className="flex-1 text-ink">{LABEL[d.id]}</span>
-              {d.optional && s === "todo" && <span className="text-11 text-ink-3">Optional</span>}
+              {d.optional && s === "todo" && <span className="text-12 text-ink-3">Optional</span>}
             </button>
           );
         })}
         <Button className="mt-3" variant="primary" disabled={!canFinish || pending} onClick={() => run(finishOnboarding, () => { window.location.href = "/"; })}>
           Finish setup<ChevronRight />
         </Button>
-        {!canFinish && <p className="text-11 text-ink-3">Finish every required step to leave setup (optional ones can stay skipped).</p>}
+        {!canFinish && <p className="text-12 text-ink-3">Finish every required step to leave setup (optional ones can stay skipped).</p>}
       </nav>
 
       <Card>
@@ -88,7 +88,7 @@ function TemplateStep({ current, pending, onPick }: { current: string; pending: 
           <button key={k.id} type="button" disabled={pending} onClick={() => onPick(k.id)}
             className="flex flex-col gap-1 rounded-control border border-line-strong p-3 text-left hover:border-accent disabled:opacity-60 aria-pressed:border-accent aria-pressed:bg-paper-2"
             aria-pressed={current === k.id}>
-            <span className="text-13 font-medium text-ink">{k.name}{current === k.id && <span className="ml-2 text-11 font-normal text-accent">Current</span>}</span>
+            <span className="text-13 font-medium text-ink">{k.name}{current === k.id && <span className="ml-2 text-12 font-normal text-accent">Current</span>}</span>
             <span className="text-12 text-ink-2">{k.body}</span>
           </button>
         ))}
@@ -121,7 +121,7 @@ function BrandingStep({ initial, canBrand, pending, onSave }: { initial: Props["
         </div>
         <div className="flex flex-col items-center gap-2 justify-self-center">
           <span className="grid size-16 place-items-center rounded-control text-24 font-semibold" style={{ background: `oklch(0.52 0.15 ${hue})`, color: `oklch(0.99 0.005 ${hue})` }} aria-hidden>{monogram}</span>
-          <span className="text-11 text-ink-3">Monogram (from the first letter)</span>
+          <span className="text-12 text-ink-3">Monogram (from the first letter)</span>
         </div>
       </CardBody>
       <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
@@ -142,7 +142,7 @@ function ModulesStep({ modules, pending, onSave }: { modules: Props["modules"]; 
           <label key={m.key} className="flex items-center gap-2 rounded-control border border-line px-3 py-2 text-13 aria-disabled:opacity-50">
             <input type="checkbox" checked={!!on[m.key]} disabled={!!m.locked} onChange={(e) => setOn((o) => ({ ...o, [m.key]: e.target.checked }))} />
             <span className="flex-1 capitalize text-ink">{m.key.replace("-", " ")}</span>
-            {m.locked && <span className="text-11 text-ink-3">{m.locked}</span>}
+            {m.locked && <span className="text-12 text-ink-3">{m.locked}</span>}
           </label>
         ))}
       </CardBody>

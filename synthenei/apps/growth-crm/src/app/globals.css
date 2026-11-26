@@ -48,6 +48,7 @@
   --radius-bar: var(--r-bar);
   --radius-chip: var(--r-chip);
   --radius-control: var(--r-control);
+  --radius-card: var(--r-card);
   --radius-round: var(--r-round);
   --radius-sm: var(--r-chip);
   --radius-md: var(--r-control);
@@ -56,7 +57,9 @@
   --text-14: var(--text-14);
   --text-15: var(--text-15);
   --text-19: var(--text-19);
+  --text-20: var(--text-20);
   --text-22: var(--text-22);
+  --text-24: var(--text-24);
   --text-26: var(--text-26);
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);

@@ -110,7 +110,7 @@ export function ListView(p: ListViewProps) {
         <Link href={path} aria-current={!p.activeViewId ? "page" : undefined} className={`h-7 rounded-control border px-2.5 text-13 leading-7 ${!p.activeViewId ? "border-accent font-medium text-ink" : "border-line-strong text-ink-2 hover:text-ink"}`}>{t("viewAll")}</Link>
         {p.views.map((v) => (
           <Link key={v.id} href={`${path}?view=${v.id}`} aria-current={v.id === p.activeViewId ? "page" : undefined} className={`inline-flex h-7 items-center gap-1 rounded-control border px-2.5 text-13 ${v.id === p.activeViewId ? "border-accent font-medium text-ink" : "border-line-strong text-ink-2 hover:text-ink"}`}>
-            {v.name}{v.visibility !== "private" && <span className="text-11 text-ink-3">{t(`vis_${v.visibility}`)}</span>}
+            {v.name}{v.visibility !== "private" && <span className="text-12 text-ink-3">{t(`vis_${v.visibility}`)}</span>}
           </Link>
         ))}
         <Button variant="quiet" size="sm" onClick={() => openSave(null)}><Bookmark aria-hidden />{t("saveView")}</Button>

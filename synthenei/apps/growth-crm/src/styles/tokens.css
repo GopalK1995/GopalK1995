@@ -93,13 +93,16 @@
   --text-14: 14px;
   --text-15: 15px;
   --text-19: 19px;
+  --text-20: 20px;
   --text-22: 22px;
+  --text-24: 24px;
   --text-26: 26px;
 
   /* shape: four radius roles */
   --r-bar: 2px;
   --r-chip: 4px;
   --r-control: 8px;
+  --r-card: var(--r-control); /* panels and cards share the control radius */
   --r-round: 9999px;
   --radius-sm: var(--r-chip);
   --radius-md: var(--r-control);

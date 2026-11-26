@@ -96,7 +96,7 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
                 <tr key={p.id} className="border-b border-line last:border-0 hover:bg-paper-2">
                   <td className="max-w-[260px] px-3 py-2">
                     <button type="button" onClick={() => setOpen(p)} className="block w-full truncate text-left font-medium text-ink hover:underline" data-cy="social-post">{p.caption || `${kindLabel(p.kind)} · ${fmtDate(p.postedAt)}`}</button>
-                    <span className="text-11 text-ink-3">{platformLabel(p.platform)} · {p.accountName}{p.status === "expired" && p.kind === "story" ? ` · ${t("statusExpired")}` : ""}</span>
+                    <span className="text-12 text-ink-3">{platformLabel(p.platform)} · {p.accountName}{p.status === "expired" && p.kind === "story" ? ` · ${t("statusExpired")}` : ""}</span>
                   </td>
                   <td className="px-3"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full" style={{ background: KIND_COLOR[p.kind] }} />{kindLabel(p.kind)}</span></td>
                   <td className="whitespace-nowrap px-3">{fmtDate(p.postedAt)}</td>
