@@ -110,6 +110,18 @@ describe("writes", () => {
     expect(has(calls[1], "eq", "pipeline_id", "p2")).toBe(true);
     expect(has(calls[1], "is", "archived_at", null)).toBe(true);
   });
+  it("deals.move refuses a stage whose required fields are empty, listing them, and writes nothing", async () => {
+    const stage = { id: "s7", key: "negotiation", name: { en: "Negotiation" }, required_fields: ["next_step", "expected_close", "custom.po_number"] };
+    const { db, calls } = mockDb([ok({ id: "d", tenant_id: "t", version: 1, next_step: null, expected_close_on: "2026-12-01", custom: {} }), ok(stage)]);
+    await expect(createDealsRepo(async () => db).move("w", "d", "negotiation", 1, {})).rejects.toMatchObject({ code: "invalid", detail: expect.stringContaining("Next step, po number") });
+    expect(calls).toHaveLength(2); // no update was sent
+  });
+  it("deals.move lets the move itself supply a required field (Won form) and passes when all are filled", async () => {
+    const stage = { id: "s8", key: "won", name: { en: "Won" }, required_fields: ["value", "seats"] };
+    const { db } = mockDb([ok({ id: "d", tenant_id: "t", version: 1, value_inr: 0, seats: null }), ok(stage), ok([{ id: "d", stage_id: "s8", version: 2 }])]);
+    const d = await createDealsRepo(async () => db).move("w", "d", "won", 1, { valueInr: 500, seats: 3 } as never);
+    expect(d).toMatchObject({ stageId: "s8", version: 2 });
+  });
   it("tasks.complete only touches open tasks in the workspace", async () => {
     const { db, calls } = mockDb([ok(null)]);
     await createTasksRepo(async () => db).complete("w", ["a", "b"]);

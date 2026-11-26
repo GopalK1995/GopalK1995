@@ -75,7 +75,9 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
       }
       setItems(before); // rollback: the card goes back to its stage
       if (r.code === "conflict") setConflict({ owner: card.owner.split(" ")[0] });
-      toast(r.message, r.sub ?? labels.moveFailed, { variant: "error" });
+      // A missing required field already says what to fill in ("Cannot move to X: fill in Next step first."); no generic sub-line on top.
+      const missingFields = r.issues?.some((i) => i.path === "requiredFields");
+      toast(r.message, missingFields ? undefined : r.sub ?? labels.moveFailed, { variant: "error" });
     });
   };
   const request = (card: DealCard, to: DealStage) => {
