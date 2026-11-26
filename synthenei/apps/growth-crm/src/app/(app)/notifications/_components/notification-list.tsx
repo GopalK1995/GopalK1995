@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { fmtDateTime } from "@/lib/format";
 import type { NotificationRow } from "@/lib/notify/types";
 import { objectUrl } from "@/lib/notify/urls";
@@ -20,14 +20,14 @@ export function NotificationList({ rows, unreadOnly, demo, s }: { rows: Notifica
   const stamp = () => new Date().toISOString();
   const one = (n: NotificationRow) => start(async () => {
     const r = await markRead({ ids: [n.id] });
-    if (!r.ok) { toast(r.message, ""); return; }
+    if (!r.ok) { toast(r.message, undefined, { variant: "error" }); return; }
     setItems((l) => l.map((x) => (x.id === n.id ? { ...x, readAt: stamp() } : x)));
     if (!demo) router.refresh();
   });
   const all = () => start(async () => {
     const r = await markAllRead();
-    if (!r.ok) { toast(r.message, ""); return; }
-    toast(r.message, r.sub ?? "");
+    if (!r.ok) { toast(r.message, undefined, { variant: "error" }); return; }
+    toastResult(r);
     setItems((l) => l.map((x) => ({ ...x, readAt: x.readAt ?? stamp() })));
     if (!demo) router.refresh();
   });

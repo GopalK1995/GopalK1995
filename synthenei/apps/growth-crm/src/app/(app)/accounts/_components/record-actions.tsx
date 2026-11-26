@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Building2, Download, GitMerge, Pencil, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useVocab } from "@/components/shell/providers";
 import { ConflictBanner } from "../../leads/_components/conflict-banner";
 import { Gated } from "./gated";
@@ -39,7 +39,7 @@ export function useWrite() {
       setIssues(Object.fromEntries((r.issues ?? []).map((i) => [i.path, i.message])));
       return;
     }
-    toast(r.message, r.sub); close(); after?.(); router.refresh();
+    toastResult(r); close(); after?.(); router.refresh();
   });
   return { open, setOpen, pending, err, conflict, issues, close, run };
 }
@@ -168,7 +168,7 @@ export function ExportAccountsButton({ v }: { v: Verdict }) {
   const [pending, start] = useTransition();
   const go = () => start(async () => {
     const r = await exportAccounts();
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok && r.csv) {
       const url = URL.createObjectURL(new Blob([r.csv], { type: "text/csv" }));
       const el = document.createElement("a"); el.href = url; el.download = r.filename ?? "accounts.csv"; el.click(); URL.revokeObjectURL(url);

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Save, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { Table, th, td } from "@/components/ui/misc";
 import type { MapRowView } from "../_lib/types";
 import { previewFieldMap, saveFieldMap } from "./actions";
@@ -35,7 +35,7 @@ export function FieldMapEditor(p: EditorProps) {
   const save = () => start(async () => {
     if (!p.connectionId) return;
     const r = await saveFieldMap({ connectionId: p.connectionId, rows: payload() });
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
     if (r.ok) { setIssues({}); router.refresh(); } else if ("issues" in r && r.issues) setIssues(Object.fromEntries(r.issues.map((i) => [Number(i.path), i.message])));
   });
   const runPreview = () => start(async () => {

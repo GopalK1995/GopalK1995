@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { KeyRound, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { removeByok, savePolicy, saveByok, saveProvider } from "../gateway-actions";
 
@@ -30,7 +30,7 @@ export function GatewaySettings({ vm }: { vm: SettingsVM }) {
   const [rows, setRows] = useState(vm.providers);
   const [keys, setKeys] = useState<Record<string, string>>({});
   const ro = !vm.canEdit || pending;
-  const done = (r: { ok: boolean; message: string; sub?: string }) => toast(r.message, r.sub);
+  const done = (r: { ok: boolean; message: string; sub?: string }) => toastResult(r);
 
   const patch = (p: string, v: Partial<ProviderVM>) => setRows((xs) => xs.map((x) => (x.provider === p ? { ...x, ...v } : x)));
   const meter = (label: string, used: number, cap: number | null) => (

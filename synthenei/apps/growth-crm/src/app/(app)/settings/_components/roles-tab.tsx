@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/
 import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { DisabledReason } from "@/components/ui/disabled-reason";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { th, td } from "@/components/ui/misc";
 import { PERMISSIONS } from "@/lib/authz/catalog";
 import type { Grant, PermissionDef, Scope } from "@/lib/authz/types";
@@ -139,7 +139,7 @@ function DeleteRole({ role, disabledReason, onDone }: { role: RoleView; disabled
       <DialogContent title={sa("deleteRoleTitle", { name: role.name })} description={sa("deleteRoleDesc")}>
         <div className="flex justify-end gap-2">
           <DialogClose asChild><Button>{sa("cancel")}</Button></DialogClose>
-          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const r = await deleteRole({ roleId: role.id }); toast(r.message, r.sub); if (r.ok) { setOpen(false); onDone(); } })}>{sa("deleteRole")}</Button>
+          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const r = await deleteRole({ roleId: role.id }); toastResult(r); if (r.ok) { setOpen(false); onDone(); } })}>{sa("deleteRole")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -173,7 +173,7 @@ function RoleEditor({ role, seed, held, baseRole, uid, demo, objectPerms, onClos
     setErr(null);
     const body = { name: name.trim(), description: description.trim(), baseRole: base, grants: inputs };
     const r = role ? await updateRole({ ...body, roleId: role.id, expectedUpdatedAt: role.updatedAt }) : await createRole(body);
-    if (r.ok) { toast(r.message, r.sub); onSaved(); } else setErr({ message: [r.message, r.sub].filter(Boolean).join(" "), conflict: r.code === "conflict" });
+    if (r.ok) { toastResult(r); onSaved(); } else setErr({ message: [r.message, r.sub].filter(Boolean).join(" "), conflict: r.code === "conflict" });
   });
 
   return (

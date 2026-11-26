@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
@@ -71,7 +71,7 @@ export function WeightsEditor({ factors, points, scores, edit }: { factors: Fact
         </ul>
         <div className="mt-2 flex gap-3 text-[11px] text-ink-3"><span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-seq-2" />Current</span><span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-accent" />If saved</span></div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Gated v={edit}><Button size="sm" variant="primary" disabled={!dirty || pending} onClick={() => start(async () => { const r = await saveWeights(factors.map((f, i) => ({ label: f.label, from: f.weight, to: w[i] }))); toast(r.message, r.sub); })}>Save weights</Button></Gated>
+          <Gated v={edit}><Button size="sm" variant="primary" disabled={!dirty || pending} onClick={() => start(async () => { const r = await saveWeights(factors.map((f, i) => ({ label: f.label, from: f.weight, to: w[i] }))); toastResult(r); })}>Save weights</Button></Gated>
           {dirty && <Button size="sm" variant="ghost" onClick={() => setW(factors.map((f) => f.weight))}>Reset</Button>}
         </div>
       </div>

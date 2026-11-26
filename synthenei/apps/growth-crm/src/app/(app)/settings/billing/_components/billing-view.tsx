@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Meter } from "@/components/ui/misc";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { fmtInr } from "@/lib/billing/gst";
 import { fill } from "@/lib/billing/strings";
 import { cancel, saveDetails, subscribe } from "../actions";
@@ -32,12 +32,12 @@ export function BillingView({ view: v, strings: s }: { view: OwnerView; strings:
   const [fieldErr, setFieldErr] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string }>, after?: () => void) => start(async () => {
     const r = await fn();
-    if (r.ok) { toast(r.message, r.sub ?? ""); after?.(); router.refresh(); } else setFieldErr(r.message);
+    if (r.ok) { toastResult(r, { demo: v.demo }); after?.(); router.refresh(); } else setFieldErr(r.message);
   });
   const startSub = (planId: string, interval: "monthly" | "yearly") => start(async () => {
     setFieldErr(null);
     const r = await subscribe({ planId, interval });
-    if (r.ok) { toast(r.message, r.sub ?? ""); if (r.data?.url) setContinueUrl(r.data.url); router.refresh(); } else setFieldErr(r.message);
+    if (r.ok) { toastResult(r, { demo: v.demo }); if (r.data?.url) setContinueUrl(r.data.url); router.refresh(); } else setFieldErr(r.message);
   });
   const sb = v.seats;
   const pct = sb.limit ? sb.used / sb.limit : 0;

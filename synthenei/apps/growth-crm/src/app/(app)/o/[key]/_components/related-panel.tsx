@@ -8,7 +8,7 @@ import { Link2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { tIn } from "@/lib/layouts/strings";
 import { addLink, removeLink, searchLinkTargets } from "../actions";
 import type { LinkCandidate, RelatedItem } from "../../_lib/types";
@@ -28,11 +28,11 @@ export function RelatedPanel(p: { objectKey: string; recordId: string; items: Re
   });
   const add = (c: LinkCandidate) => start(async () => {
     const r = await addLink({ objectKey: p.objectKey, id: p.recordId, targetKey: c.key, targetId: c.id });
-    if (r.ok) { toast(r.message, r.sub); setOpen(false); setFound(null); setQ(""); router.refresh(); } else setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
+    if (r.ok) { toastResult(r); setOpen(false); setFound(null); setQ(""); router.refresh(); } else setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
   });
   const remove = (i: RelatedItem) => start(async () => {
     const r = await removeLink({ objectKey: p.objectKey, id: p.recordId, linkId: i.linkId });
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok) router.refresh();
   });
 

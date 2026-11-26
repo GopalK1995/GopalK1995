@@ -3,7 +3,7 @@ import { FilePlus2, NotebookPen, Upload } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { accountAction } from "../actions";
 import { Gated } from "./gated";
 import { useVocab } from "@/components/shell/providers";
@@ -18,7 +18,7 @@ function useRun(kind: Kind, accountId: string | null, done?: () => void) {
   const [pending, start] = useTransition();
   const run = (form: Record<string, string>) => start(async () => {
     const r = await accountAction(kind, accountId, form);
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok) done?.();
   });
   return { pending, run };

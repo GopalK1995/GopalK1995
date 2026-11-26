@@ -5,7 +5,7 @@ import { Lock, Plug, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { useSession } from "@/components/shell/providers";
 import { ROLE_LABEL, can } from "@/lib/auth/roles";
 import { connectIntegration, runSyncNow } from "./actions";
@@ -65,7 +65,7 @@ export function ConnectButton({ id, name, blockers }: { id: string; name: string
 export function RunSyncButton({ id, csv }: { id: string; csv?: boolean }) {
   const { role, support } = useSession();
   const [pending, start] = useTransition();
-  const btn = <Button disabled={pending} onClick={() => start(async () => { const r = await runSyncNow(id); toast(r.message, r.detail); })}><RefreshCw />{csv ? "Import CSV now" : "Run sync now"}</Button>;
+  const btn = <Button disabled={pending} onClick={() => start(async () => { const r = await runSyncNow(id); toastResult(r); })}><RefreshCw />{csv ? "Import CSV now" : "Run sync now"}</Button>;
   if (!csv) return <Blocked reason="Showcase: nothing to sync until it is connected. CSV import is the live path.">{btn}</Blocked>;
   if (support?.mode === "read_only") return <Blocked reason="Read-only support session.">{btn}</Blocked>;
   if (!(role === "owner" || role === "data")) return <Blocked reason={`Owner or Data only. Your role: ${ROLE_LABEL[role]}.`}>{btn}</Blocked>;

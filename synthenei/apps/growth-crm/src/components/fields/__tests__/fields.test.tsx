@@ -7,7 +7,7 @@ const save = vi.fn();
 vi.mock("../actions", () => ({ saveCustomFields: (...a: unknown[]) => save(...a) }));
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn(), replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
-vi.mock("@/components/ui/toast", () => ({ toast: vi.fn() }));
+vi.mock("@/components/ui/toast", () => ({ toast: vi.fn(), toastResult: vi.fn() }));
 
 import { FieldInput } from "../field-input";
 import { FieldValue } from "../field-value";

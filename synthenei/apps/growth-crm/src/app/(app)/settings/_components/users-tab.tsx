@@ -9,7 +9,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/states";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { th, td } from "@/components/ui/misc";
 import { useSession, useVocab } from "@/components/shell/providers";
 import { ROLES, ROLE_LABEL, can } from "@/lib/auth/roles";
@@ -60,7 +60,7 @@ export function UsersTab({ rows, wsName, tenantName, roleOptions, activeOwners, 
   const onRole = (r: MemberRow, next: string) => {
     const prev = roles[r.userId];
     setRoles((x) => ({ ...x, [r.userId]: next }));
-    start(async () => { const res = await changeMemberRole(r.userId, next); if (!res.ok) setRoles((x) => ({ ...x, [r.userId]: prev })); toast(res.message, res.sub); });
+    start(async () => { const res = await changeMemberRole(r.userId, next); if (!res.ok) setRoles((x) => ({ ...x, [r.userId]: prev })); toastResult(res); });
   };
   const roleControl = (r: MemberRow) => {
     const why = reason(r);
@@ -158,7 +158,7 @@ function InviteDialog({ options, wsName, managerOnly }: { options: RoleOption[];
           e.preventDefault();
           start(async () => {
             const r = await inviteMember({ email, roleId, fullName: name || undefined, districts: list(districts) });
-            if (r.ok) { setOpen(false); setEmail(""); setName(""); setDistricts(""); toast(r.message, r.sub); } else setErr([r.message, r.sub].filter(Boolean).join(" "));
+            if (r.ok) { setOpen(false); setEmail(""); setName(""); setDistricts(""); toastResult(r); } else setErr([r.message, r.sub].filter(Boolean).join(" "));
           });
         }}>
           <label className="flex flex-col gap-1 text-12 font-medium text-ink-2">{sa("fieldEmail")}
@@ -194,7 +194,7 @@ function SuspendDialog({ r, wsName, children }: { r: MemberRow; wsName: string; 
       <DialogContent title={sa("suspendTitle", { name: r.name, ws: wsName })} description={sa("suspendDesc")}>
         <div className="flex justify-end gap-2">
           <DialogClose asChild><Button>{sa("cancel")}</Button></DialogClose>
-          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const x = await suspendMember(r.userId); setOpen(false); toast(x.message, x.sub); })}>{sa("suspend")} {r.name.split(" ")[0]}</Button>
+          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const x = await suspendMember(r.userId); setOpen(false); toastResult(x); })}>{sa("suspend")} {r.name.split(" ")[0]}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -203,7 +203,7 @@ function SuspendDialog({ r, wsName, children }: { r: MemberRow; wsName: string; 
 
 function ReactivateButton({ r, children }: { r: MemberRow; children: ReactElement<{ onClick?: () => void; disabled?: boolean }> }) {
   const [pending, start] = useTransition();
-  return cloneElement(children, { disabled: pending, onClick: () => start(async () => { const x = await reactivateMember(r.userId); toast(x.message, x.sub); }) });
+  return cloneElement(children, { disabled: pending, onClick: () => start(async () => { const x = await reactivateMember(r.userId); toastResult(x); }) });
 }
 
 function TerritoryDialog({ r, children }: { r: MemberRow; children: ReactElement }) {
@@ -218,7 +218,7 @@ function TerritoryDialog({ r, children }: { r: MemberRow; children: ReactElement
       <DialogContent title={sa("territoryTitle", { name: r.name })} description={sa("territoryDesc")}>
         <form className="flex flex-col gap-4" onSubmit={(e) => {
           e.preventDefault();
-          start(async () => { const x = await setMemberTerritory(r.userId, list(districts), list(regions)); if (x.ok) { setOpen(false); toast(x.message, x.sub); } else setErr(x.message); });
+          start(async () => { const x = await setMemberTerritory(r.userId, list(districts), list(regions)); if (x.ok) { setOpen(false); toastResult(x); } else setErr(x.message); });
         }}>
           <label className="flex flex-col gap-1 text-12 font-medium text-ink-2">{sa("fieldDistricts")}
             <input value={districts} onChange={(e) => setDistricts(e.target.value)} className={inputCls} /><span className="font-normal text-ink-3">{sa("listHelp")}</span>

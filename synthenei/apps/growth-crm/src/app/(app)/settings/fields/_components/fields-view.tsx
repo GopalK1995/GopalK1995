@@ -10,7 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, Textarea } from "@/components/ui/form";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { pickLabel } from "@/components/fields/labels";
 import { tIn, type FieldsLocale } from "@/lib/metadata/strings";
 import type { FieldDef } from "@/lib/metadata/types";
@@ -40,7 +40,7 @@ export function FieldsView(p: FieldsViewProps) {
 
   const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string; code?: string }>) => start(async () => {
     const r = await fn();
-    if (r.ok) { setErr(null); toast(r.message, r.sub); done(); } else setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
+    if (r.ok) { setErr(null); toastResult(r); done(); } else setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
   });
   const who = (f: FieldDef) => {
     const v = f.options.access?.viewRoles ?? [], e = f.options.access?.editRoles ?? [];

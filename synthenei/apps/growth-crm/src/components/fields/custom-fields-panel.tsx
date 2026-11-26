@@ -6,7 +6,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import type { Option } from "@/components/ui/controls";
 import { bySection, type ClientField } from "@/lib/metadata/runtime";
 import { ft, type FieldsLocale } from "@/lib/metadata/strings";
@@ -54,7 +54,7 @@ export function CustomFieldsPanel(p: CustomFieldsPanelProps) {
       const res = await saveCustomFields({ objectKey: p.objectKey, recordId: p.recordId, expectedVersion: version, patch, revalidate: p.revalidate });
       if (res.ok) {
         setValues(res.data?.values ?? { ...values, ...patch }); setVersion(res.data?.version ?? version); setDraft(null); setIssues({}); setBanner(null);
-        toast(res.message, res.sub);
+        toastResult(res);
         return;
       }
       if (res.code === "conflict") { setBanner({ kind: "conflict", text: res.message, sub: res.sub }); return; }

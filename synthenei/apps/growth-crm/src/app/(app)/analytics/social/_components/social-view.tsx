@@ -8,7 +8,7 @@ import { LineTrend } from "@/components/charts/line-trend";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { fmtDate, fmtDateY, num, pct } from "@/lib/format";
 import type { PostKind } from "@/lib/connectors/meta/organic/types";
 import type { SocialPostView, SocialView } from "@/lib/connectors/meta/organic/view";
@@ -38,7 +38,7 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
   const refresh = () => start(async () => {
     if (!view.connectionId) return;
     const r = await refreshSocialNow(view.connectionId);
-    toast(r.ok ? r.message : r.message || t("refreshFailed"), r.ok ? r.sub ?? "" : "");
+    toastResult({ ok: r.ok, message: r.ok ? r.message : r.message || t("refreshFailed"), sub: r.ok ? r.sub : undefined });
   });
 
   const cols: { key: SortKey; label: string }[] = [

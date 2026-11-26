@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { Badge, StatusChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
@@ -30,7 +30,7 @@ export function FeatureCards({ features, toggle }: { features: Feature[]; toggle
   const [pending, start] = useTransition();
   const commit = (f: Feature, on: boolean, terms: string[]) => start(async () => {
     const r = await toggleFeature(f.key, f.name, on, terms);
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok) { setState((s) => ({ ...s, [f.key]: on })); setAsking(null); }
   });
 

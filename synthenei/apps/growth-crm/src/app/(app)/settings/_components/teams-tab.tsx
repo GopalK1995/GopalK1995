@@ -8,7 +8,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DisabledReason } from "@/components/ui/disabled-reason";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { createTeam, deleteTeam, removeTeamMember, setTeamMember } from "../roles/actions";
 import { sa } from "../roles/_lib/strings";
@@ -22,7 +22,7 @@ export function TeamsTab({ teams, people, canManage, uid, isOwner, demo }: { tea
   const router = useRouter();
   const [pending, start] = useTransition();
   const why = canManage ? null : sa("authz_no_permission");
-  const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string }>) => start(async () => { const r = await fn(); toast(r.message, r.sub); if (r.ok) router.refresh(); });
+  const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string }>) => start(async () => { const r = await fn(); toastResult(r); if (r.ok) router.refresh(); });
   const nameOf = (id: string | null) => teams.find((t) => t.id === id)?.name;
 
   return (
@@ -101,7 +101,7 @@ function NewTeam({ teams, disabledReason, onDone }: { teams: TeamView[]; disable
       <DialogContent title={sa("newTeam")}>
         <form className="flex flex-col gap-4" onSubmit={(e) => {
           e.preventDefault();
-          start(async () => { const r = await createTeam({ name, parentTeamId: parent || null }); if (r.ok) { setOpen(false); setName(""); toast(r.message, r.sub); onDone(); } else setErr(r.message); });
+          start(async () => { const r = await createTeam({ name, parentTeamId: parent || null }); if (r.ok) { setOpen(false); setName(""); toastResult(r); onDone(); } else setErr(r.message); });
         }}>
           <label className="flex flex-col gap-1 text-12 font-medium text-ink-2">{sa("teamName")}<input required minLength={2} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></label>
           <label className="flex flex-col gap-1 text-12 font-medium text-ink-2">{sa("parentTeam")}
@@ -126,7 +126,7 @@ function DeleteTeam({ team, disabledReason, onDone }: { team: TeamView; disabled
       <DialogContent title={sa("deleteTeamTitle", { name: team.name })} description={sa("deleteTeamDesc")}>
         <div className="flex justify-end gap-2">
           <DialogClose asChild><Button>{sa("cancel")}</Button></DialogClose>
-          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const r = await deleteTeam({ teamId: team.id }); toast(r.message, r.sub); if (r.ok) { setOpen(false); onDone(); } })}>{sa("deleteTeamAction")}</Button>
+          <Button variant="danger" disabled={pending} onClick={() => start(async () => { const r = await deleteTeam({ teamId: team.id }); toastResult(r); if (r.ok) { setOpen(false); onDone(); } })}>{sa("deleteTeamAction")}</Button>
         </div>
       </DialogContent>
     </Dialog>

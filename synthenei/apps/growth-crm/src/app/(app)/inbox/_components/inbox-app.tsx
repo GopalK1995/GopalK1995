@@ -11,7 +11,7 @@ import { Segmented } from "@/components/ui/tabs";
 import { ScoreChip } from "@/components/ui/misc";
 import { ChannelMark } from "@/components/ui/domain";
 import { Avatar } from "@/components/ui/avatar";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { useVocab } from "@/components/shell/providers";
 import { fmtDate, fmtTime, inrCompact, relTime, dayKey } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -67,7 +67,7 @@ export function InboxApp({ mode, items, now, linkable, reps, uid, wsKey, assign,
       const v = versionOf(r);
       if (v !== undefined) setVer((x) => ({ ...x, [c.id]: Math.max(x[c.id] ?? 0, v) }));
       if (r.code === "conflict") { setConflict(true); return; }
-      if (!o?.quiet || !r.ok) toast(r.message, r.sub);
+      if (!o?.quiet || !r.ok) toastResult(r);
       if (r.ok && real) router.refresh();
     },
   };
@@ -318,7 +318,7 @@ function Composer({ c, env, windowClosed, onSent, now }: { c: InboxConv; env: En
 
   const submit = (kind: "reply" | "template" | "note", body: string, templateId?: string) => start(async () => {
     const r = await sendMessage({ convId: c.id, kind, body, templateId, vars, fromDraft: !!fromDraft && kind === "reply", edited: !!fromDraft && body.trim() !== fromDraft.original.trim(), lang: fromDraft?.lang, reviewed: checked });
-    toast(r.message, r.sub);
+    toastResult(r);
     if (!r.ok) return;
     try { window.localStorage.removeItem(key); } catch { /* storage unavailable */ }
     onSent({ id: `local-${Date.now()}`, from: kind === "note" ? "note" : "us", at: now, body, author: "You", status: kind === "note" ? undefined : real ? "queued" : "simulated", template: templateId });

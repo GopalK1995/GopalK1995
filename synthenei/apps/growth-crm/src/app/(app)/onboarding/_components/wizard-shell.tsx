@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
 import { Select } from "@/components/ui/controls";
 import { Meter } from "@/components/ui/misc";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { contrastChecks } from "../../settings/_components/contrast";
 import { chooseKit, finishOnboarding, inviteTeammate, markStepAction, saveBranding, saveModules, type ActionResult } from "../actions";
 import type { StepDef, StepId } from "../_lib/types";
@@ -29,7 +29,7 @@ export function WizardShell(p: Props) {
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<ActionResult>, onOk?: () => void) => start(async () => {
     const r = await fn();
-    toast(r.message, r.ok ? r.sub : undefined);
+    toastResult({ ok: r.ok, message: r.message, sub: r.ok ? r.sub : undefined });
     if (r.ok) onOk?.();
   });
   const mark = (id: StepId, s: Status) => setStatus((old) => ({ ...old, [id]: s }));

@@ -18,7 +18,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "@/component
 import { Segmented } from "@/components/ui/tabs";
 import { Empty, th, thNum, td, tdNum } from "@/components/ui/misc";
 import { DealStageBadge } from "@/components/ui/domain";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { moveDeal } from "../actions";
 import { field } from "../../leads/_lib/sales";
@@ -66,16 +66,16 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
     startT(async () => {
       let r: Awaited<ReturnType<typeof moveDeal>>;
       try { r = await moveDeal(card.id, to, extra, card.version); }
-      catch { setItems(before); toast(labels.moveFailed); return; }
+      catch { setItems(before); toast(labels.moveFailed, undefined, { variant: "error" }); return; }
       if (r.ok) {
         const version = r.data?.version;
         if (version) setItems((xs) => xs.map((d) => (d.id === card.id ? { ...d, version } : d)));
-        toast(r.message, r.sub);
+        toastResult(r);
         return;
       }
       setItems(before); // rollback: the card goes back to its stage
       if (r.code === "conflict") setConflict({ owner: card.owner.split(" ")[0] });
-      toast(r.message, r.sub ?? labels.moveFailed);
+      toast(r.message, r.sub ?? labels.moveFailed, { variant: "error" });
     });
   };
   const request = (card: DealCard, to: DealStage) => {

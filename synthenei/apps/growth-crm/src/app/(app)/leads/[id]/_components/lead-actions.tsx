@@ -6,7 +6,7 @@ import { CalendarPlus, ChevronDown, Mail, MessageCircle, Phone, UserRoundCheck }
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "@/components/ui/dropdown";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { assignLeads, changeStatus, logCall, logEmail, scheduleDemo, sendWhatsApp } from "../../actions";
 import { CALL_OUTCOMES, field } from "../../_lib/sales";
@@ -42,8 +42,8 @@ export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: st
     const r = await fn();
     if (!r.ok && r.code === "conflict") { setConflict(true); close(); return; }
     if (r.ok && r.data?.version) setVer(r.data.version);
-    if (!r.ok) { setErr(r.message); toast(r.message, "Nothing was changed."); return; }
-    toast(r.message, r.sub); close(); after?.();
+    if (!r.ok) { setErr(r.message); toast(r.message, "Nothing was changed.", { variant: "error" }); return; }
+    toastResult(r); close(); after?.();
   });
   const first = lead.name.split(" ")[0];
   const cur = WA_TEMPLATES.find((x) => x.id === tpl) ?? WA_TEMPLATES[0];

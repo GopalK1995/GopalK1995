@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { tIn } from "@/lib/layouts/strings";
 import { deleteRecord, renameRecord } from "../actions";
 
@@ -28,12 +28,12 @@ export function RecordHeader(p: {
 
   const save = () => start(async () => {
     const r = await renameRecord({ objectKey: p.objectKey, id: p.id, version, title });
-    if (r.ok) { setShown(r.data?.title ?? title); setVersion(r.data?.version ?? version); setEditing(false); setErr(null); toast(r.message, r.sub); router.refresh(); return; }
+    if (r.ok) { setShown(r.data?.title ?? title); setVersion(r.data?.version ?? version); setEditing(false); setErr(null); toastResult(r); router.refresh(); return; }
     setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
   });
   const remove = () => start(async () => {
     const r = await deleteRecord({ objectKey: p.objectKey, id: p.id, version });
-    if (r.ok) { toast(r.message, r.sub); router.push(p.backHref); router.refresh(); return; }
+    if (r.ok) { toastResult(r); router.push(p.backHref); router.refresh(); return; }
     setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`); setConfirm(false);
   });
 

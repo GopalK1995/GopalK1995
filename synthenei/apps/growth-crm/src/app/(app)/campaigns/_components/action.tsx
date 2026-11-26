@@ -4,7 +4,7 @@
 import { cloneElement, useTransition, type ReactElement, type ReactNode } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useSession } from "@/components/shell/providers";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { canMkt, type MktAction } from "../_lib/perm";
@@ -28,7 +28,7 @@ export function MktGate({ can, children }: { can: MktAction; children: ReactElem
 }
 
 export function notify(r: ActionResult<unknown>) {
-  toast(r.message, r.sub);
+  toastResult(r);
 }
 
 /** Button that runs a (bound) server action and toasts the result. */

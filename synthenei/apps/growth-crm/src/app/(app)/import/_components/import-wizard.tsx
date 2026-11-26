@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { getRealtime } from "@/lib/realtime/client";
 import { useTableChanges } from "@/lib/realtime/hooks";
 import { ACCEPT_EXT, MAX_FILE_BYTES, MAX_ROWS } from "@/lib/import/limits";
@@ -86,7 +86,7 @@ export function ImportWizard({ objects, object: fixed, demo, onClose }: { object
     const c = preview?.summary;
     const r = await confirmImport({ jobId, object, mapping, mode, remember, demoCounts: c ? { fresh: c.fresh, dup: c.duplicates, invalid: c.invalid } : undefined });
     if (!r.ok) { setErr(r.message || t("startFailed")); return; }
-    toast(r.message, r.sub);
+    toastResult(r);
     setStep("run");
     if (r.data?.demo) setDemoDone(r.message); else poll();
   });

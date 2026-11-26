@@ -7,7 +7,7 @@ import { Link2, Play, PlugZap, RefreshCw, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions/result";
 import { connectConnector, disconnectConnector, runSyncConnector, testConnector } from "./actions";
 
@@ -27,7 +27,7 @@ export function ConnectPanel(p: PanelProps) {
   const [open, setOpen] = useState(false);
 
   const report = (r: ActionResult<unknown>) => {
-    toast(r.message || p.labels.generic, r.sub ?? "");
+    toastResult({ ok: r.ok, message: r.message || p.labels.generic, sub: r.sub });
     if (r.ok) { setValues({}); setErrors({}); router.refresh(); return; }
     if ("issues" in r && r.issues) setErrors(Object.fromEntries(r.issues.map((i) => [i.path, i.message])));
     router.refresh();

@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { fmtDateTime } from "@/lib/format";
 import { canEditComment, commentLockReason } from "@/lib/notify/comment-policy";
 import { bodyParts, extractMentionIds, plainBody } from "@/lib/notify/mentions";
@@ -36,7 +36,7 @@ export function CommentThread({ objectType, objectId, comments, names, viewerId,
     const body = toStoredBody(text.trim(), picked);
     const r = await postComment({ objectType, objectId, body });
     if (!r.ok) { setError(r.message); return; }
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
     if (demo) setList((l) => [...l, { id: `local-${l.length}`, workspaceId: "demo", objectType, objectId, parentId: null, authorId: viewerId, body, mentions: extractMentionIds(body), createdAt: new Date().toISOString(), editedAt: null, deletedAt: null }]);
     setText(""); setPicked([]);
     if (!demo) router.refresh();
@@ -46,7 +46,7 @@ export function CommentThread({ objectType, objectId, comments, names, viewerId,
     const body = toStoredBody(editText.trim(), editPicked);
     const r = await editComment({ id: c.id, body });
     if (!r.ok) { setError(r.message); return; }
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
     if (demo) setList((l) => l.map((x) => (x.id === c.id ? { ...x, body, editedAt: new Date().toISOString() } : x)));
     setEditing(null);
     if (!demo) router.refresh();
@@ -55,7 +55,7 @@ export function CommentThread({ objectType, objectId, comments, names, viewerId,
     setError(null);
     const r = await deleteComment({ id: c.id });
     if (!r.ok) { setError(r.message); return; }
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
     setList((l) => l.filter((x) => x.id !== c.id));
     if (!demo) router.refresh();
   });

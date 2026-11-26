@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Gate } from "@/components/ui/gate";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useVocab } from "@/components/shell/providers";
 import { lt } from "../_lib/strings";
 import { field } from "../_lib/sales";
@@ -36,7 +36,7 @@ export function CreateLead({ owners }: { owners: { id: string; name: string }[] 
       email: String(f.get("email") ?? ""), phone: String(f.get("phone") ?? ""), city: String(f.get("city") ?? ""), ownerId: owner || null,
     });
     if (!r.ok) { setErr(r.message); setIssues(Object.fromEntries((r.issues ?? []).map((i) => [i.path, i.message]))); return; }
-    toast(r.message, r.sub); close(); router.refresh();
+    toastResult(r); close(); router.refresh();
   });
   return (
     <>

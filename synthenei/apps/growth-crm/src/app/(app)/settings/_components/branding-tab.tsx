@@ -7,7 +7,7 @@ import { Check, ImageUp, Info, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useBrand, useSession, useVocab } from "@/components/shell/providers";
 import { can } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
   const save = () => start(async () => {
     const r = await saveBranding({ name, product, hue });
     if (r.ok) setBrand({ name: name.trim(), product: product.trim(), hue });
-    toast(r.message, r.detail);
+    toastResult(r);
   });
   const resetToTenant = () => { setHue(defaultHue); setName(tenantName); setProduct(tenant.product); };
 

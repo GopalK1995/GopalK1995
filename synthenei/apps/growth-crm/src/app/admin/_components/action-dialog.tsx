@@ -4,7 +4,7 @@
 import { useId, useState, useTransition, type ReactNode } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "./actions";
 
@@ -28,7 +28,7 @@ export function ActionDialog({ trigger, triggerVariant = "secondary", triggerSiz
     start(async () => {
       const r = await action(fd);
       if (!r.ok) { setErr({ field: r.field, message: r.message }); return; }
-      setErr(null); setOpen(false); toast(r.message, r.sub);
+      setErr(null); setOpen(false); toastResult(r);
     });
   };
   return (
@@ -76,7 +76,7 @@ export function ActionButton({ action, data, children, variant = "secondary", si
   return (
     <Button variant={variant} size={size} className={className} disabled={pending} onClick={() => start(async () => {
       const fd = new FormData(); Object.entries(data).forEach(([k, v]) => fd.set(k, v));
-      const r = await action(fd); toast(r.message, r.sub);
+      const r = await action(fd); toastResult(r);
     })}>{children}</Button>
   );
 }

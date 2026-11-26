@@ -3,7 +3,7 @@
 // (super admin only; the database repeats the check). Cells without a row read "not set" (treated as disabled by the app).
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import type { ActionResult } from "./actions";
 import { fieldCls } from "./action-dialog";
 import { CONNECTOR_ENVS, CONNECTOR_MODES, GATES, type ConnectorEnv, type ConnectorMode, type ConnectorRow, type GateStatus } from "../_lib/repo";
@@ -18,7 +18,7 @@ function Cell({ row, env, canEdit, action }: { row: ConnectorRow; env: Connector
   const save = (m: ConnectorMode, g: GateStatus) => {
     const fd = new FormData();
     fd.set("connector", row.id); fd.set("env", env); fd.set("mode", m); fd.set("gate", g); fd.set("note", cur?.note ?? "");
-    start(async () => { const r = await action(fd); toast(r.message, r.sub); });
+    start(async () => { const r = await action(fd); toastResult(r); });
   };
   if (!canEdit) {
     return <div className="flex flex-col gap-1"><Badge tone={mode === "live" ? "success" : mode === "sandbox" ? "warn" : "outline"}>{cur ? mode : "not set"}</Badge><span className="text-[12px] text-ink-3">{GATE_LABEL[gate]}</span></div>;

@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/form";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { fill, type Strings } from "@/components/collab/strings";
 import type { Channel, Digest, PrefRow, RuleRow } from "@/lib/notify/types";
 import { removeRule, savePref, saveQuiet, saveRule } from "../actions";
@@ -24,7 +24,7 @@ function PrefRowEditor({ kind, pref, s, demo }: { kind: string; pref: PrefRow | 
   const save = (nextEmail: boolean, nextDigest: Digest) => start(async () => {
     const channels: ("in_app" | "email")[] = nextEmail ? ["in_app", "email"] : ["in_app"];
     const r = await savePref({ kind, channels, digest: nextDigest });
-    toast(r.message, r.ok ? (r.sub ?? "") : "");
+    toastResult({ ok: r.ok, message: r.message, sub: r.ok ? r.sub : undefined });
     void demo;
   });
   return (
@@ -49,7 +49,7 @@ function Quiet({ initial, s }: { initial: { from: string; to: string } | null; s
     setError(null);
     const r = await saveQuiet(input);
     if (!r.ok) { setError(r.message); return; }
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
   });
   return (
     <section aria-labelledby="quiet-h" className="grid gap-2 rounded-control border border-line p-4">
@@ -81,7 +81,7 @@ function RuleEditor({ rule, eventOptions, s }: { rule: RuleRow | null; eventOpti
     const channels: Channel[] = email ? ["in_app", "email"] : ["in_app"];
     const r = await saveRule({ id: rule?.id, eventType, recipients, channels: channels as ("in_app" | "email")[], enabled, template: rule?.template ?? {} });
     if (!r.ok) { setError(r.message); return; }
-    toast(r.message, r.sub ?? "");
+    toastResult(r);
     router.refresh();
   });
   return (
@@ -113,7 +113,7 @@ function RuleEditor({ rule, eventOptions, s }: { rule: RuleRow | null; eventOpti
         <Button variant="primary" size="sm" disabled={busy || recipients.length === 0} onClick={submit}>{s.save}</Button>
         {rule && <Button variant="danger" size="sm" disabled={busy} onClick={() => start(async () => {
           const r = await removeRule({ id: rule.id });
-          toast(r.message, r.ok ? (r.sub ?? "") : "");
+          toastResult({ ok: r.ok, message: r.message, sub: r.ok ? r.sub : undefined });
           if (r.ok) router.refresh();
         })}>{s.ruleRemove}</Button>}
       </div>

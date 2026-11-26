@@ -2,7 +2,7 @@
 import { Bell, BellOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { setFollow } from "./actions";
 import type { Strings } from "./strings";
 
@@ -20,9 +20,9 @@ export function FollowButton({ objectType, objectId, initial, canFollow, s }: {
         const next = !following;
         setFollowing(next); // optimistic
         const r = await setFollow({ objectType, objectId, follow: next });
-        if (!r.ok) { setFollowing(!next); toast(r.message, ""); return; }
+        if (!r.ok) { setFollowing(!next); toast(r.message, undefined, { variant: "error" }); return; }
         setFollowing(r.data?.following ?? next);
-        toast(r.message, r.sub ?? "");
+        toastResult(r);
       })}
     >
       {following ? <BellOff className="size-3" strokeWidth={1.75} aria-hidden /> : <Bell className="size-3" strokeWidth={1.75} aria-hidden />}

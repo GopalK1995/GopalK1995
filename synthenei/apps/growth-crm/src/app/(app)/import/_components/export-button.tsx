@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import type { ImportObject } from "@/lib/import/types";
 import { exportList } from "../actions";
 import type { ObjectOption } from "../types";
@@ -25,10 +25,10 @@ function useExport() {
   const run = (object: ImportObject, ids: string[] | undefined, maskPersonal: boolean) => start(async () => {
     setMsg(null);
     const r = await exportList({ object, ids, maskPersonal });
-    if (!r.ok || !r.data) { setMsg({ ok: false, text: r.message }); toast(r.message, r.sub ?? t("exportFailed")); return; }
+    if (!r.ok || !r.data) { setMsg({ ok: false, text: r.message }); toast(r.message, r.sub ?? t("exportFailed"), { variant: "error" }); return; }
     download(r.data.csv, r.data.filename);
     setMsg({ ok: true, text: r.message, sub: r.sub });
-    toast(r.message, r.sub);
+    toastResult(r);
   });
   return { t, busy, msg, run };
 }

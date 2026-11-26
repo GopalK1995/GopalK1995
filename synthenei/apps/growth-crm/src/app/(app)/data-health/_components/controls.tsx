@@ -4,7 +4,7 @@ import { cloneElement, useState, useTransition, type ReactElement } from "react"
 import { ClipboardCheck, HeartPulse, ListPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { Select } from "@/components/ui/controls";
@@ -14,7 +14,7 @@ import { createDefaultRules, logRestoreDrill, recordHeartbeatNow, runHealthCheck
 function Blocked({ reason, children }: { reason: string; children: ReactElement<{ disabled?: boolean }> }) {
   return <Tip content={reason}><span tabIndex={0} className="inline-flex rounded-sm">{cloneElement(children, { disabled: true })}</span></Tip>;
 }
-const show = (r: { message: string; sub?: string }) => toast(r.message, r.sub);
+const show = (r: { ok: boolean; message: string; sub?: string }) => toastResult(r);
 
 export function RunCheckButton({ blocked }: { blocked: string | null }) {
   const [pending, start] = useTransition();

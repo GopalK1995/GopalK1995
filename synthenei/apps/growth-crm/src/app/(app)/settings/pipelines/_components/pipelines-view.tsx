@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { STAGE_COLORS, type Outcome, type StageColor } from "@/lib/config/types";
 import { REQUIRED_FIELD_CATALOGUE, reorderStages, validateStageInputs, type Pipeline, type PipelineObject, type StageInput } from "@/lib/metadata/pipelines";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ export function PipelinesView(p: PipelinesViewProps) {
 
   const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string }>, after?: () => void) => start(async () => {
     const r = await fn();
-    toast(r.message, r.sub ?? (r.ok ? "Saved." : "Nothing was changed."));
+    toastResult({ ok: r.ok, message: r.message, sub: r.sub ?? (r.ok ? "Saved." : "Nothing was changed.") });
     if (r.ok) { after?.(); router.refresh(); }
   });
   const save = () => current && run(() => savePipelineStages({ objectType: object, pipelineKey: current.key, stages: draft }));

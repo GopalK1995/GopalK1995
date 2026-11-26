@@ -12,7 +12,7 @@ import { Select, Switch } from "@/components/ui/controls";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/form";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { ICON_KEYS, iconFor } from "@/lib/layouts/icons";
 import { tIn } from "@/lib/layouts/strings";
 import { createObject, updateObject } from "../actions";
@@ -39,7 +39,7 @@ export function ObjectsView(p: ObjectsViewProps) {
     setDialog(d);
   };
   const done = (r: { ok: boolean; message: string; sub?: string }) => {
-    if (r.ok) { toast(r.message, r.sub); setDialog(null); router.refresh(); } else { setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`); }
+    if (r.ok) { toastResult(r); setDialog(null); router.refresh(); } else { setErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`); }
   };
   const submit = () => start(async () => {
     if (!dialog) return;
@@ -54,7 +54,7 @@ export function ObjectsView(p: ObjectsViewProps) {
   });
   const toggle = (row: ObjectRowView, enabled: boolean) => start(async () => {
     const r = await updateObject({ one: row.one, many: row.many, icon: row.icon, key: row.key, rev: row.rev, enabled });
-    if (r.ok) { toast(r.message, r.sub); router.refresh(); } else toast(r.message, r.sub);
+    if (r.ok) { toastResult(r); router.refresh(); } else toastResult(r);
   });
 
   const key = deriveObjectKey(form.oneEn || "");

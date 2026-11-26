@@ -1,14 +1,14 @@
 "use client";
 import { Ellipsis, KeyRound, Mail, ShieldOff, UserX } from "lucide-react";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { userAction } from "./actions";
 
 /** Per-user platform actions. Role changes are done by the workspace Owner, so they are not offered here. */
 export function UserRowMenu({ userId, name, invited, memberships }: { userId: string; name: string; invited: boolean; memberships: number }) {
   const run = async (kind: string) => {
     const fd = new FormData(); fd.set("user", userId); fd.set("kind", kind);
-    const r = await userAction(fd); toast(r.message, r.sub);
+    const r = await userAction(fd); toastResult(r);
   };
   return (
     <Menu>

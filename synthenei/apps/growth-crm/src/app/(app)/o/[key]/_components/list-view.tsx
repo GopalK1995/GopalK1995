@@ -12,7 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/form";
 import { FilterBar, type FilterDef } from "@/components/ui/filter-bar";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { fieldColumn, numericColumnIds } from "@/components/fields/field-column";
 import { FieldInput } from "@/components/fields/field-input";
 import { pickLabel } from "@/components/fields/labels";
@@ -76,7 +76,7 @@ export function ListView(p: ListViewProps) {
   };
   const submitCreate = () => start(async () => {
     const r = await createRecord({ objectKey: p.objectKey, values: draft });
-    if (r.ok) { toast(r.message, r.sub); setCreating(false); router.refresh(); return; }
+    if (r.ok) { toastResult(r); setCreating(false); router.refresh(); return; }
     const m: Record<string, string> = {};
     for (const i of r.issues ?? []) m[i.path] = i.message;
     setIssues(m); setFormErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
@@ -89,14 +89,14 @@ export function ListView(p: ListViewProps) {
       ? await updateView({ objectKey: p.objectKey, id: cur.id, name: vName, visibility: vVis })
       : await saveView({ objectKey: p.objectKey, name: vName, visibility: vVis, filters: p.current.filters, sort: p.current.sort, columns: p.columnIds });
     if (r.ok) {
-      toast(r.message, r.sub); setSaving(null);
+      toastResult(r); setSaving(null);
       if (!cur && r.data?.view) setParam("view", r.data.view.id);
       router.refresh();
     } else setVErr(`${r.message}${r.sub ? ` ${r.sub}` : ""}`);
   });
   const removeView = (v: SavedView) => start(async () => {
     const r = await deleteView({ objectKey: p.objectKey, id: v.id });
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok) { if (p.activeViewId === v.id) setParam("view", ""); setSaving(null); router.refresh(); }
   });
 

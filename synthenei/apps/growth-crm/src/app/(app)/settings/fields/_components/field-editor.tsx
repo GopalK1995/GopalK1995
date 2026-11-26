@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Select } from "@/components/ui/controls";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { FieldInput } from "@/components/fields/field-input";
 import { fieldFromInput, fieldInputSchema, inputFromField, keyFromLabel, type FieldInput as Draft } from "@/lib/metadata/defs";
 import { toClientField } from "@/lib/metadata/runtime";
@@ -70,7 +70,7 @@ export function FieldEditor(p: EditorProps) {
       const res = editing
         ? await updateField({ input: body, rev: editing.rev ?? "", reason: reason || undefined })
         : await createField(body);
-      if (res.ok) { toast(res.message, res.sub); p.onSaved(); p.onOpenChange(false); return; }
+      if (res.ok) { toastResult(res); p.onSaved(); p.onOpenChange(false); return; }
       const map: Record<string, string> = {};
       for (const i of res.issues ?? []) map[i.path.split(".")[0]] = i.message;
       setIssues(map);

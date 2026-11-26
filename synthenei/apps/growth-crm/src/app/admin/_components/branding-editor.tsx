@@ -5,7 +5,7 @@
 import { useId, useState, useTransition, type CSSProperties } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { saveBranding } from "./actions";
 import { fieldCls } from "./action-dialog";
@@ -41,7 +41,7 @@ export function BrandingEditor({ tenantId, initial }: { tenantId: string; initia
   const dirty = name !== initial.name || product !== initial.product || hue !== initial.hue;
   const save = () => start(async () => {
     const fd = new FormData(); fd.set("tenant", tenantId); fd.set("brand", name); fd.set("product", product); fd.set("hue", String(hue));
-    const r = await saveBranding(fd); toast(r.message, r.sub);
+    const r = await saveBranding(fd); toastResult(r);
   });
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

@@ -23,7 +23,7 @@ export function HistorySection({ rows, version, demoNote }: { rows: HistoryRow[]
     if (cfg.scope === "platform" && cfg.reason.trim().length < 8) { setError("Enter a reason of at least 8 characters above."); return; }
     const r = await cfg.actions.rollback(v, cfg.reason);
     setConfirm(null);
-    if (r.ok) { toast(`Rolled back to version ${v}`, r.detail ?? cfg.savedCopy); router.refresh(); } else setError(r.message);
+    if (r.ok) { toast(`Rolled back to version ${v}`, r.detail ?? cfg.savedCopy, { variant: "success" }); router.refresh(); } else setError(r.message);
   });
   return (
     <Card>

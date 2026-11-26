@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, Switch } from "@/components/ui/controls";
 import { Field, Input } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import type { LayoutScope } from "@/lib/layouts/resolve";
 import { TITLE_COLUMN, type DetailSpec, type LayoutKind, type LayoutSpec, type ListSpec } from "@/lib/layouts/spec";
 import { tIn } from "@/lib/layouts/strings";
@@ -49,12 +49,12 @@ export function LayoutEditor(p: LayoutEditorProps) {
   const spec = (): LayoutSpec => (p.kind === "detail" ? detail : { columns: cols });
   const save = () => start(async () => {
     const r = await saveLayoutAction({ objectKey: p.objectKey, kind: p.kind, scope: p.scope, roleId: p.roleId, spec: spec(), version: p.version });
-    if (r.ok) { setErr(null); toast(r.message, r.sub); router.refresh(); return; }
+    if (r.ok) { setErr(null); toastResult(r); router.refresh(); return; }
     setErr({ text: `${r.message}${r.sub ? ` ${r.sub}` : ""}`, issues: (r.issues ?? []).map((i) => i.message) });
   });
   const reset = () => start(async () => {
     const r = await resetLayoutAction({ objectKey: p.objectKey, kind: p.kind, scope: p.scope, roleId: p.roleId, version: p.version });
-    if (r.ok) { setErr(null); toast(r.message, r.sub); router.refresh(); return; }
+    if (r.ok) { setErr(null); toastResult(r); router.refresh(); return; }
     setErr({ text: `${r.message}${r.sub ? ` ${r.sub}` : ""}`, issues: [] });
   });
 

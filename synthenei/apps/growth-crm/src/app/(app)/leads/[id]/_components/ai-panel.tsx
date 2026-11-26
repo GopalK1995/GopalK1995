@@ -5,7 +5,7 @@ import { Check, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { acceptSuggestion, dismissSuggestion } from "../../actions";
 import { usePerm } from "../../_components/perm";
 import { useVocab } from "@/components/shell/providers";
@@ -34,11 +34,11 @@ export function AiPanel({ leadId, summary, suggestion, basedOn, real = false, en
   const accept = () => start(async () => {
     if (!suggestion) return;
     const r = await acceptSuggestion(leadId, suggestion.action, suggestion.due);
-    toast(r.message, r.sub); if (r.ok) setState("accepted");
+    toastResult(r); if (r.ok) setState("accepted");
   });
   const dismiss = (reason: string) => start(async () => {
     const r = await dismissSuggestion(leadId, reason);
-    toast(r.message, r.sub); if (r.ok) { setState("dismissed"); setAsking(false); }
+    toastResult(r); if (r.ok) { setState("dismissed"); setAsking(false); }
   });
   return (
     <div className="space-y-4">

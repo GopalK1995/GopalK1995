@@ -60,7 +60,7 @@ export function useSection<T>(pick: (c: TenantConfig) => T, toPatch: (d: T) => u
     setError(null);
     if (cfg.scope === "platform" && cfg.reason.trim().length < 8) { setError("Enter a reason of at least 8 characters above. It is recorded in the audit log."); return; }
     const r = await fn();
-    if (r.ok) { toast(r.message, r.detail ?? cfg.savedCopy); after?.(); router.refresh(); } else setError(r.message);
+    if (r.ok) { toast(r.message, r.detail ?? cfg.savedCopy, { variant: "success" }); after?.(); router.refresh(); } else setError(r.message);
   });
   return {
     draft, setDraft, dirty, pending, error, setError,

@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DisabledReason } from "@/components/ui/disabled-reason";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "@/components/ui/dropdown";
 import { Tabs } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/toast";
+import { toast, toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useVocab } from "@/components/shell/providers";
 import type { ActionResult } from "@/lib/actions/result";
@@ -68,12 +68,12 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
       if (!r.ok) {
         setRows(before);
         if (r.code === "conflict") setConflict(true);
-        toast(r.message, r.sub ?? failSub);
+        toast(r.message, r.sub ?? failSub, { variant: "error" });
         return;
       }
       const v = (r.data as { version?: number } | undefined)?.version;
       if (id && v !== undefined) setRows((xs) => xs.map((x) => (x.id === id ? { ...x, version: v } : x)));
-      toast(r.message, r.sub);
+      toastResult(r);
     });
   };
 
@@ -171,7 +171,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
         start(async () => {
           const res = await createTask({ ...base, leadId: String(f.get("lead") ?? ""), assigneeId: String(f.get("assignee") ?? "") || null });
           if (!res.ok) { setErr(res.message); return; }
-          toast(res.message, res.sub); setCreating(false); setErr(null);
+          toastResult(res); setCreating(false); setErr(null);
         });
       }}>
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t.title}</span><input name="title" required minLength={3} maxLength={120} defaultValue={r?.title} className={field} placeholder={tk.titlePh} /></label>

@@ -26,7 +26,7 @@ export function BillingConsole({ view: v, strings: s }: { view: AdminView; strin
   const run = (fn: () => Promise<{ ok: boolean; message: string; sub?: string }>, after?: () => void) => start(async () => {
     const r = await fn();
     setMsg({ ok: r.ok, text: r.message });
-    if (r.ok) { toast(r.message, v.demo ? t(s, "demoNotice") : ""); after?.(); router.refresh(); }
+    if (r.ok) { toast(r.message, v.demo ? t(s, "demoNotice") : undefined, { variant: "success" }); after?.(); router.refresh(); }
   });
   const form = (e: React.FormEvent<HTMLFormElement>) => Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string, string>;
   const ro = !v.canEdit;

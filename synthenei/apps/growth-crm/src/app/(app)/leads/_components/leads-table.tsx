@@ -15,7 +15,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { ScoreChip, Empty, th, thNum, td, tdNum } from "@/components/ui/misc";
 import { ChannelMark, LeadStageBadge } from "@/components/ui/domain";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { FieldValue } from "@/components/fields/field-value";
 import { pickLabel } from "@/components/fields/labels";
@@ -78,13 +78,13 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, c
 
   const doAssign = () => start(async () => {
     const r = await assignLeads([...sel], owner);
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok) setSel(new Set());
   });
   const doExport = (ids: string[]) => start(async () => {
     const r = await exportLeads(ids, maskExport);
     if (r.ok && r.csv && r.filename) download(r.filename, r.csv);
-    toast(r.message, r.sub);
+    toastResult(r);
   });
 
   if (!rows.length) return <div className="px-4 pb-4"><Empty title={empty.t}>{empty.h}</Empty></div>;

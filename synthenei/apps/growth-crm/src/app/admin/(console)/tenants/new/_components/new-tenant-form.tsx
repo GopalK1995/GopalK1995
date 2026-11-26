@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import type { ActionResult } from "../../../../_components/actions";
 
 export function NewTenantForm({ action }: { action: (f: FormData) => Promise<ActionResult> }) {
@@ -21,7 +21,7 @@ export function NewTenantForm({ action }: { action: (f: FormData) => Promise<Act
           start(async () => {
             const r = await action(fd);
             if (!r.ok) { setErr({ field: r.field, message: r.message }); return; }
-            setErr(null); toast(r.message, r.sub); router.push("/admin/tenants");
+            setErr(null); toastResult(r); router.push("/admin/tenants");
           });
         }}>
           <Field label="Tenant name" error={err?.field === "name" ? err.message : undefined}><Input name="name" placeholder="Nilgiri Law Associates" required /></Field>

@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { Download, Pencil, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useVocab } from "@/components/shell/providers";
 import { Gated } from "../../accounts/_components/gated";
 import type { Verdict } from "../../accounts/_components/perms";
@@ -84,7 +84,7 @@ export function ExportContactsButton({ v, canUnmask }: { v: Verdict; canUnmask: 
   const [pending, start] = useTransition();
   const go = (mask: boolean) => start(async () => {
     const r = await exportContacts(mask);
-    toast(r.message, r.sub);
+    toastResult(r);
     if (r.ok && r.csv) {
       const url = URL.createObjectURL(new Blob([r.csv], { type: "text/csv" }));
       const el = document.createElement("a"); el.href = url; el.download = r.filename ?? "contacts.csv"; el.click(); URL.revokeObjectURL(url);

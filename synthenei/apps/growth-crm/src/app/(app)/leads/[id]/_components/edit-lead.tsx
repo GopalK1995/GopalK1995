@@ -6,7 +6,7 @@ import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Gate } from "@/components/ui/gate";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useVocab } from "@/components/shell/providers";
 import { lt } from "../../_lib/strings";
 import { field } from "../../_lib/sales";
@@ -35,7 +35,7 @@ export function EditLead({ lead }: { lead: EditableLead }) {
       setIssues(Object.fromEntries((r.issues ?? []).map((i) => [i.path.replace(/^patch\./, ""), i.message])));
       return;
     }
-    toast(r.message, r.sub); close(); router.refresh();
+    toastResult(r); close(); router.refresh();
   });
   const labels: Record<(typeof KEYS)[number], string> = { fullName: t("create.name"), roleTitle: t("create.role"), firmName: t("create.firm"), email: t("create.email"), phone: t("create.phone"), city: t("create.city") };
   return (

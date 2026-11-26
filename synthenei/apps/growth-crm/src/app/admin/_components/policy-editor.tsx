@@ -3,7 +3,7 @@
 // every other platform role sees the same form read-only with the reason. Empty number or "all" list = no limit from the platform.
 import { useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "./actions";
 import { fieldCls } from "./action-dialog";
@@ -45,7 +45,7 @@ export function PolicyEditor({ tenantSlug, policy, modules, connectors, canEdit,
     start(async () => {
       const r = await action(tenantSlug, patch, reason);
       if (!r.ok) { setErr({ field: r.field, message: r.message }); return; }
-      setErr(null); setReason(""); toast(r.message, r.sub);
+      setErr(null); setReason(""); toastResult(r);
     });
   };
   const toggle = (list: string[] | null, all: string[], v: string): string[] | null => {

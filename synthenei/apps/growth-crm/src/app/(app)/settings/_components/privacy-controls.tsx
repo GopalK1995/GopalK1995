@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Chip, type ChipTone } from "@/components/ui/chip";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { toastResult } from "@/components/ui/toast";
 import { useSession } from "@/components/shell/providers";
 import { ROLE_LABEL, can } from "@/lib/auth/roles";
 import type { ErasureReport } from "@/lib/privacy/erasure";
@@ -64,7 +64,7 @@ export function EraseButton({ requestId, subject, disabledReason, onReport, s = 
           <Button variant="danger" disabled={pending} data-testid="erase-confirm" onClick={() => start(async () => {
             const r = await completeErasure(requestId);
             setOpen(false);
-            toast(r.message, r.sub ?? "");
+            toastResult(r);
             if (r.ok && r.data) onReport?.(r.data);
           })}>{label}</Button>
         </div>
