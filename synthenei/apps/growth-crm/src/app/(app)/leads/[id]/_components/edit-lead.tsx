@@ -53,7 +53,7 @@ export function EditLead({ lead }: { lead: EditableLead }) {
                 ))}
               </div>
               {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-              <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={close}>Cancel</Button><Button variant="primary" disabled={pending}>{t("edit.submit")}</Button></div>
+              <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={close}>Cancel</Button><Button type="submit" variant="primary" disabled={pending}>{t("edit.submit")}</Button></div>
             </form>
           )}
         </DialogContent>

@@ -1,7 +1,7 @@
 import { setPassword } from "@/lib/auth/actions";
 import { safeNext } from "@/lib/auth/cookies";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell, authField } from "../_shell";
 
 export const metadata = { title: "Set password" };
@@ -25,7 +25,7 @@ export default async function SetPassword({ searchParams }: { searchParams: Prom
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Confirm password</span>
           <input name="confirm" type="password" autoComplete="new-password" minLength={10} required className={authField} /></label>
         <p className="text-[12px] text-ink-3">At least 10 characters, with a letter and a number.</p>
-        <Button variant="primary" size="lg" className="w-full">Save password and continue</Button>
+        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Saving…">Save password and continue</SubmitButton>
       </form>
     </AuthShell>
   );

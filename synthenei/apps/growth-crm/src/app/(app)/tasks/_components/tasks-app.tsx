@@ -192,7 +192,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
           </>
         )}
         {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-        <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => (r ? setEditing(null) : setCreating(false))}>{t.cancel}</Button><Button variant="primary" disabled={pending}>{r ? t.saveTask : t.createTask}</Button></div>
+        <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => (r ? setEditing(null) : setCreating(false))}>{t.cancel}</Button><Button type="submit" variant="primary" disabled={pending}>{r ? t.saveTask : t.createTask}</Button></div>
       </form>
     );
   };
@@ -230,7 +230,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
                   <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t.timeIst}</span><input name="time" type="time" required defaultValue="10:00" className={field} /></label>
                 </div>
                 {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-                <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setResched(null)}>{t.cancel}</Button><Button variant="primary" disabled={pending}>{t.reschedule}</Button></div>
+                <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setResched(null)}>{t.cancel}</Button><Button type="submit" variant="primary" disabled={pending}>{t.reschedule}</Button></div>
               </form>
             )}
           </DialogContent>

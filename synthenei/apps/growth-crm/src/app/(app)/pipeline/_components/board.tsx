@@ -317,7 +317,7 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
               </div>
               <p className="text-[12px] text-ink-3">{pl.wonNote(tenantName)}</p>
               {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-              <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setDlg(null)}>Cancel</Button><Button variant="primary" disabled={pending}>{pl.wonBtn}</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setDlg(null)}>Cancel</Button><Button type="submit" variant="primary" disabled={pending}>{pl.wonBtn}</Button></div>
             </form>
           </DialogContent>
         )}
@@ -341,7 +341,7 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
               <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Competitor (optional)</span>
                 <input name="competitor" className={field} placeholder={pl.compPh} maxLength={60} /></label>
               {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-              <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setDlg(null)}>Cancel</Button><Button variant="danger" disabled={pending}>Mark Lost</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setDlg(null)}>Cancel</Button><Button type="submit" variant="danger" disabled={pending}>Mark Lost</Button></div>
             </form>
           </DialogContent>
         )}

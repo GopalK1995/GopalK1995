@@ -30,7 +30,7 @@ export function LogCallDialog({ onSubmit, t, trigger }: { t?: Target; trigger: R
           </div>
           <Lbl t="Notes"><textarea name="notes" className={field + " h-20 py-2"} defaultValue={q.callDefault} /></Lbl>
           <Lbl t="Next step date"><input name="next_step_at" className={field} type="date" defaultValue="2026-10-15" /></Lbl>
-          <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Save call</Button></div>
+          <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" variant="primary">Save call</Button></div>
         </form>
       </DialogContent>
     </Dialog>
@@ -50,7 +50,7 @@ export function WhatsAppDialog({ onSubmit, t, trigger, consent = true }: { t?: T
           <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setOpen(false); void onSubmit?.(new FormData(e.currentTarget)); toast(`Template ${tpl} queued${t?.leadName ? ` to ${t.leadName}` : ""}`, "Showcase: simulated, not sent."); }}>
             <Lbl t="Approved template"><select name="template" className={field} value={tpl} onChange={(e) => setTpl(e.target.value)}>{WA.map((x) => <option key={x.id} value={x.id}>{x.id} ({x.lang})</option>)}</select></Lbl>
             <div className="rounded-md border border-line bg-paper p-3 text-[13px] leading-5 text-ink-2">{cur.body.replace("{{1}}", t?.leadName?.split(" ")[0] ?? q.waName).replace("{{2}}", t?.firm ?? q.waSlot)}</div>
-            <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Send (simulated)</Button></div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" variant="primary">Send (simulated)</Button></div>
           </form>
         )}
       </DialogContent>
@@ -73,7 +73,7 @@ export function ScheduleDemoDialog({ onSubmit, t, trigger }: { t?: Target; trigg
             <Lbl t="Mode"><select name="mode" className={field}>{q.demoModes.map((m) => <option key={m}>{m}</option>)}</select></Lbl>
           </div>
           <p className="text-[12px] text-ink-3">{q.demoNote}</p>
-          <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary">Schedule</Button></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" variant="primary">Schedule</Button></div>
         </form>
       </DialogContent>
     </Dialog>

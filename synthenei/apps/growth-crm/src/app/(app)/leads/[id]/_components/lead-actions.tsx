@@ -22,7 +22,7 @@ const Lbl = ({ t, children, className }: { t: string; children: ReactNode; class
   <label className={cn("block", className)}><span className="mb-1 block text-[12px] font-medium text-ink-2">{t}</span>{children}</label>
 );
 const Foot = ({ onCancel, label, pending, disabled }: { onCancel: () => void; label: string; pending: boolean; disabled?: boolean }) => (
-  <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button><Button variant="primary" disabled={pending || disabled}>{label}</Button></div>
+  <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button><Button type="submit" variant="primary" disabled={pending || disabled}>{label}</Button></div>
 );
 
 export function LeadActions({ lead, owners }: { lead: LeadInfo; owners: { id: string; name: string }[] }) {

@@ -55,7 +55,7 @@ export function Shell({ w, title, desc, children, submit, onSubmit, danger }: { 
           {w.err && <p role="alert" className="text-[12px] text-danger">{w.err}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={w.close}>{t("ui.cancel")}</Button>
-            <Button variant={danger ? "danger" : "primary"} disabled={w.pending} data-cy="account-submit">{w.pending ? t("ui.saving") : submit}</Button>
+            <Button type="submit" variant={danger ? "danger" : "primary"} disabled={w.pending} data-cy="account-submit">{w.pending ? t("ui.saving") : submit}</Button>
           </div>
         </form>
       </DialogContent>

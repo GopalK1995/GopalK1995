@@ -1,4 +1,5 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { DisabledReason } from "./disabled-reason";
@@ -26,10 +27,29 @@ export const buttonVariants = cva(
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   /** Renders the button disabled and explains why in a tooltip (missing permission, missing approval). */
   disabledReason?: string;
+  /** Pending state: sets aria-busy, disables the button (so a second click cannot re-post) and shows a spinner. */
+  loading?: boolean;
+  /** Label shown while `loading` (e.g. "Signing in…"); defaults to the normal children. */
+  loadingLabel?: ReactNode;
 }
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, disabledReason, ...props }, ref) => (
+/**
+ * `type` defaults to "button" so a Button inside a <form> never submits by accident.
+ * Buttons that must submit say so explicitly: type="submit", or use <SubmitButton> (ui/submit-button.tsx),
+ * which also reports pending state for server-action forms.
+ */
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, disabledReason, type = "button", loading = false, loadingLabel, children, disabled, ...props }, ref) => (
   <DisabledReason reason={disabledReason}>
-    <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
+    <button
+      ref={ref}
+      type={type}
+      className={cn(buttonVariants({ variant, size }), className)}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading && <Loader2 className="motion-safe:animate-spin" aria-hidden />}
+      {loading && loadingLabel != null ? loadingLabel : children}
+    </button>
   </DisabledReason>
 ));
 Button.displayName = "Button";

@@ -5,7 +5,7 @@ import { PERSONAS, TENANTS, WORKSPACES, userById } from "@/lib/tenancy";
 import { datasetFor } from "@/lib/data/mock/generate-index";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { demoModeOn } from "@/lib/auth/cookies";
-import { Button } from "@/components/ui/button";
+import { PendingButton, SubmitButton } from "@/components/ui/submit-button";
 import { vocabFor } from "@/lib/vertical";
 import { LegalFooter } from "@/components/legal/legal-page";
 
@@ -62,7 +62,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
               <input name="email" type="email" autoComplete="email" required placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Password</span>
               <input name="password" type="password" autoComplete="current-password" required disabled={!live} className="h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none focus:border-ring disabled:bg-paper-2" /></label>
-            <Button variant="primary" size="lg" className="w-full" disabled={!live}>Sign in</Button>
+            <SubmitButton variant="primary" size="lg" className="w-full" disabled={!live} pendingLabel="Signing in…">Sign in</SubmitButton>
             {live && <p className="text-[12px]"><Link href="/auth/reset" className="font-medium text-accent hover:underline">Forgot password?</Link></p>}
             {!live && <p className="text-[12px] text-ink-3">Password sign-in activates when the Supabase project is connected. This deployment runs in demo mode.</p>}
           </form>
@@ -76,14 +76,14 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
                   return (
                     <form key={p.key} action={demoLogin}>
                       <input type="hidden" name="persona" value={p.key} /><input type="hidden" name="next" value={sp.next ?? ""} />
-                      <button data-persona={p.key} className="group flex h-full w-full items-start gap-3 rounded-md border border-line bg-surface p-3 text-left shadow-1 transition-[border-color,transform] duration-150 ease-out hover:-translate-y-px hover:border-accent focus-visible:border-accent">
+                      <PendingButton data-persona={p.key} className="group flex h-full w-full items-start gap-3 rounded-md border border-line bg-surface p-3 text-left shadow-1 transition-[border-color,transform] duration-150 ease-out hover:-translate-y-px hover:border-accent focus-visible:border-accent">
                         <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-paper-2 text-ink-2 group-hover:bg-accent-soft group-hover:text-accent"><I className="size-4" aria-hidden /></span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-ink">{p.label}</span><ArrowRight className="size-3.5 shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden /></span>
                           <span className="block text-[12px] leading-4 text-ink-3">{p.detail}</span>
                           <span className="mt-1 block text-[11px] text-ink-3">as {userById(p.userId)?.name}</span>
                         </span>
-                      </button>
+                      </PendingButton>
                     </form>
                   );
                 })}
@@ -91,7 +91,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-3">
                 <span>More roles:</span>
                 {PERSONAS.filter((p) => p.secondary).map((p) => (
-                  <form key={p.key} action={demoLogin}><input type="hidden" name="persona" value={p.key} /><button data-persona={p.key} className="font-medium text-accent hover:underline">{p.label}</button></form>
+                  <form key={p.key} action={demoLogin}><input type="hidden" name="persona" value={p.key} /><PendingButton data-persona={p.key} className="font-medium text-accent hover:underline">{p.label}</PendingButton></form>
                 ))}
               </div>
             </section>

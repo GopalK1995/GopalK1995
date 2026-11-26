@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { NEVER_LIST, supportSessions, wsLabelById } from "../../_components/data";
@@ -60,7 +61,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
           </div>
           <div className="flex gap-2">
             <a href="/" className="inline-flex h-9 items-center rounded-sm border border-warn/50 bg-surface px-3 text-[13px] font-medium hover:bg-paper">Open workspace</a>
-            <form action={endSupport}><Button variant="secondary">End now</Button></form>
+            <form action={endSupport}><SubmitButton variant="secondary" pendingLabel="Ending…">End now</SubmitButton></form>
           </div>
         </section>
       )}

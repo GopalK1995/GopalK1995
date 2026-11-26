@@ -21,6 +21,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { logout } from "@/lib/auth/actions";
 import { Toaster } from "@/components/ui/toast";
 import { Kbd } from "@/components/ui/kbd";
+import { PendingButton } from "@/components/ui/submit-button";
 import { CommandPalette, openCommandPalette } from "@/components/command";
 
 const COLLAPSE_KEY = "gcrm-nav-collapsed";
@@ -69,7 +70,7 @@ function SupportBanner() {
       <ShieldAlert className="size-4 shrink-0" aria-hidden />
       <span className="font-semibold">Support session by {support.admin} (Synthan) · {support.mode === "read_only" ? "read-only" : "read-write"} · ends {fmtTime(new Date(support.endsAt).toISOString())} IST</span>
       <span className="min-w-0 truncate">Reason: “{support.reason}” · logged</span>
-      <form action={endSupport} className="ml-auto"><button className="h-7 rounded-sm border border-warn/50 bg-surface px-2.5 font-medium text-warn-ink hover:bg-warn-soft">End now</button></form>
+      <form action={endSupport} className="ml-auto"><PendingButton className="h-7 rounded-sm border border-warn/50 bg-surface px-2.5 font-medium text-warn-ink hover:bg-warn-soft">End now</PendingButton></form>
     </div>
   );
 }

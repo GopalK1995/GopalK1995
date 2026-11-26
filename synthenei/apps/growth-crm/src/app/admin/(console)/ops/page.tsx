@@ -7,7 +7,7 @@ import { fmtDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { emitTestEvent, requeueDead } from "./actions";
 
 export const metadata = { title: "Queues and jobs" };
@@ -53,7 +53,7 @@ export default async function OpsPage() {
   return (
     <>
       <PageHeader eyebrow="Synthan platform" title="Queues and jobs" sub="Queue depths, oldest message age, dead-letter queue and recent job runs. Refresh to update."
-        actions={<form action={emitTestEvent}><Button type="submit" data-testid="ops-emit-test">Emit test event</Button></form>} />
+        actions={<form action={emitTestEvent}><SubmitButton data-testid="ops-emit-test" pendingLabel="Emitting…">Emit test event</SubmitButton></form>} />
       <div className="grid gap-4">
         <Card>
           <CardHeader title="Queues" sub={`${health.failed_1h ?? 0} failed or dead runs in the last hour`} />
@@ -82,13 +82,13 @@ export default async function OpsPage() {
               <div key={q} className="mb-3">
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <span className="font-mono text-[12px]">{dlqName(q)}</span>
-                  <form action={requeueDead}><input type="hidden" name="queue" value={q} /><Button type="submit" size="sm">Requeue all shown</Button></form>
+                  <form action={requeueDead}><input type="hidden" name="queue" value={q} /><SubmitButton size="sm" pendingLabel="Requeuing…">Requeue all shown</SubmitButton></form>
                 </div>
                 <ul className="divide-y divide-line text-[13px]">
                   {msgs.map((m) => (
                     <li key={m.msg_id} className="flex items-center justify-between gap-3 py-1.5">
                       <span className="min-w-0 truncate"><span className="font-mono text-[12px]">{m.message.kind ?? "unknown"}</span><span className="ml-2 text-ink-3">{m.message.dead_reason ?? ""}</span></span>
-                      <form action={requeueDead}><input type="hidden" name="queue" value={q} /><input type="hidden" name="msgId" value={m.msg_id} /><Button type="submit" size="sm" variant="ghost">Requeue</Button></form>
+                      <form action={requeueDead}><input type="hidden" name="queue" value={q} /><input type="hidden" name="msgId" value={m.msg_id} /><SubmitButton size="sm" variant="ghost" pendingLabel="Requeuing…">Requeue</SubmitButton></form>
                     </li>
                   ))}
                 </ul>

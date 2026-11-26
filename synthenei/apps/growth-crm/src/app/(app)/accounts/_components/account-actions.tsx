@@ -39,7 +39,7 @@ function FormDialog({ v, trigger, title, description, kind, accountId, submit, c
           {children}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button variant="primary" disabled={pending}>{pending ? "Checking…" : submit}</Button>
+            <Button type="submit" variant="primary" disabled={pending}>{pending ? "Checking…" : submit}</Button>
           </div>
         </form>
       </DialogContent>

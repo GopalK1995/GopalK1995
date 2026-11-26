@@ -1,6 +1,6 @@
 import { acceptInvite } from "@/lib/auth/actions";
 import { safeNext } from "@/lib/auth/cookies";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell } from "../_shell";
 
 export const metadata = { title: "Accept invitation" };
@@ -15,7 +15,7 @@ export default async function AcceptInvite({ searchParams }: { searchParams: Pro
         <input type="hidden" name="token_hash" value={sp.token_hash} />
         <input type="hidden" name="type" value={sp.type === "recovery" ? "recovery" : "invite"} />
         <input type="hidden" name="next" value={safeNext(sp.next) ?? ""} />
-        <Button variant="primary" size="lg" className="w-full">Accept invitation</Button>
+        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Accepting…">Accept invitation</SubmitButton>
       </form>
     </AuthShell>
   );

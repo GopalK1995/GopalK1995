@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PendingButton } from "@/components/ui/submit-button";
 import { env } from "@/lib/env";
 import { EMAIL_ENV } from "@/lib/connectors/email/constants";
 import { getEmT } from "@/lib/connectors/email/strings";
@@ -29,7 +30,7 @@ export default async function UnsubscribePage({ params, searchParams }: { params
   const confirm = confirmUnsubscribe.bind(null, decodeURIComponent(token));
   return shell(t("unsubscribe.title"), q.e === "1" ? t("unsubscribe.error") : t("unsubscribe.ready"), (
     <form action={confirm}>
-      <button type="submit" className="h-9 rounded-control bg-accent px-4 text-14 font-medium text-white">{t("unsubscribe.confirm")}</button>
+      <PendingButton className="h-9 rounded-control bg-accent px-4 text-14 font-medium text-white">{t("unsubscribe.confirm")}</PendingButton>
     </form>
   ));
 }

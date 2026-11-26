@@ -55,7 +55,7 @@ export function CreateLead({ owners }: { owners: { id: string; name: string }[] 
                 <select name="ownerId" className={field} defaultValue=""><option value="">You</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
             </div>
             {err && <p role="alert" className="text-[12px] text-danger">{err}</p>}
-            <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={close}>Cancel</Button><Button variant="primary" disabled={pending}>{pending ? t("create.saving") : t("create.submit")}</Button></div>
+            <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="ghost" onClick={close}>Cancel</Button><Button type="submit" variant="primary" disabled={pending}>{pending ? t("create.saving") : t("create.submit")}</Button></div>
           </form>
         </DialogContent>
       </Dialog>

@@ -1,5 +1,5 @@
 import { requestPasswordReset } from "@/lib/auth/actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell, authField } from "../_shell";
 
 export const metadata = { title: "Reset password" };
@@ -13,7 +13,7 @@ export default async function Reset({ searchParams }: { searchParams: Promise<{ 
       <form action={requestPasswordReset} className="space-y-3">
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Work email</span>
           <input name="email" type="email" autoComplete="email" required className={authField} /></label>
-        <Button variant="primary" size="lg" className="w-full">Send reset link</Button>
+        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Sending…">Send reset link</SubmitButton>
       </form>
     </AuthShell>
   );

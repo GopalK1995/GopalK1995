@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PendingButton } from "@/components/ui/submit-button";
 import Link from "next/link";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { VERIFY_TTL_MS, previewConfirm } from "@/lib/privacy/intake";
@@ -44,7 +45,7 @@ export default async function VerifyPage({ params, searchParams }: { params: Pro
   const confirm = confirmVerification.bind(null, slug, token);
   return shell(t("verify.title"), t("verify.ready", { org: p.orgName, kind: t(`kind.${p.kind}`).toLowerCase() }), (
     <form action={confirm}>
-      <button type="submit" className="h-9 rounded-control bg-accent px-4 text-14 font-medium text-accent-ink" data-testid="verify-confirm">{t("verify.confirm")}</button>
+      <PendingButton className="h-9 rounded-control bg-accent px-4 text-14 font-medium text-accent-ink" data-testid="verify-confirm">{t("verify.confirm")}</PendingButton>
     </form>
   ));
 }

@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { PageHeader } from "@/components/ui/misc";
 import { Prefs } from "./prefs";
 
@@ -38,7 +39,7 @@ export default async function Profile() {
           <Card>
             <CardHeader title="Sessions" sub={session.demo ? "Demo session: signed in with a persona, sample data only" : "Signed in with email and password"} />
             <CardBody className="flex flex-wrap gap-2">
-              <form action={logout}><Button><LogOut />Log out</Button></form>
+              <form action={logout}><SubmitButton pendingLabel="Logging out…"><LogOut />Log out</SubmitButton></form>
               <Button variant="danger" disabled title="Uses Supabase global sign-out; not available in demo sessions"><ShieldCheck />Log out of all devices</Button>
             </CardBody>
           </Card>

@@ -23,7 +23,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
         <label htmlFor="ask" className="sr-only">Ask a question about your CRM numbers</label>
         <input id="ask" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={ai.askPh}
           className="h-10 min-w-0 flex-1 rounded-sm border border-line-strong bg-surface px-3 text-[13px] outline-none placeholder:text-ink-3 focus:border-ring" />
-        <Button variant="primary" size="lg" disabled={pending || !text.trim()}><CornerDownLeft />Ask</Button>
+        <Button type="submit" variant="primary" size="lg" disabled={pending || !text.trim()}><CornerDownLeft />Ask</Button>
       </form>
       <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Approved questions">
         {questions.map((q) => (

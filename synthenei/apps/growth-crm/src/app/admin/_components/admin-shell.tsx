@@ -9,6 +9,7 @@ import { endSupport, logout } from "@/lib/auth/actions";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
 import { Toaster } from "@/components/ui/toast";
+import { PendingButton } from "@/components/ui/submit-button";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: Gauge },
@@ -45,7 +46,7 @@ export function AdminShell({ name, email, demo, support, children }: { name: str
                 <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
                 <span className="hidden truncate sm:inline">Support open: {support.wsLabel} · {support.mode === "read_only" ? "read-only" : "read-write"} · ends {support.endsAtLabel} IST</span>
                 <span className="sm:hidden">Support open</span>
-                <button className="h-6 shrink-0 rounded-[4px] border border-warn/50 bg-surface px-2 font-medium hover:bg-warn-soft">End</button>
+                <PendingButton className="h-6 shrink-0 rounded-[4px] border border-warn/50 bg-surface px-2 font-medium hover:bg-warn-soft">End</PendingButton>
               </form>
             )}
             <Menu>

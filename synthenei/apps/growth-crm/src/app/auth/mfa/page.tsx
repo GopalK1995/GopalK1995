@@ -2,7 +2,7 @@ import { KeyRound } from "lucide-react";
 import { verifyMfa } from "@/lib/auth/actions";
 import { safeNext } from "@/lib/auth/cookies";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell, authField } from "../_shell";
 
 export const metadata = { title: "Two-step verification" };
@@ -43,7 +43,7 @@ export default async function Mfa({ searchParams }: { searchParams: Promise<{ en
         <input type="hidden" name="via" value={sp.via ?? ""} />
         <label className="block"><span className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-ink-2"><KeyRound className="size-3.5" aria-hidden />6-digit code</span>
           <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus className={authField + " text-center font-mono text-[20px] tracking-[0.4em]"} placeholder="000000" /></label>
-        <Button variant="primary" size="lg" className="w-full">{enrol ? "Verify and finish setup" : "Verify and sign in"}</Button>
+        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Verifying…">{enrol ? "Verify and finish setup" : "Verify and sign in"}</SubmitButton>
       </form>
     </AuthShell>
   );

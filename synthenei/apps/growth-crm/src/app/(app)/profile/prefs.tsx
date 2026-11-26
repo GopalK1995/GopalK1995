@@ -24,7 +24,7 @@ export function Prefs({ name, email }: { name: string; email: string }) {
           </label>
         ))}
       </fieldset>
-      <div className="flex justify-end"><Button variant="primary">Save profile</Button></div>
+      <div className="flex justify-end"><Button type="submit" variant="primary">Save profile</Button></div>
     </form>
   );
 }
