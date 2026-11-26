@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, SUPPORT_COOKIE, WS_COOKIE, signSession, verifySession, verifySupport } from "./lib/auth/session";
 const ADMIN_IDLE_MS = 30 * 60e3;
-import { HOME_FOR, ROLE_LABEL, accessFor } from "./lib/auth/roles";
+import { HOME_FOR, ROLE_LABEL, accessFor, isKnownPath } from "./lib/auth/roles";
 import { resolveHint } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
 import { moduleForPath } from "./lib/vertical";
@@ -71,6 +71,10 @@ export async function middleware(req: NextRequest) {
   // Custom-object pages (/o/<key>) are authorised per object by the page itself (obj:<key>.read through the authz engine); the legacy page matrix has no entry for them.
   // /import is not in the legacy matrix either: the page asserts leads.import itself and shows a denied state.
   const selfAuthorised = pathname.startsWith("/o/") || pathname === "/import" || pathname.startsWith("/import/");
+  // /billing is a common guess for the billing page: send people to the real one instead of a dead end.
+  if (pathname === "/billing") return NextResponse.redirect(new URL("/settings/billing", req.url));
+  // A URL that matches no route is a 404 for everyone, not a role 403 (the framework renders the not-found page).
+  if (!selfAuthorised && !isKnownPath(pathname)) return touch(NextResponse.next());
   if (!selfAuthorised && !accessFor(active.role, pathname)) return forbid(pathname, ROLE_LABEL[active.role]);
   // Module switches (tenant config) are enforced here, server-side, as well as hidden in the nav.
   const mod = moduleForPath(pathname);

@@ -1,4 +1,9 @@
 {
+  "loadErrorBody_unconfigured": "Billing is not set up for this workspace yet, so there is no plan to show. Nothing is wrong with your data.",
+  "loadErrorBody_database": "We could not read your billing records from the database just now. Your plan and invoices are not affected. Retry in a minute.",
+  "loadErrorBody_unknown": "Billing could not be loaded because of an unexpected problem on our side. Retry; if it fails again, tell us.",
+  "loadErrorContact": "Contact {email} and quote this page.",
+  "loadErrorContactAdmin": "Contact your workspace admin and quote this page.",
   "pageTitle": "Billing",
   "pageSub": "Your plan, seats, invoices and billing details.",
   "adminTitle": "Billing",

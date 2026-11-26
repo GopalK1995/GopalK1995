@@ -24,7 +24,14 @@ export const PAGE_ACCESS: Record<string, Record<Role, Access | null>> = Object.f
 );
 export const HOME_FOR: Record<Role, string> = { owner: "/", sales_manager: "/", viewer: "/", sales_rep: "/sales", marketing: "/campaigns", data: "/data-health" };
 
-const OPEN_PATHS = ["/forbidden", "/profile", "/no-workspace", "/notifications", "/settings/notifications"];
+// Keep in step with ALWAYS_ALLOWED_PAGES in authz/pages.ts: /onboarding was allowed there but 403'd here for every role, Owner included.
+const OPEN_PATHS = ["/forbidden", "/profile", "/no-workspace", "/notifications", "/settings/notifications", "/onboarding"];
+/** True when the path belongs to a route the app has (so a denial is a real 403). Unknown URLs are not roles' fault: they get a 404. */
+export function isKnownPath(pathname: string): boolean {
+  if (OPEN_PATHS.includes(pathname) || pathname === "/" || pathname === "/contacts" || pathname.startsWith("/contacts/")) return true;
+  if (pathname.startsWith("/o/") || pathname === "/import" || pathname.startsWith("/import/")) return true;
+  return Object.keys(PAGE_ACCESS).some((k) => k !== "/" && (pathname === k || pathname.startsWith(k + "/")));
+}
 /** Default deny: a path that is not in the matrix is not reachable. */
 export function accessFor(role: Role, pathname: string): Access | null {
   if (OPEN_PATHS.includes(pathname)) return "F";
