@@ -20,7 +20,7 @@ export interface RawInsight {
   spend?: string | number; impressions?: string | number; reach?: string | number; clicks?: string | number; actions?: RawAction[];
 }
 export interface InsightsPage { rows: RawInsight[]; after?: string }
-export interface TokenDebug { valid: boolean; /** unix seconds; 0 = does not expire; null = unknown */ expiresAt: number | null; scopes: string[] }
+export interface TokenDebug { valid: boolean; /** unix seconds; 0 = does not expire; null = unknown */ expiresAt: number | null; /** unix seconds when Meta stops letting the app read the user's data (debug_token data_access_expires_at); 0/null = unknown */ dataAccessExpiresAt?: number | null; scopes: string[] }
 
 export interface MetaGateway {
   /** "mock" never touches the network; the UI shows the Showcase label for it. */

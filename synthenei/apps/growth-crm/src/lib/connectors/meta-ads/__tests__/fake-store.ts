@@ -12,6 +12,8 @@ export class FakeStore implements MetaStore, CoreLeadPort {
   links = new Map<string, LinkRow>(); fieldMap: FieldMapSpec[] = [];
   private id(p: string) { return `${p}-${++this.n}`; }
 
+  healthRecords: { connectionId: string; tokenExpiresAt?: string | null; health: Record<string, unknown> }[] = [];
+  async recordHealth(connectionId: string, r: { tokenExpiresAt?: string | null; health: Record<string, unknown> }) { this.healthRecords.push({ connectionId, ...r }); }
   async registerAssets(a: AssetRegistration): Promise<RegisterResult> {
     if (this.assets.some((o) => o.workspaceId !== a.workspaceId && o.pageId === a.pageId)) return { ok: false, reason: "page_taken" };
     if (a.igUserId && this.assets.some((o) => o.workspaceId !== a.workspaceId && o.igUserId === a.igUserId)) return { ok: false, reason: "ig_taken" };

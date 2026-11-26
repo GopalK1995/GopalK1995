@@ -35,6 +35,16 @@ export function supabaseMetaStore(db: Db): MetaStore {
   }
 
   return {
+    async recordHealth(connectionId, r) {
+      const cur = (await rows(q("integrations").select("health").eq("id", connectionId).limit(1), "read health"))[0];
+      const all = cur?.health && typeof cur.health === "object" && !Array.isArray(cur.health) ? (cur.health as R) : {};
+      const prev = all.meta && typeof all.meta === "object" ? (all.meta as R) : {};
+      const merged: R = { ...prev };
+      for (const [k, v] of Object.entries(r.health)) if (v !== undefined) merged[k] = v;
+      const patch: R = { health: { ...all, meta: merged } };
+      if (r.tokenExpiresAt !== undefined) patch.token_expires_at = r.tokenExpiresAt;
+      await rows(q("integrations").update(patch).eq("id", connectionId).select("id"), "write health");
+    },
     async registerAssets(a: AssetRegistration): Promise<RegisterResult> {
       const wanted = [{ platform: "facebook_page", id: a.pageId, name: a.pageName ?? null }, ...(a.igUserId ? [{ platform: "instagram", id: a.igUserId, name: a.igUsername ?? null }] : [])];
       const found: Record<string, string | null> = {};

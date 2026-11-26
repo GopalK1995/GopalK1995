@@ -8,12 +8,13 @@ import { fmtDateTime } from "@/lib/format";
 import { TRANSFORM_KEYS } from "@/lib/connectors/core/transforms";
 import { ConnectorChip } from "./connector-chip";
 import { ConnectPanel } from "./connect-panel";
+import { MetaHealthLine } from "./meta-health-line";
 import { FieldMapEditor } from "./field-map-editor";
 import { Freshness } from "./real-list";
 import { MAP_TABLES, type DetailView } from "../_lib/types";
 import type { T } from "../_lib/strings";
 
-const RUN_TONE: Record<string, ChipTone> = { success: "success", partial: "warn", failed: "danger", running: "info" };
+const RUN_TONE: Record<string, ChipTone> = { success: "success", partial: "warn", failed: "danger", running: "info", skipped: "neutral" };
 /** Steps that need the vendor admin on the customer side; everything else is Synthan setup work. */
 const CLIENT_STEP = /^(verify|approve|authorise|grant|register|request|connect|install|link|admin|workspace admin|entra|each rep|rep connects|create (a|an) (service|api|webhook))/i;
 
@@ -51,6 +52,7 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
       </PageHeader>
 
       {failed.length > 0 && <div className="mb-4"><PartialState done={partialItems.length - failed.length} total={partialItems.length} noun={t("partialNoun")} items={partialItems.map(([k, label]) => ({ label, status: failed.includes(k) ? "failed" as const : "ok" as const }))} /></div>}
+      {v.metaHealth && r.connectionId && <MetaHealthLine h={v.metaHealth} t={t} connectionId={r.connectionId} canRetry={!manageBlocked} />}
       {r.chip === "sandbox" && <p role="note" className="state-warn mb-4 rounded-control border px-3 py-2 text-13 text-ink">{t("sandboxBanner")}</p>}
       {r.lastError && (r.chip === "needs_attention" || r.chip === "error") && <p role="alert" className="state-danger mb-4 rounded-control border px-3 py-2 text-13 text-ink">{r.lastError}</p>}
 

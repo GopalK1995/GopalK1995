@@ -176,7 +176,7 @@ export function makeGraphGateway(o: GraphOpts): MetaGateway {
       if (!o.appId || !o.appSecret) throw new Error("Meta app credentials are not configured");
       const j = await call<R>("GET", "debug_token", { query: { input_token: need(o.userToken, "user token"), access_token: `${o.appId}|${o.appSecret}` } });
       const d = isObj(j.data) ? j.data : {};
-      return { valid: d.is_valid === true, expiresAt: typeof d.expires_at === "number" ? d.expires_at : null, scopes: arr(d.scopes).filter((s): s is string => typeof s === "string") };
+      return { valid: d.is_valid === true, expiresAt: typeof d.expires_at === "number" ? d.expires_at : null, dataAccessExpiresAt: typeof d.data_access_expires_at === "number" ? d.data_access_expires_at : null, scopes: arr(d.scopes).filter((s): s is string => typeof s === "string") };
     },
     async exchangeLongLived() {
       if (!o.appId || !o.appSecret) throw new Error("Meta app credentials are not configured");

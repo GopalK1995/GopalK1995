@@ -19,6 +19,8 @@ export interface ConnectionRow {
   mode: ConnMode; status: IntegrationStatus; settings: Record<string, unknown>;
   credentialSecretId: string | null; webhookSecretId: string | null; tokenExpiresAt: string | null;
   lastSyncAt?: string | null; lastError?: string | null;
+  /** integrations.health (jsonb): per-connector health facts (token expiry, granted scopes, webhook state). Optional: older readers ignore it. */
+  health?: Record<string, unknown>;
 }
 /** Decrypted credential bundle. Lives only in memory of a server job or action; never logged, never returned to a client. */
 export type ConnectionSecrets = Record<string, string>;
@@ -49,7 +51,13 @@ export interface SyncContext {
   /** Called by a stream when it rejects a row (counted in rows_rejected with the reason; reasons never carry PII). */
   reject?(reason: string): void;
 }
-export interface SyncResult { cursor: unknown; rowsIn: number; rowsRejected: number; done: boolean; sample?: unknown }
+/**
+ * `status` lets a stream say what really happened when "done, nothing failed" would be a lie:
+ * skipped = it did not run (needs vendor approval, no account, sandbox); partial = it ran but stopped early or part of it failed;
+ * no_data = it ran and the vendor answered, but there was nothing to import. `reason` is a short PII-free code shown next to the run.
+ */
+export type SyncOutcomeKind = "skipped" | "partial" | "no_data";
+export interface SyncResult { cursor: unknown; rowsIn: number; rowsRejected: number; done: boolean; sample?: unknown; status?: SyncOutcomeKind; reason?: string }
 export interface PushContext extends SyncContext { contactId: string }
 export interface PushResult { ok: boolean; externalId?: string; error?: string }
 

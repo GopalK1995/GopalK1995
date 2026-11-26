@@ -13,7 +13,9 @@ import { deriveChip, type AvailabilityRow } from "@/lib/connectors/core/status";
 import { envConfigured, getConnector, isUsableIn, listConnectors } from "@/lib/connectors/registry";
 import type { ConnectionFacts } from "@/lib/connectors/core/status";
 import type { FieldMapSpec, IntegrationStatus } from "@/lib/connectors/core/types";
-import type { ConnectorRowView, DetailView, MapRowView } from "./types";
+import { daysLeft, effectiveExpiry, expiringSoon, readMetaHealth } from "@/lib/connectors/meta-ads/health";
+import { effectiveScopes } from "@/lib/connectors/meta-ads/constants";
+import type { ConnectorRowView, DetailView, MapRowView, MetaHealthView } from "./types";
 
 type R = Record<string, unknown>;
 const s = (v: unknown): string | null => (typeof v === "string" ? v : null);
@@ -102,6 +104,30 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
   } else if (spec) {
     map = spec.fieldMap.map((f) => ({ externalObject: "", externalField: f.source, localTable: f.target.split(".")[0] ?? "", localColumn: f.target.split(".").slice(1).join(".") || f.target, direction: "in", transform: null, transformArg: "", sample: f.note ?? "", custom: false }));
   }
+  let metaHealth: MetaHealthView | null = null;
+  const connRow = l.conns.get(id);
+  if (id === "meta-ads" && row.connectionId && connRow && (row.chip === "connected" || row.chip === "needs_attention" || row.chip === "error")) {
+    const mh = readMetaHealth((connRow as R).health);
+    const now = new Date();
+    const granted = Array.isArray(connRow.oauth_scopes) ? (connRow.oauth_scopes as unknown[]).filter((x): x is string => typeof x === "string") : [];
+    const requested = effectiveScopes();
+    const grantedList = mh?.scopesGranted.length ? mh.scopesGranted : granted;
+    const missing = grantedList.length ? requested.filter((x) => !grantedList.includes(x)) : [];
+    const tokenIso = mh?.tokenExpiresAt ?? s(connRow.token_expires_at);
+    const expIso = effectiveExpiry({ tokenExpiresAt: tokenIso, dataAccessExpiresAt: mh?.dataAccessExpiresAt ?? null });
+    const webhook: MetaHealthView["webhook"] = mh?.webhook ? (mh.webhook.subscribed ? "yes" : "no") : "unknown";
+    // The 25-run log is mostly 15-minute dispatcher rows: ask for the last run that actually imported something.
+    let lastOkAt: string | null = null;
+    try {
+      const ok = await from(db, "sync_runs").select("started_at").eq("integration_id", row.connectionId).in("status", ["success", "partial"]).in("stream", ["social", "insights"]).gt("rows_in", 0).order("started_at", { ascending: false }).limit(1);
+      lastOkAt = s(((ok.data as R[] | null) ?? [])[0]?.started_at);
+    } catch { /* the line then says "no successful sync yet" */ }
+    metaHealth = {
+      scopesGranted: grantedList.length ? requested.length - missing.length : null, scopesRequested: requested.length, scopesMissing: missing,
+      expiresAt: expIso, neverExpires: !!mh?.tokenNeverExpires && !expIso, daysLeft: daysLeft(expIso, now), webhook, lastOkAt,
+      attention: webhook === "no" || expiringSoon({ tokenExpiresAt: tokenIso, dataAccessExpiresAt: mh?.dataAccessExpiresAt ?? null }, now) || missing.length > 0,
+    };
+  }
   const flows = [...(spec?.inbound ?? []).map((object) => ({ object, dir: "in" as const })), ...(spec?.outbound ?? []).map((object) => ({ object, dir: "out" as const }))];
   return {
     status: "ok", failed,
@@ -110,7 +136,7 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
       fields: (def?.credentialFields ?? []).map((f) => ({ key: f.key, label: f.label, secret: f.secret })),
       sandboxSupported: def?.sandbox.supported ?? cat.sandboxSupported, sandboxHowTo: def?.sandbox.howTo ?? null,
       steps: spec?.steps ?? [], flows, runs, map, editable: !!def && !!row.connectionId, accountLabel: null,
-      oauthReady: !!def?.oauth && envConfigured(def, vendorEnv()),
+      oauthReady: !!def?.oauth && envConfigured(def, vendorEnv()), metaHealth,
     },
   };
 }

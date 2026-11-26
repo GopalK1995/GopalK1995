@@ -49,11 +49,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ connector: 
   const check = await checkCallback({
     connector, query: { code: sp.get("code"), state: sp.get("state"), error: sp.get("error") }, cookieToken: req.cookies.get(cookieName(connector))?.value, secret,
     uid: session.uid, activeWs: active.ws.uuid,
+    // One statement: DELETE ... RETURNING. Select-then-delete let two parallel callbacks both see the row and both pass (INTG-017).
+    // Exactly one caller gets a row back; an expired state matches nothing and is also not consumable.
     consumeState: async (hash) => {
-      const r = await from(svc, "oauth_states").select("state_hash").eq("state_hash", hash).gt("expires_at" as never, new Date().toISOString());
-      if (r.error || !((r.data as unknown[] | null) ?? []).length) return false;
-      const del = await (from(svc, "oauth_states") as unknown as { delete(): { eq(c: string, v: string): PromiseLike<{ error: unknown }> } }).delete().eq("state_hash", hash);
-      return !del.error;
+      const del = await (from(svc, "oauth_states") as unknown as { delete(): { eq(c: string, v: string): { gt(c: string, v: string): { select(c: string): PromiseLike<{ data: unknown[] | null; error: unknown }> } } } })
+        .delete().eq("state_hash", hash).gt("expires_at", new Date().toISOString()).select("state_hash");
+      return !del.error && ((del.data as unknown[] | null) ?? []).length > 0;
     },
   });
   if (!check.ok) return fail(req, connector, check.reason === "denied" ? "oauth_denied" : check.reason === "expired" ? "oauth_expired" : check.reason === "state_mismatch" || check.reason === "state_replayed" ? "oauth_state" : "oauth_failed");

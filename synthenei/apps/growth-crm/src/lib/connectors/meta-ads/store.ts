@@ -2,6 +2,7 @@
 // touches tables; unit tests pass an in-memory fake. Every method is scoped by tenant and/or workspace. Lead dedupe, field maps
 // and external links reuse the framework's ConnectorStore (CoreLeadPort), so leads follow the same rules as every other connector.
 import type { ConnectorStore } from "../core/ports";
+import type { MetaHealth } from "./health";
 
 export interface ConnScope { tenantId: string; workspaceId: string; connectionId: string }
 
@@ -30,7 +31,12 @@ export interface OutboundRow {
 }
 export interface OutboundPatch { status: string; externalId?: string | null; statusAt: string; errorCode?: string | null; errorDetail?: string | null }
 
+/** What the health check learned; `webhook` undefined = keep the stored webhook state. tokenExpiresAt undefined = leave the column alone. */
+export interface HealthRecord { tokenExpiresAt?: string | null; health: Partial<MetaHealth> & { checkedAt: string } }
+
 export interface MetaStore {
+  /** Merges `health` into integrations.health.meta and optionally sets token_expires_at. Optional so older fakes keep working; the health check degrades to "not recorded". */
+  recordHealth?(connectionId: string, r: HealthRecord): Promise<void>;
   /** page_id and ig_user_id -> workspace. Globally unique: an asset owned by another workspace's live connection is refused. */
   registerAssets(a: AssetRegistration): Promise<RegisterResult>;
   /** Finds the campaign for a Meta campaign id in this workspace, creating it when unknown. `synthetic` marks sandbox rows. */

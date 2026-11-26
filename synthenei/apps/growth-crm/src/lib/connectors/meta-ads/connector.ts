@@ -35,7 +35,7 @@ async function streamCtx(ctx: SyncContext) {
 
 async function dispatchStream(ctx: SyncContext): Promise<SyncResult> {
   const { rt, c } = await streamCtx(ctx);
-  if (!c.secrets[CRED.igUserId]) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_instagram_account" } };
+  if (!c.secrets[CRED.igUserId]) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_instagram_account" }, status: "skipped", reason: "no_instagram_account" };
   let rejected = 0;
   const s = await dispatchQueued(rt.deps, ctx.conn, c.gateway, (reason) => { rejected++; ctx.reject?.(reason); });
   return { cursor: null, rowsIn: s.sent, rowsRejected: rejected, done: true, sample: { sent: s.sent, blocked: s.blocked, failed: s.failed, retry: s.retry, mode: c.gateway.kind } };

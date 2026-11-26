@@ -12,10 +12,17 @@ export interface MapRowView {
   externalObject: string; externalField: string; localTable: string; localColumn: string; direction: "in" | "out" | "both";
   transform: string | null; transformArg: string; sample: string; custom: boolean;
 }
+/** One-line Meta connection health (AUD-036). Dates and names only. */
+export interface MetaHealthView {
+  scopesGranted: number | null; scopesRequested: number; scopesMissing: string[];
+  expiresAt: string | null; neverExpires: boolean; daysLeft: number | null;
+  webhook: "yes" | "no" | "unknown"; lastOkAt: string | null; attention: boolean;
+}
 export interface DetailView {
   row: ConnectorRowView; auth: string; authKind: "oauth2" | "api_key" | "service_account" | "webhook_secret" | "none";
   fields: { key: string; label: string; secret: boolean }[]; sandboxSupported: boolean; sandboxHowTo: string | null;
   steps: string[]; flows: { object: string; dir: "in" | "out" }[]; runs: RunView[]; map: MapRowView[]; editable: boolean; accountLabel: string | null;
   oauthReady: boolean;
+  metaHealth: MetaHealthView | null;
 }
 export const MAP_TABLES = ["leads", "contacts", "accounts", "deals"] as const;

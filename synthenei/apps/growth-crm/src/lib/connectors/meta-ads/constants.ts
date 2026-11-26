@@ -14,8 +14,16 @@ export const META_ENV = {
 
 export const DEFAULT_API_BASE = "https://graph.facebook.com";
 export const DEFAULT_API_VERSION = "v21.0";
-export const OAUTH_DIALOG_URL = "https://www.facebook.com/v21.0/dialog/oauth";
-export const OAUTH_TOKEN_URL = "https://graph.facebook.com/v21.0/oauth/access_token";
+/** META_GRAPH_API_VERSION when it looks like a Graph version ("v23.0"); anything else (typo, injection) falls back to the default. */
+export function graphVersionOf(raw: string | undefined): string {
+  const v = (raw ?? "").trim();
+  return /^v\d{1,2}\.\d{1,2}$/.test(v) ? v : DEFAULT_API_VERSION;
+}
+export const oauthDialogUrl = (raw?: string): string => `https://www.facebook.com/${graphVersionOf(raw)}/dialog/oauth`;
+export const oauthTokenUrl = (raw?: string): string => `https://graph.facebook.com/${graphVersionOf(raw)}/oauth/access_token`;
+/** Resolved once at module load from the deployment env, like every other connector's OAuth URLs (the ConnectorDef is a constant). */
+export const OAUTH_DIALOG_URL = oauthDialogUrl(process.env[META_ENV.apiVersion]);
+export const OAUTH_TOKEN_URL = oauthTokenUrl(process.env[META_ENV.apiVersion]);
 
 /** Permissions requested together with the rest of the Meta review (docs/META-PERMISSIONS.md). */
 export const SCOPES = [

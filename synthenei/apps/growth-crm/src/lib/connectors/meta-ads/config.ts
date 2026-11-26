@@ -1,7 +1,7 @@
 // Picks the gateway for a connection. Real calls happen only with real credentials; the mock gateway serves demo/staging
 // showcases and is refused in production (a tenant presenting the mock token there gets a credential error, never a fake "connected").
 import { CredentialError, type ConnectionSecrets } from "../core/types";
-import { CRED, DEFAULT_API_BASE, DEFAULT_API_VERSION, META_ENV } from "./constants";
+import { CRED, DEFAULT_API_BASE, graphVersionOf, META_ENV } from "./constants";
 import type { MetaGateway } from "./gateway";
 import { makeGraphGateway } from "./graph";
 import { META_MOCK_TOKEN, makeMockGateway, type MockGateway } from "./mock";
@@ -11,7 +11,7 @@ type Env = Record<string, string | undefined>;
 export const mockAllowed = (env: Env): boolean => env.APP_ENV !== "production";
 export const isMockCredentials = (s: ConnectionSecrets): boolean => s[CRED.accessToken] === META_MOCK_TOKEN;
 export const apiBaseOf = (env: Env): string => (env[META_ENV.apiBase] ?? "").trim() || DEFAULT_API_BASE;
-export const apiVersionOf = (env: Env): string => (env[META_ENV.apiVersion] ?? "").trim() || DEFAULT_API_VERSION;
+export const apiVersionOf = (env: Env): string => graphVersionOf(env[META_ENV.apiVersion]);
 
 const mocks = new Map<string, MockGateway>();
 /** Test helper. */

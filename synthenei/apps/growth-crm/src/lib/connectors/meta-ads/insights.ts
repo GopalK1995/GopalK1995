@@ -2,9 +2,10 @@
 // step. The sync is resumable (cursor = last day loaded + the page being read), idempotent (upsert on campaign + day), re-reads
 // the trailing days because Meta restates attribution, and never invents a number: an unparseable row is rejected, not zeroed.
 import { CredentialError, type ConnectionRow, type ConnectionSecrets, type SyncResult } from "../core/types";
-import { CRED, INSIGHTS_AFTER_HOUR_IST, INSIGHTS_BACKFILL_DAYS, INSIGHTS_LOOKBACK_DAYS, effectiveScopes, TOKEN_WARN_DAYS } from "./constants";
+import { CRED, INSIGHTS_AFTER_HOUR_IST, INSIGHTS_BACKFILL_DAYS, INSIGHTS_LOOKBACK_DAYS, TOKEN_WARN_DAYS } from "./constants";
 import type { MetaGateway, RawAction, RawInsight } from "./gateway";
 import { scopeOf } from "./leads";
+import { daysLeft, effectiveExpiry, expiringSoon, healthFromDebug } from "./health";
 import type { DailyMetricRow, MetaDeps } from "./store";
 
 export type InsightReject = "bad_day" | "no_campaign" | "bad_spend" | "currency_unconvertible";
@@ -85,9 +86,9 @@ export interface StreamCtx { deps: MetaDeps; conn: ConnectionRow; secrets: Conne
 
 export async function insightsStep(c: StreamCtx, cursorIn: unknown): Promise<SyncResult> {
   const cur = asCursor(cursorIn), adAccount = c.secrets[CRED.adAccountId];
-  if (!adAccount) return { cursor: cur, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_ad_account" } };
+  if (!adAccount) return { cursor: cur, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_ad_account" }, status: "skipped", reason: "no_ad_account_selected" };
   const win: { since: string; until: string; after?: string } | null = cur.win ?? planWindow(c.deps.now(), cur.through);
-  if (!win) return { cursor: { through: cur.through }, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "up_to_date" } };
+  if (!win) return { cursor: { through: cur.through }, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "up_to_date" }, status: "skipped", reason: "already_loaded_today" };
 
   const page = await c.gateway.insights({ adAccountId: adAccount, since: win.since, until: win.until, after: win.after });
   const fx = fxRatesOf(c.conn.settings), campaigns = new Map<string, string>(), rows: DailyMetricRow[] = [];
@@ -105,7 +106,9 @@ export async function insightsStep(c: StreamCtx, cursorIn: unknown): Promise<Syn
   if (rows.length) await c.deps.store.upsertDailyMetrics(rows, { ...scopeOf(c.conn), source: c.gateway.kind === "mock" ? "mock" : "api" });
   const sample = { days: `${win.since}..${win.until}`, rows: rows.length, mode: c.gateway.kind };
   if (page.after) return { cursor: { through: cur.through, win: { ...win, after: page.after } }, rowsIn: rows.length, rowsRejected: rejected, done: false, sample };
-  return { cursor: { through: win.until }, rowsIn: rows.length, rowsRejected: rejected, done: true, sample };
+  // DATA-008 / INTG-024: Meta answering with zero rows is "no data" (no spend in the window, or the account has no campaigns), not a green success.
+  const empty = rows.length === 0 && rejected === 0 && !cur.win?.after;
+  return { cursor: { through: win.until }, rowsIn: rows.length, rowsRejected: rejected, done: true, sample, ...(empty ? { status: "no_data" as const, reason: "no_ad_insights_for_window" } : {}) };
 }
 
 // ---- token health (once per IST day) ----
@@ -122,10 +125,25 @@ export function tokenState(expiresAt: string | null | undefined, now: Date, warn
 export async function healthStep(c: StreamCtx, cursorIn: unknown): Promise<SyncResult> {
   const day = istDay(c.deps.now());
   const last = cursorIn && typeof cursorIn === "object" ? (cursorIn as { day?: string }).day : undefined;
-  if (last === day) return { cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "checked_today" } };
+  if (last === day) return { cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "checked_today" }, status: "skipped", reason: "checked_today" };
   const d = await c.gateway.debugToken();
   if (!d.valid) throw new CredentialError("Meta says this access token is no longer valid");   // -> needs_attention, visible to the owner
-  const missing = effectiveScopes().filter((s) => d.scopes.length > 0 && !d.scopes.includes(s));
-  const daysLeft = d.expiresAt && d.expiresAt > 0 ? Math.floor((d.expiresAt * 1000 - c.deps.now().getTime()) / DAY_MS) : null;
-  return { cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true, sample: { valid: true, days_left: daysLeft, missing_scopes: missing, mode: c.gateway.kind } };
+  const now = c.deps.now();
+  const h = healthFromDebug(d, now);
+  const missing = h.scopesMissing;
+  const left = daysLeft(effectiveExpiry(h), now);
+  // INTG-007: the expiry used to stay NULL in the database, so a dying token looked eternal. Record it (the user token's expires_at into
+  // token_expires_at so the renewal path can act; both dates into health for the page) and warn inside the window.
+  let recorded = false;
+  if (c.deps.store.recordHealth) {
+    const { webhook: _w, ...rest } = h;
+    await c.deps.store.recordHealth(c.conn.id, { tokenExpiresAt: h.tokenExpiresAt, health: rest });
+    recorded = true;
+  }
+  const soon = expiringSoon(h, now);
+  return {
+    cursor: { day }, rowsIn: 0, rowsRejected: 0, done: true,
+    ...(soon ? { status: "partial" as const, reason: left !== null && left < 0 ? "token_expired_reconnect" : "token_expiring_reconnect" } : {}),
+    sample: { valid: true, days_left: left, token_expires: h.tokenExpiresAt, data_access_expires: h.dataAccessExpiresAt, missing_scopes: missing, recorded, mode: c.gateway.kind },
+  };
 }

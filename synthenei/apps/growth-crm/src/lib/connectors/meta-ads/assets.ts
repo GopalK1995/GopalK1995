@@ -9,13 +9,14 @@ import { CredentialError, TransientError, type ConnectionSecrets } from "../core
 import { gatewayFor } from "./config";
 import { CRED, META_CONNECTOR_ID, META_ENV, WEBHOOK_KEYS } from "./constants";
 import type { AdAccountAsset, PageAsset } from "./gateway";
+import { healthFromDebug, type MetaHealth, type WebhookHealth } from "./health";
 import type { MetaStore } from "./store";
 
 export type AssetFail = "not_found" | "not_connected" | "not_configured" | "token_rejected" | "page_not_managed" | "ad_account_not_available" | "page_taken" | "ig_taken" | "vault_failed" | "audit_failed";
 export type AssetResult<T> = { ok: true; value: T } | { ok: false; code: AssetFail };
 export interface Actor { uid: string; tenantId: string; workspaceId: string }
 export interface AssetChoice { pageId: string; adAccountId?: string }
-export interface Selected { pageName: string; igUsername?: string; adAccountName?: string; /** the hub.challenge token to paste into the Meta app's webhook settings */ verifyToken: string }
+export interface Selected { pageName: string; igUsername?: string; adAccountName?: string; /** false = Meta refused or was unreachable: instant leads and DMs are off until a retry works */ webhookSubscribed: boolean; /** the hub.challenge token to paste into the Meta app's webhook settings */ verifyToken: string }
 
 async function connectionOf(d: RuntimeDeps, actor: Actor, id: string) {
   const conn = await d.store.getConnection(id);
@@ -75,8 +76,15 @@ export async function selectMetaAssets(d: RuntimeDeps, meta: MetaStore, actor: A
     // 4. Webhook subscription: leads always, Instagram messages when an Instagram account is linked.
     // Best effort: webhooks need leads_retrieval / pages_manage_metadata. Without them (e.g. a Meta app that has no Lead Ads use case yet)
     // the page is still stored and the metrics sync (polling) works; only instant lead and DM delivery is off until the scopes exist.
-    try { await gw.subscribePage(page.id, page.pageToken, page.igUserId ? ["leadgen", "messages"] : ["leadgen"]); }
-    catch (e) { if (!(e instanceof CredentialError)) throw e; console.warn("meta.subscribePage skipped:", String(e.message).slice(0, 200)); }
+    // INTG-011: a failure here used to be a console.warn only, so the chip said Connected while instant leads and DMs were dead.
+    // It is now recorded (integrations.health.meta.webhook) and shown on the integration page with a retry action.
+    const nowIso = (d.now ? d.now() : new Date()).toISOString();
+    let webhook: WebhookHealth;
+    try { await gw.subscribePage(page.id, page.pageToken, page.igUserId ? ["leadgen", "messages"] : ["leadgen"]); webhook = { subscribed: true, error: null, at: nowIso }; }
+    catch (e) {
+      webhook = { subscribed: false, error: e instanceof CredentialError ? "missing_permission" : "meta_unreachable", at: nowIso };
+      console.warn("meta.subscribePage failed:", webhook.error);
+    }
 
     // 5. Secrets: credential bundle (tokens + chosen ids) and the webhook bundle the edge verifies with.
     let verifyToken = "";
@@ -91,18 +99,41 @@ export async function selectMetaAssets(d: RuntimeDeps, meta: MetaStore, actor: A
       credId = await saveSecrets(d.vault, conn.id, bundle, conn.credentialSecretId);
       hookId = await saveSecrets(d.vault, conn.id, { [WEBHOOK_KEYS.appSecret]: appSecret, [WEBHOOK_KEYS.verifyToken]: verifyToken }, conn.webhookSecretId, "webhook");
     } catch { return { ok: false, code: "vault_failed" }; }
+    // The long-lived exchange does not always return expires_in (it did not on the live connection): ask debug_token for the real dates.
+    let health: MetaHealth | null = null;
+    try { health = healthFromDebug(await gw.debugToken(), d.now ? d.now() : new Date(), webhook); } catch { /* app credentials missing or Meta down: the daily health check fills it in */ }
+    if (!expiresInSec && health?.tokenExpiresAt) expiresInSec = Math.max(1, Math.floor((Date.parse(health.tokenExpiresAt) - (d.now ? d.now() : new Date()).getTime()) / 1000));
     await d.store.updateConnection(conn.id, {
       credentialSecretId: credId, webhookSecretId: hookId, externalAccountId: page.id, externalAccountLabel: page.name, lastError: null,
       ...(expiresInSec ? { tokenExpiresAt: new Date((d.now ? d.now() : new Date()).getTime() + expiresInSec * 1000).toISOString() } : {}),
     });
+    if (meta.recordHealth) { try { await meta.recordHealth(conn.id, { health: health ?? { webhook, checkedAt: nowIso } }); } catch { /* health is advisory */ } }
     if (d.audit) {
       try { await d.audit({ action: "meta.assets_selected", summary: `Selected Meta page${page.igUserId ? ", Instagram account" : ""}${ad ? " and ad account" : ""}`, connectionId: conn.id, detail: { page: page.id, instagram: !!page.igUserId, ad_account: !!ad } }); }
       catch { return { ok: false, code: "audit_failed" }; }
     }
-    return { ok: true, value: { pageName: page.name, igUsername: page.igUsername, adAccountName: ad?.name, verifyToken } };
+    return { ok: true, value: { pageName: page.name, igUsername: page.igUsername, adAccountName: ad?.name, verifyToken, webhookSubscribed: webhook.subscribed } };
   } catch (e) {
     if (e instanceof CredentialError) { console.warn("meta.selectAssets rejected:", String(e.message).slice(0, 200)); return { ok: false, code: "token_rejected" }; }
     if (e instanceof TransientError) throw e;
     throw e;
   }
+}
+
+/** Re-runs the page subscription with the stored page token (the "Retry" action on the integration page). The outcome is recorded either way. */
+export async function retryWebhookSubscription(d: RuntimeDeps, meta: MetaStore, actor: Actor, connectionId: string, fetchImpl?: typeof fetch): Promise<AssetResult<{ subscribed: boolean }>> {
+  const conn = await connectionOf(d, actor, connectionId);
+  if (!conn) return { ok: false, code: "not_found" };
+  if (!conn.credentialSecretId || !usable(conn.status)) return { ok: false, code: "not_connected" };
+  const secrets = await loadSecrets(d.vault, conn);
+  const pageId = secrets[CRED.pageId], pageToken = secrets[CRED.pageToken];
+  if (!pageId || !pageToken) return { ok: false, code: "not_connected" };
+  const gw = gatewayFor({ connectionId: conn.id, secrets, env: d.env, fetchImpl });
+  const at = (d.now ? d.now() : new Date()).toISOString();
+  let webhook: WebhookHealth;
+  try { await gw.subscribePage(pageId, pageToken, secrets[CRED.igUserId] ? ["leadgen", "messages"] : ["leadgen"]); webhook = { subscribed: true, error: null, at }; }
+  catch (e) { webhook = { subscribed: false, error: e instanceof CredentialError ? "missing_permission" : "meta_unreachable", at }; }
+  if (meta.recordHealth) await meta.recordHealth(conn.id, { health: { webhook, checkedAt: at } });
+  if (d.audit) { try { await d.audit({ action: "meta.webhook_retry", summary: webhook.subscribed ? "Retried the Meta webhook subscription: subscribed" : "Retried the Meta webhook subscription: still failing", connectionId: conn.id, detail: { subscribed: webhook.subscribed, error: webhook.error } }); } catch { /* best effort */ } }
+  return { ok: true, value: { subscribed: webhook.subscribed } };
 }

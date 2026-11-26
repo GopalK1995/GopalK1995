@@ -9,11 +9,12 @@ import { failResult, okResult, runAction, type ActionResult } from "@/lib/action
 import { actorFromPrincipal, audit } from "@/lib/audit/record";
 import { requestRuntime } from "@/lib/connectors/core/runtime";
 import { isRunnable } from "@/lib/connectors/core/sync";
-import { listMetaAssets, selectMetaAssets, supabaseMetaStore, type AssetFail } from "@/lib/connectors/meta-ads";
+import { listMetaAssets, retryWebhookSubscription, selectMetaAssets, supabaseMetaStore, type AssetFail } from "@/lib/connectors/meta-ads";
 import { serviceDb } from "@/lib/db/service";
 import { getT } from "@/i18n/server";
 import { enqueue } from "@/lib/jobs/registry";
 import { manageCtx, type IntCtx } from "../../integrations/_lib/ctx";
+import { getIntT } from "../../integrations/_lib/strings";
 
 const id = z.string().min(1).max(64);
 export interface PageChoice { id: string; name: string; igUsername?: string }
@@ -63,5 +64,18 @@ export async function refreshSocialNow(connectionId: string): Promise<ActionResu
     await enqueue("connector_sync", "connector.sync", { connection_id: cid, stream: "social", trigger: "manual", started_by: c.uid, dedupe: `social:${cid}:${Date.now()}` }, { tenantId: c.tenant });
     revalidatePath("/analytics/social");
     return okResult(t("refreshQueued"), { sub: t("refreshQueuedSub") });
+  });
+}
+
+/** Re-runs the Meta webhook subscription for the connection (INTG-011): the integration page shows when it failed and offers this. */
+export async function retryMetaWebhook(connectionId: string): Promise<ActionResult<{ subscribed: boolean }>> {
+  return runAction(async () => {
+    const cid = id.parse(connectionId), c = await manageCtx(), t = await getIntT();
+    if (c.demo) return okResult(t("metaHealth.retryOk"), { data: { subscribed: true } });
+    const r = await retryWebhookSubscription(await rt(c), supabaseMetaStore(serviceDb()), { uid: c.uid, tenantId: c.tenant, workspaceId: c.ws }, cid);
+    if (!r.ok) return failResult("not_found", (await getT("social"))(FAIL[r.code]));
+    revalidatePath("/integrations/meta-ads");
+    if (!r.value.subscribed) return failResult("error", t("metaHealth.retryStill"));
+    return okResult(t("metaHealth.retryOk"), { data: { subscribed: true } });
   });
 }
