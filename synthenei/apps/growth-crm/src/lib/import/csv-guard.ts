@@ -12,6 +12,11 @@ export function csvEscape(s: string): string {
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+/** One guarded, escaped cell. The only way any exporter should write a value. */
+export const csvCell = (v: unknown): string => csvEscape(guardCell(v));
+/** One CSV line (no line terminator) from raw values. */
+export const csvLine = (cells: readonly unknown[]): string => cells.map(csvCell).join(",");
+
 export interface ToCsvOptions { bom?: boolean }
 /** Rows of raw values -> CSV text with every cell guarded and escaped. CRLF line ends (Excel-friendly). */
 export function toCsv(headers: string[], rows: unknown[][], opts: ToCsvOptions = {}): string {

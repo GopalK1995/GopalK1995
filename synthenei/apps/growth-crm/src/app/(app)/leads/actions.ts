@@ -7,6 +7,7 @@ import { can, ROLE_LABEL, type Action } from "@/lib/auth/roles";
 import type { Lead } from "@/lib/data/types";
 import { vocabFor } from "@/lib/vertical";
 import { assertCan } from "@/lib/authz/load";
+import { csvLine } from "@/lib/import/csv-guard";
 import { can as engineCan } from "@/lib/authz";
 import { failResult, okResult, runAction, type ActionResult } from "@/lib/actions/result";
 import { DbError } from "@/lib/db/errors";
@@ -141,13 +142,12 @@ export async function exportLeads(ids: string[], maskPersonal: boolean): Promise
     const [leads, accounts, team] = await Promise.all([ctx.ds.leads(), ctx.ds.accounts(), ctx.ds.team()]);
     const rows = ctx.scope.leads(leads).filter((l) => ids.includes(l.id));
     const mask = (s: string) => (maskPersonal ? s.replace(/^(.).*?(@.*)?$/, (_, a: string, b?: string) => `${a}•••${b ?? ""}`) : s);
-    const cell = (x: string | number | null | undefined) => { const s = x === null || x === undefined ? "" : String(x); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const head = ["lead_id", "name", "title", "firm", "district", "stage", "score", "owner", "channel", "utm_source", "utm_medium", "utm_campaign", "phone", "email", "created_at", "last_touch_at"];
     const body = rows.map((l) => {
       const a = accounts.find((x) => x.id === l.accountId);
-      return [l.id, maskPersonal ? l.name.split(" ").map((p) => p[0] + ".").join(" ") : l.name, l.title, a?.name, a?.district, l.stage, l.score, team.find((m) => m.id === l.ownerId)?.name, l.channel, l.utm.source, l.utm.medium, l.utm.campaign, mask(l.phone), mask(l.email), l.createdAt, l.lastTouchAt].map(cell).join(",");
+      return csvLine([l.id, maskPersonal ? l.name.split(" ").map((p) => p[0] + ".").join(" ") : l.name, l.title, a?.name, a?.district, l.stage, l.score, team.find((m) => m.id === l.ownerId)?.name, l.channel, l.utm.source, l.utm.medium, l.utm.campaign, mask(l.phone), mask(l.email), l.createdAt, l.lastTouchAt]);
     });
-    return { ...okResult(v.ls.a.exported(rows.length, maskPersonal), { sub: "Export is written to the audit log with your name and the filter used." }), csv: [head.join(","), ...body].join("\n"), filename: `leads-${ctx.active.ws.id}-${ctx.now.slice(0, 10)}.csv` };
+    return { ...okResult(v.ls.a.exported(rows.length, maskPersonal), { sub: "Export is written to the audit log with your name and the filter used." }), csv: [csvLine(head), ...body].join("\n"), filename: `leads-${ctx.active.ws.id}-${ctx.now.slice(0, 10)}.csv` };
   }
   const r = await real(ctx0, async () => {
     const principal = await assertCan("leads.export"); // supportBlocked in the catalogue: denied in any support session

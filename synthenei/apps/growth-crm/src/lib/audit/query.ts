@@ -4,6 +4,7 @@ import type { Db } from "@/lib/db/client";
 import { DbError, throwIfError } from "@/lib/db/errors";
 import { clampLimit, decodeCursor, encodeCursor, type Page } from "@/lib/db/page";
 import { from, type Qb } from "@/lib/db/query";
+import { csvCell as csvGuardedCell, csvLine } from "@/lib/import/csv-guard";
 import { isSecretKey, maskPiiText, redactDetail, scrubSecretsText } from "./redact";
 import { AUDIT_SOURCES, type AuditFilters, type AuditView } from "./types";
 
@@ -138,13 +139,10 @@ const CSV_COLS: [string, (v: AuditView) => string][] = [
   ["reason", (v) => v.reason ?? ""], ["support_session", (v) => v.supportSessionId ?? ""], ["request_id", (v) => v.requestId ?? ""], ["ip", (v) => v.ip],
 ];
 /** A cell that starts with = + - @ tab or CR is neutralised so spreadsheets do not run it as a formula. */
-export function csvCell(raw: string): string {
-  const x = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
-  return /[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x;
-}
+export const csvCell = (raw: string): string => csvGuardedCell(raw);
 /** Rows must already be masked (maskAuditView). */
 export function auditCsv(rows: AuditView[]): string {
-  return [CSV_COLS.map(([h]) => h).join(","), ...rows.map((r) => CSV_COLS.map(([, f]) => csvCell(f(r))).join(","))].join("\r\n") + "\r\n";
+  return [csvLine(CSV_COLS.map(([h]) => h)), ...rows.map((r) => csvLine(CSV_COLS.map(([, f]) => f(r))))].join("\r\n") + "\r\n";
 }
 
 /** Reads search params into filters (strings only). */

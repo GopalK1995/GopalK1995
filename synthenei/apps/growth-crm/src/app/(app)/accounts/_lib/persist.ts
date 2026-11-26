@@ -5,6 +5,7 @@ import { failResult, okResult, type ActionResult } from "@/lib/actions/result";
 import { DbError } from "@/lib/db/errors";
 import type { Page } from "@/lib/db/page";
 import type { Account, AccountInput, Contact, ContactInput } from "@/lib/db/repo/types";
+import { csvLine } from "@/lib/import/csv-guard";
 import type { Filter, ListQuery } from "@/lib/db/repo/base";
 import type { CreateAccountInput, CreateContactInput } from "./schemas";
 
@@ -152,22 +153,18 @@ export async function deleteContact(c: Ctx, id: string, expectedVersion: number,
 }
 
 // ---------- export ----------
-const cell = (v: string | number | null | undefined) => {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
 export const maskContact = (s: string) => s.replace(/^(.).*?(@.*)?$/, (_, a: string, b?: string) => `${a}***${b ?? ""}`);
 export const maskPerson = (n: string) => n.split(" ").filter(Boolean).map((p) => p[0] + ".").join(" ");
 
 export function accountsCsv(rows: Account[], ownerNames: Record<string, string>): string {
   const head = ["account_id", "name", "city", "district", "status", "owner", "website", "created_at"];
-  const body = rows.map((a) => [a.id, a.name, a.city, a.district, a.customerStatus, a.ownerId ? ownerNames[a.ownerId] ?? "" : "", a.website, a.createdAt].map(cell).join(","));
-  return [head.join(","), ...body].join("\n");
+  const body = rows.map((a) => csvLine([a.id, a.name, a.city, a.district, a.customerStatus, a.ownerId ? ownerNames[a.ownerId] ?? "" : "", a.website, a.createdAt]));
+  return [csvLine(head), ...body].join("\n");
 }
 /** Contacts carry personal data: masked unless the caller holds pii.read AND chose unmasked. */
 export function contactsCsv(rows: Contact[], opts: { mask: boolean; accountNames: Record<string, string> }): string {
   const head = ["contact_id", "name", "role", "account", "decision_maker", "phone", "email", "created_at"];
   const m = opts.mask;
-  const body = rows.map((r) => [r.id, m ? maskPerson(r.fullName) : r.fullName, r.roleTitle, r.accountId ? opts.accountNames[r.accountId] ?? "" : "", r.isDecisionMaker ? "yes" : "no", m ? maskContact(r.phone ?? "") : r.phone, m ? maskContact(r.email ?? "") : r.email, r.createdAt].map(cell).join(","));
-  return [head.join(","), ...body].join("\n");
+  const body = rows.map((r) => csvLine([r.id, m ? maskPerson(r.fullName) : r.fullName, r.roleTitle, r.accountId ? opts.accountNames[r.accountId] ?? "" : "", r.isDecisionMaker ? "yes" : "no", m ? maskContact(r.phone ?? "") : r.phone, m ? maskContact(r.email ?? "") : r.email, r.createdAt]));
+  return [csvLine(head), ...body].join("\n");
 }

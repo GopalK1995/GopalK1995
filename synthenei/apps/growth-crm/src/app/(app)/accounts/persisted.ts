@@ -8,6 +8,7 @@ import { assertCan } from "@/lib/authz/load";
 import { can as engineCan } from "@/lib/authz";
 import { failResult, okResult, type ActionResult } from "@/lib/actions/result";
 import { DbError } from "@/lib/db/errors";
+import { csvLine } from "@/lib/import/csv-guard";
 import { accountsRepo } from "@/lib/db/repo/accounts";
 import { contactsRepo } from "@/lib/db/repo/contacts";
 import type { Account } from "@/lib/db/repo/types";
@@ -146,7 +147,7 @@ export async function exportAccounts(): Promise<ActionResult & { csv?: string; f
     if (!allowed("exportCsv", { role: ctx.role, support: ctx.support })) return deny(ctx, "exportCsv");
     const rows = await ctx.ds.accounts();
     const own = ctx.role === "sales_rep" ? rows.filter((a) => a.ownerId === ctx.session.uid) : rows;
-    const csv = ["account_id,name,city,district,status", ...own.map((a) => [a.id, `"${a.name.replace(/"/g, '""')}"`, a.city, a.district, a.status].join(","))].join("\n");
+    const csv = [csvLine(["account_id", "name", "city", "district", "status"]), ...own.map((a) => csvLine([a.id, a.name, a.city, a.district, a.status]))].join("\n");
     return { ...okResult(t("exported", { n: own.length }), { sub: t("exportedSub") }), csv, filename: name };
   }
   const r = await realRun(v, ctx.support, async () => {

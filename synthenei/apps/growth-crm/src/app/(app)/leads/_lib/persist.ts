@@ -2,6 +2,7 @@
 // Authorization (assertCan) happens in actions.ts BEFORE any of these run; audit rows and lead.* events come from DB triggers.
 import { okResult, type ActionResult } from "@/lib/actions/result";
 import type { ActivityInput, ActivityRow, Lead, LeadInput, TaskInput, TaskRow } from "@/lib/db/repo/types";
+import { csvLine } from "@/lib/import/csv-guard";
 import type { CreateLeadInput } from "./schemas";
 
 export interface Repos {
@@ -92,10 +93,6 @@ export async function dismissSuggestion(c: Ctx, lead: Lead, reason: string, msg:
 }
 
 // ---- export ----
-const csvCell = (v: string | number | null | undefined) => {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
 export const maskContact = (s: string) => s.replace(/^(.).*?(@.*)?$/, (_, a: string, b?: string) => `${a}***${b ?? ""}`);
 export const maskPerson = (n: string) => n.split(" ").filter(Boolean).map((p) => p[0] + ".").join(" ");
 
@@ -103,10 +100,10 @@ export const maskPerson = (n: string) => n.split(" ").filter(Boolean).map((p) =>
 export function buildCsv(rows: Lead[], opts: { maskPersonal: boolean; ownerNames: Record<string, string> }): string {
   const head = ["lead_id", "name", "title", "firm", "city", "status", "score", "owner", "source", "phone", "email", "created_at", "last_touch_at"];
   const m = opts.maskPersonal;
-  const body = rows.map((l) => [
+  const body = rows.map((l) => csvLine([
     l.id, m ? maskPerson(l.fullName) : l.fullName, l.roleTitle, l.firmName, l.city, l.status, l.score,
     l.ownerId ? opts.ownerNames[l.ownerId] ?? "" : "", l.source,
     m ? maskContact(l.phone ?? "") : l.phone, m ? maskContact(l.email ?? "") : l.email, l.createdAt, l.lastTouchAt,
-  ].map(csvCell).join(","));
-  return [head.join(","), ...body].join("\n");
+  ]));
+  return [csvLine(head), ...body].join("\n");
 }

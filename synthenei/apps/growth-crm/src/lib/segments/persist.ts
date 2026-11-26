@@ -5,6 +5,7 @@ import { okResult, type ActionResult } from "@/lib/actions/result";
 import { DbError } from "@/lib/db/errors";
 import type { CampaignInput, CampaignRow } from "@/lib/db/repo/types";
 import { compileRules, normalizeRules, type SegmentRule } from "./compile";
+import { csvLine } from "@/lib/import/csv-guard";
 import type { CustomFieldRef } from "./fields";
 import type { MetricRow } from "./metrics-csv";
 import type { SegmentInput, SegmentRow } from "./repo";
@@ -94,10 +95,4 @@ export async function updateSegment(c: Ctx, id: string, v: number, i: { name: st
   return okResult(msg.saved(row.name), { data: { version: row.version } });
 }
 
-/** CSV cell with spreadsheet-formula neutralisation (=, +, -, @, tab, CR) and RFC 4180 quoting. */
-export const csvCell = (v: unknown): string => {
-  let s = v === null || v === undefined ? "" : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
-export const toCsv = (head: string[], rows: unknown[][]): string => [head, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
+export const toCsv = (head: string[], rows: unknown[][]): string => [head, ...rows].map(csvLine).join("\n");
