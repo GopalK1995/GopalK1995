@@ -69,7 +69,7 @@ export function supabaseSocialStore(db: Db): SocialStore {
     async markSynced(accountId, r) {
       try { await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: r.status, last_error: r.error ?? null }).eq("id", accountId).select("id"), "account status"); }
       catch (e) {
-        // 'no_data' needs migration 0025 (check constraint). Until it is applied it is stored as 'partial' (never 'ok') with the same note.
+        // 'no_data' needs migration 0027 (check constraint). Until it is applied it is stored as 'partial' (never 'ok') with the same note.
         if (r.status !== "no_data") throw e;
         await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: "partial", last_error: r.error ?? "No data from Meta" }).eq("id", accountId).select("id"), "account status");
       }

@@ -73,7 +73,7 @@ export function supabaseStore(db: Db, appEnv: string): ConnectorStore {
       const patch = { status: f.status, rows_in: f.rowsIn, rows_out: f.rowsOut, rows_rejected: f.rowsRejected, error: f.error ?? null, payload_sample: f.payloadSample ?? null, finished_at: new Date().toISOString() };
       try { await rows(q("sync_runs").update(patch).eq("id", id).select("id"), "finish run"); }
       catch (e) {
-        // 'skipped' needs migration 0025 (enum value). Until it is applied, a skipped run is stored as 'partial' with its reason in `error`: never as success.
+        // 'skipped' needs migration 0027 (enum value). Until it is applied, a skipped run is stored as 'partial' with its reason in `error`: never as success.
         if (f.status !== "skipped") throw e;
         await rows(q("sync_runs").update({ ...patch, status: "partial", error: f.error ?? "Skipped" }).eq("id", id).select("id"), "finish run");
       }
