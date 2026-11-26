@@ -64,7 +64,7 @@
   "sheetNoCurve": "No daily numbers for this post yet.",
   "openPost": "Open on {platform}",
   "pickTitle": "Choose what to track",
-  "pickHelp": "Pick the Facebook Page. Its linked Instagram account is tracked with it. Add more accounts by connecting again.",
+  "pickHelp": "Pick the Facebook Page. Its linked Instagram account is tracked with it. Each workspace tracks one Page for now: choosing another Page replaces it. Support for several accounts is planned.",
   "pickPage": "Facebook Page",
   "pickAds": "Ad account (optional)",
   "pickNone": "None",

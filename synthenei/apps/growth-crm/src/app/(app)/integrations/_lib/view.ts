@@ -15,10 +15,12 @@ import type { ConnectionFacts } from "@/lib/connectors/core/status";
 import type { FieldMapSpec, IntegrationStatus } from "@/lib/connectors/core/types";
 import { daysLeft, effectiveExpiry, expiringSoon, readMetaHealth } from "@/lib/connectors/meta-ads/health";
 import { effectiveScopes } from "@/lib/connectors/meta-ads/constants";
-import type { ConnectorRowView, DetailView, MapRowView, MetaHealthView } from "./types";
+import type { ConnectorRowView, DetailView, MapRowView, MetaConnectView, MetaHealthView } from "./types";
 
 type R = Record<string, unknown>;
-const s = (v: unknown): string | null => (typeof v === "string" ? v : null);
+/** The connector behind the "Instagram and Facebook" entry. */
+export const META_ID = "meta-ads";
+const s =(v: unknown): string | null => (typeof v === "string" ? v : null);
 export const availabilityEnv = () => (env.appEnv === "production" ? "production" : env.appEnv === "demo" ? "demo" : "staging");
 
 interface Catalog { id: string; name: string; category: string; authKind: string; verticals: string[]; sandboxSupported: boolean }
@@ -64,9 +66,12 @@ export async function loadList(ws: string, vertical: string): Promise<ListResult
   const known = new Set(l.catalog.map((c) => c.id));
   // Code-registered connectors that the catalogue does not list yet (the mock connector on non-production): shown, never connectable until a catalogue row exists.
   const extra: Catalog[] = listConnectors().filter((d) => !known.has(d.id) && isUsableIn(d, env.appEnv)).map((d) => ({ id: d.id, name: d.name, category: d.category, authKind: d.auth, verticals: [vertical], sandboxSupported: d.sandbox.supported }));
-  const rows = [...l.catalog.filter((c) => c.verticals.includes(vertical) || l!.conns.has(c.id)), ...extra].map((c) => rowFor(c, l!));
+  // Instagram and Facebook (the meta-ads connector) is listed for every vertical: the social data has no other front door (UXA-016).
+  const rows = [...l.catalog.filter((c) => c.verticals.includes(vertical) || l!.conns.has(c.id) || c.id === META_ID), ...extra].map((c) => rowFor(c, l!));
   const ORDER: Record<string, number> = { needs_attention: 0, error: 1, connected: 2, sandbox: 3, available: 4, disconnected: 5, needs_vendor_approval: 6, needs_client_credentials: 7, not_configured: 8, not_available: 9 };
   rows.sort((a, b) => (ORDER[a.chip] ?? 9) - (ORDER[b.chip] ?? 9) || a.name.localeCompare(b.name));
+  const mi = rows.findIndex((r) => r.id === META_ID);
+  if (mi > 0) rows.unshift(...rows.splice(mi, 1));   // pinned first: it is the owner's main job
   return { status: "ok", rows, failed: l.failed };
 }
 
@@ -104,7 +109,7 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
   } else if (spec) {
     map = spec.fieldMap.map((f) => ({ externalObject: "", externalField: f.source, localTable: f.target.split(".")[0] ?? "", localColumn: f.target.split(".").slice(1).join(".") || f.target, direction: "in", transform: null, transformArg: "", sample: f.note ?? "", custom: false }));
   }
-  let metaHealth: MetaHealthView | null = null;
+  let metaHealth: MetaHealthView | null = null, metaConnect: MetaConnectView | null = null;
   const connRow = l.conns.get(id);
   if (id === "meta-ads" && row.connectionId && connRow && (row.chip === "connected" || row.chip === "needs_attention" || row.chip === "error")) {
     const mh = readMetaHealth((connRow as R).health);
@@ -117,26 +122,49 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
     const expIso = effectiveExpiry({ tokenExpiresAt: tokenIso, dataAccessExpiresAt: mh?.dataAccessExpiresAt ?? null });
     const webhook: MetaHealthView["webhook"] = mh?.webhook ? (mh.webhook.subscribed ? "yes" : "no") : "unknown";
     // The 25-run log is mostly 15-minute dispatcher rows: ask for the last run that actually imported something.
-    let lastOkAt: string | null = null;
+    let lastOkAt: string | null = null, lastOkRows: number | null = null;
     try {
-      const ok = await from(db, "sync_runs").select("started_at").eq("integration_id", row.connectionId).in("status", ["success", "partial"]).in("stream", ["social", "insights"]).gt("rows_in", 0).order("started_at", { ascending: false }).limit(1);
-      lastOkAt = s(((ok.data as R[] | null) ?? [])[0]?.started_at);
+      const ok = await from(db, "sync_runs").select("started_at, rows_in").eq("integration_id", row.connectionId).in("status", ["success", "partial"]).in("stream", ["social", "insights"]).gt("rows_in", 0).order("started_at", { ascending: false }).limit(1);
+      const first = ((ok.data as R[] | null) ?? [])[0];
+      lastOkAt = s(first?.started_at);
+      lastOkRows = typeof first?.rows_in === "number" ? first.rows_in : null;
     } catch { /* the line then says "no successful sync yet" */ }
     metaHealth = {
       scopesGranted: grantedList.length ? requested.length - missing.length : null, scopesRequested: requested.length, scopesMissing: missing,
+      scopesGrantedList: grantedList, scopesRequestedList: requested,
       expiresAt: expIso, neverExpires: !!mh?.tokenNeverExpires && !expIso, daysLeft: daysLeft(expIso, now), webhook, lastOkAt,
       attention: webhook === "no" || expiringSoon({ tokenExpiresAt: tokenIso, dataAccessExpiresAt: mh?.dataAccessExpiresAt ?? null }, now) || missing.length > 0,
     };
+    // Chosen Page / Instagram account and what the first sync produced. Names and counts only; every read is optional.
+    let igUsername: string | null = null, accounts = 0, posts = 0;
+    try {
+      const a = await from(db, "meta_assets").select("platform, name").eq("integration_id", row.connectionId).limit(5);
+      igUsername = s(((a.data as R[] | null) ?? []).find((x) => x.platform === "instagram")?.name);
+    } catch { /* the step then says no Instagram account is linked */ }
+    try {
+      const cnt = (table: string) => (db as unknown as { from(t: string): { select(c: string, o: { count: "exact"; head: true }): { eq(c: string, v: string): PromiseLike<{ count: number | null }> } } }).from(table).select("id", { count: "exact", head: true }).eq("workspace_id", ws);
+      accounts = (await cnt("social_accounts")).count ?? 0;
+      posts = (await cnt("social_posts")).count ?? 0;
+    } catch { /* counts stay 0 */ }
+    metaConnect = {
+      connected: true, needsReconnect: row.chip === "needs_attention" || row.chip === "error", connectionId: row.connectionId,
+      pageName: s(connRow.external_account_label), igUsername, accounts, posts, lastOkRows,
+    };
+  } else if (id === META_ID) {
+    metaConnect = { connected: false, needsReconnect: false, connectionId: row.connectionId, pageName: null, igUsername: null, accounts: 0, posts: 0, lastOkRows: null };
   }
-  const flows = [...(spec?.inbound ?? []).map((object) => ({ object, dir: "in" as const })), ...(spec?.outbound ?? []).map((object) => ({ object, dir: "out" as const }))];
+  // Instagram and Facebook: the flow list and steps come from what the connector really does, not from the showcase sample text.
+  const flows = id === META_ID
+    ? [{ object: "metaFlow.leads", dir: "in" as const }, { object: "metaFlow.dms", dir: "in" as const }, { object: "metaFlow.insights", dir: "in" as const }, { object: "metaFlow.social", dir: "in" as const }, { object: "metaFlow.replies", dir: "out" as const }]
+    : [...(spec?.inbound ?? []).map((object) => ({ object, dir: "in" as const })), ...(spec?.outbound ?? []).map((object) => ({ object, dir: "out" as const }))];
   return {
     status: "ok", failed,
     view: {
       row, auth: def?.auth ?? cat.authKind, authKind: (def?.auth ?? cat.authKind) as DetailView["authKind"],
       fields: (def?.credentialFields ?? []).map((f) => ({ key: f.key, label: f.label, secret: f.secret })),
       sandboxSupported: def?.sandbox.supported ?? cat.sandboxSupported, sandboxHowTo: def?.sandbox.howTo ?? null,
-      steps: spec?.steps ?? [], flows, runs, map, editable: !!def && !!row.connectionId, accountLabel: null,
-      oauthReady: !!def?.oauth && envConfigured(def, vendorEnv()), metaHealth,
+      steps: id === META_ID ? [] : spec?.steps ?? [], flows, runs, map, editable: !!def && !!row.connectionId, accountLabel: null,
+      oauthReady: !!def?.oauth && envConfigured(def, vendorEnv()), metaHealth, metaConnect,
     },
   };
 }

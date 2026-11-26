@@ -15,6 +15,7 @@ export const SECTION_NS: Record<string, readonly string[]> = {
   inbox: ["ai"],
   import: ["imports"],
   analytics: ["social"],
+  integrations: ["social"],   // the Instagram and Facebook step list embeds the Page picker
 };
 
 export function pickNamespaces(messages: Messages, ns: readonly string[]): Messages {

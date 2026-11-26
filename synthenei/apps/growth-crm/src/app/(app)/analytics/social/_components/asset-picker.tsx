@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { listSocialAssets, selectSocialAssets, type AdChoice, type PageChoice } from "../actions";
 
-export function AssetPicker({ connectionId }: { connectionId: string }) {
+/** `embedded` drops the card chrome so the picker can sit inside a step of the Instagram and Facebook connect list. */
+export function AssetPicker({ connectionId, embedded = false }: { connectionId: string; embedded?: boolean }) {
   const t = useTranslations("social");
   const router = useRouter();
   const [pages, setPages] = useState<PageChoice[]>([]);
@@ -37,29 +38,31 @@ export function AssetPicker({ connectionId }: { connectionId: string }) {
   });
   const chosen = pages.find((p) => p.id === pageId);
 
-  return (
-    <Card>
-      <CardHeader title={t("pickTitle")} sub={t("pickHelp")} />
-      <CardBody>
+  const form = (
         <div className="grid max-w-md gap-3">
           <label className="grid gap-1 text-13 text-ink-2">{t("pickPage")}
-            <select value={pageId} onChange={(e) => setPageId(e.target.value)} className="h-8 rounded-control border border-field-line bg-surface px-2 text-13 text-ink">
+            <select value={pageId} onChange={(e) => setPageId(e.target.value)} className="h-11 rounded-control border border-field-line bg-surface px-2 text-13 text-ink md:h-8">
               {pages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           {chosen && <p className="text-12 text-ink-3">{chosen.igUsername ? t("pickWithIg", { name: chosen.igUsername }) : t("pickNoIg")}</p>}
           {ads.length > 0 && (
             <label className="grid gap-1 text-13 text-ink-2">{t("pickAds")}
-              <select value={adId} onChange={(e) => setAdId(e.target.value)} className="h-8 rounded-control border border-field-line bg-surface px-2 text-13 text-ink">
+              <select value={adId} onChange={(e) => setAdId(e.target.value)} className="h-11 rounded-control border border-field-line bg-surface px-2 text-13 text-ink md:h-8">
                 <option value="">{t("pickNone")}</option>
                 {ads.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </label>
           )}
-          <div><Button variant="primary" onClick={save} disabled={pending || !pageId} aria-busy={pending}>{t("pickSave")}</Button></div>
+          <div><Button variant="primary" className="h-11 md:h-8" onClick={save} disabled={pending || !pageId} aria-busy={pending}>{t("pickSave")}</Button></div>
           {msg && <p role={msg.ok ? "status" : "alert"} className={msg.ok ? "text-13 text-ink-2" : "text-13 text-danger"}>{msg.text}</p>}
         </div>
-      </CardBody>
+  );
+  if (embedded) return form;
+  return (
+    <Card>
+      <CardHeader title={t("pickTitle")} sub={t("pickHelp")} />
+      <CardBody>{form}</CardBody>
     </Card>
   );
 }

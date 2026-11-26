@@ -16,6 +16,8 @@ export interface PanelProps {
   authKind: "oauth2" | "api_key" | "service_account" | "webhook_secret" | "none"; fields: { key: string; label: string; secret: boolean }[];
   /** Why connecting is not possible right now (gate, permission, support, demo); null when it is. */
   connectBlocked: string | null; /** Why connection management (test, sync, disconnect) is not possible; null when it is. */ manageBlocked: string | null;
+  /** The Instagram and Facebook step list owns Connect and Reconnect; this panel then only carries test, sync and disconnect. */
+  hideAuthorise?: boolean;
   labels: Record<"connect" | "authorise" | "reconnect" | "test" | "disconnect" | "runNow" | "cancel" | "disconnectTitle" | "disconnectBody" | "generic", string>;
 }
 
@@ -36,15 +38,16 @@ export function ConnectPanel(p: PanelProps) {
 
   const connectNow = () => run(() => connectConnector(p.connectorId, values));
   const reconnecting = p.state === "attention";
+  const T = "h-11 md:h-8";   // 44 px touch target on a phone
 
   return (
     <div className="flex flex-col gap-4">
-      {(p.state === "idle" || reconnecting) && (
+      {!p.hideAuthorise && (p.state === "idle" || reconnecting) && (
         p.authKind === "oauth2" ? (
           <div>
             {p.connectBlocked
-              ? <Button variant="primary" disabledReason={p.connectBlocked}><Link2 />{reconnecting ? p.labels.reconnect : p.labels.authorise}</Button>
-              : <a href={`/api/oauth/${p.connectorId}/start?ws=${encodeURIComponent(p.ws)}${p.connectionId ? `&conn=${encodeURIComponent(p.connectionId)}` : ""}`} className="inline-flex"><Button variant="primary" type="button"><Link2 />{reconnecting ? p.labels.reconnect : p.labels.authorise}</Button></a>}
+              ? <Button variant="primary" className={T} disabledReason={p.connectBlocked}><Link2 />{reconnecting ? p.labels.reconnect : p.labels.authorise}</Button>
+              : <a href={`/api/oauth/${p.connectorId}/start?ws=${encodeURIComponent(p.ws)}${p.connectionId ? `&conn=${encodeURIComponent(p.connectionId)}` : ""}`} className="inline-flex"><Button variant="primary" type="button" className={T}><Link2 />{reconnecting ? p.labels.reconnect : p.labels.authorise}</Button></a>}
           </div>
         ) : (
           <form className="flex max-w-md flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (!p.connectBlocked) connectNow(); }} autoComplete="off">
@@ -53,20 +56,20 @@ export function ConnectPanel(p: PanelProps) {
                 {(c) => <Input {...c} name={f.key} type={f.secret ? "password" : "text"} autoComplete="off" spellCheck={false} value={values[f.key] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} disabled={!!p.connectBlocked || pending} />}
               </Field>
             ))}
-            <div><Button type="submit" variant="primary" disabled={pending} disabledReason={p.connectBlocked ?? undefined}><PlugZap />{reconnecting ? p.labels.reconnect : p.labels.connect}</Button></div>
+            <div><Button type="submit" variant="primary" className={T} disabled={pending} disabledReason={p.connectBlocked ?? undefined}><PlugZap />{reconnecting ? p.labels.reconnect : p.labels.connect}</Button></div>
           </form>
         )
       )}
 
       {p.connectionId && p.state !== "idle" && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={pending} disabledReason={p.manageBlocked ?? undefined} onClick={() => run(() => testConnector(p.connectionId!))}><RefreshCw />{p.labels.test}</Button>
-          <Button disabled={pending} disabledReason={p.manageBlocked ?? undefined} onClick={() => run(() => runSyncConnector(p.connectionId!))}><Play />{p.labels.runNow}</Button>
+          <Button className={T} disabled={pending} disabledReason={p.manageBlocked ?? undefined} onClick={() => run(() => testConnector(p.connectionId!))}><RefreshCw />{p.labels.test}</Button>
+          <Button className={T} disabled={pending} disabledReason={p.manageBlocked ?? undefined} onClick={() => run(() => runSyncConnector(p.connectionId!))}><Play />{p.labels.runNow}</Button>
           {p.manageBlocked ? (
-            <Button disabledReason={p.manageBlocked}><Unplug />{p.labels.disconnect}</Button>
+            <Button className={T} disabledReason={p.manageBlocked}><Unplug />{p.labels.disconnect}</Button>
           ) : (
             <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild><Button><Unplug />{p.labels.disconnect}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button className={T}><Unplug />{p.labels.disconnect}</Button></DialogTrigger>
               <DialogContent title={p.labels.disconnectTitle} description={p.labels.disconnectBody}>
                 <div className="mt-5 flex justify-end gap-2">
                   <DialogClose asChild><Button>{p.labels.cancel}</Button></DialogClose>

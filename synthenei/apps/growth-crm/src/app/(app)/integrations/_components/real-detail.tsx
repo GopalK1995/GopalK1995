@@ -9,6 +9,8 @@ import { TRANSFORM_KEYS } from "@/lib/connectors/core/transforms";
 import { ConnectorChip } from "./connector-chip";
 import { ConnectPanel } from "./connect-panel";
 import { MetaHealthLine } from "./meta-health-line";
+import { MetaConnectSteps } from "./meta-connect-steps";
+import { buildMetaConnectModel } from "../_lib/meta-steps";
 import { FieldMapEditor } from "./field-map-editor";
 import { Freshness } from "./real-list";
 import { MAP_TABLES, type DetailView } from "../_lib/types";
@@ -16,6 +18,8 @@ import type { T } from "../_lib/strings";
 
 const RUN_TONE: Record<string, ChipTone> = { success: "success", partial: "warn", failed: "danger", running: "info", skipped: "neutral" };
 /** Steps that need the vendor admin on the customer side; everything else is Synthan setup work. */
+/** The connector behind the "Instagram and Facebook" entry (kept literal so this file stays free of server-only imports). */
+const META = "meta-ads";
 const CLIENT_STEP = /^(verify|approve|authorise|grant|register|request|connect|install|link|admin|workspace admin|entra|each rep|rep connects|create (a|an) (service|api|webhook))/i;
 
 export interface DetailProps {
@@ -24,8 +28,29 @@ export interface DetailProps {
   manageBlocked: string | null;
 }
 
+/** Mapping shown as plain text while it cannot be edited (not connected, or the viewer may not manage): no empty-looking input boxes. */
+export function MapReadOnly({ rows, t, reason }: { rows: DetailView["map"]; t: T; reason: string }) {
+  return (
+    <div className="flex flex-col gap-3" data-testid="map-readonly">
+      <p className="text-13 text-ink-2">{reason}</p>
+      <Table minWidth={560}>
+        <caption className="sr-only">{t("sectionMap")}</caption>
+        <thead><tr className="border-b border-line">{["mapColField", "mapColTable", "mapColColumn", "mapColDirection", "mapColTransform"].map((k) => <th key={k} className={th} scope="col">{t(k)}</th>)}</tr></thead>
+        <tbody>{rows.map((m, i) => (
+          <tr key={`${m.externalObject}|${m.externalField}|${i}`} className="border-b border-line">
+            <td className={`${td} font-mono`}>{m.externalObject ? `${m.externalObject}.${m.externalField}` : m.externalField}</td><td className={td}>{m.localTable}</td><td className={`${td} font-mono`}>{m.localColumn}</td>
+            <td className={td}>{t(`dir.${m.direction}`)}</td><td className={td}>{m.transform ?? t("mapTransformNone")}</td>
+          </tr>
+        ))}</tbody>
+      </Table>
+    </div>
+  );
+}
+
 export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps) {
   const r = v.row;
+  const isMeta = r.id === META;
+  const name = isMeta ? t("meta-ads.name") : r.name;
   const idle = r.chip === "available" || r.chip === "disconnected" || r.chip === "not_configured" || r.chip === "needs_vendor_approval" || r.chip === "needs_client_credentials" || r.chip === "not_available";
   const gateText = r.blockKey ? t(`blocked.${r.blockKey}`) : null;
   const connectBlocked = manageBlocked ?? gateText;
@@ -38,12 +63,14 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
   };
   const defaultSample = JSON.stringify(Object.fromEntries(v.map.filter((m) => m.sample).map((m) => [m.externalField, m.sample])), null, 2);
   const editBlocked = manageBlocked ?? (v.editable ? null : t("blocked.not_connected"));
+  const metaModel = isMeta && v.metaConnect ? buildMetaConnectModel({ c: v.metaConnect, h: v.metaHealth, t, connectBlocked }) : null;
+  const connectHref = isMeta && v.authKind === "oauth2" ? `/api/oauth/${r.id}/start?ws=${encodeURIComponent(ws)}${r.connectionId ? `&conn=${encodeURIComponent(r.connectionId)}` : ""}` : null;
   const partialItems = [["runs", t("sectionLog")], ["map", t("sectionMap")], ["availability", t("partialAvailability")], ["connections", t("partialConnections")]] as const;
 
   return (
     <>
       <Link href="/integrations" className="mb-3 inline-flex items-center gap-1 text-12 font-medium text-ink-3 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden />{t("back")}</Link>
-      <PageHeader eyebrow={t(`category.${r.category}`)} title={r.name}>
+      <PageHeader eyebrow={t(`category.${r.category}`)} title={name} sub={isMeta ? t("meta-ads.blurb") : undefined}>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           <ConnectorChip state={r.chip} label={t(`chip.${r.chip}`)} />
           {r.chip === "sandbox" && <span className="text-12 text-ink-2">{t("chipHint.sandbox")}</span>}
@@ -58,16 +85,24 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-8">
-          <Card>
-            <CardHeader title={t("sectionConnect")} />
-            <CardBody>
-              {r.registered ? (
-                <ConnectPanel connectorId={r.id} name={r.name} ws={ws} connectionId={r.connectionId} state={state} authKind={v.authKind} fields={v.fields}
-                  connectBlocked={connectBlocked} manageBlocked={manageBlocked}
-                  labels={{ connect: t("btnConnect"), authorise: t("btnAuthorise"), reconnect: t("btnReconnect"), test: t("btnTest"), disconnect: t("btnDisconnect"), runNow: t("btnRunNow"), cancel: t("btnCancel"), disconnectTitle: t("disconnectTitle", { name: r.name }), disconnectBody: t("disconnectBody"), generic: t("err.generic") }} />
-              ) : <p className="text-13 text-ink-2">{t("blocked.not_shipped")}</p>}
-            </CardBody>
-          </Card>
+          {metaModel && v.metaConnect && (
+            <MetaConnectSteps model={metaModel} connected={v.metaConnect.connected} needsReconnect={v.metaConnect.needsReconnect} connectionId={v.metaConnect.connectionId}
+              hasPage={!!v.metaConnect.pageName} pageKey={v.metaConnect.pageName} connectHref={connectHref} blockedReason={connectBlocked}
+              labels={{ title: t("metaSteps.title"), sub: t("metaSteps.sub"), nextLabel: t("metaSteps.nextLabel"), btnConnect: t("metaSteps.btnConnect"), btnReconnect: t("metaSteps.btnReconnect"), btnChooseAnother: t("metaSteps.btnChooseAnother"), btnHidePicker: t("metaSteps.btnHidePicker"), scopesHeading: t("metaSteps.scopesHeading") }} />
+          )}
+
+          {!(isMeta && !r.connectionId) && (
+            <Card>
+              <CardHeader title={t("sectionConnect")} />
+              <CardBody>
+                {r.registered ? (
+                  <ConnectPanel connectorId={r.id} name={name} ws={ws} hideAuthorise={isMeta} connectionId={r.connectionId} state={state} authKind={v.authKind} fields={v.fields}
+                    connectBlocked={connectBlocked} manageBlocked={manageBlocked}
+                    labels={{ connect: t("btnConnect"), authorise: t("btnAuthorise"), reconnect: t("btnReconnect"), test: t("btnTest"), disconnect: t("btnDisconnect"), runNow: t("btnRunNow"), cancel: t("btnCancel"), disconnectTitle: t("disconnectTitle", { name }), disconnectBody: t("disconnectBody"), generic: t("err.generic") }} />
+                ) : <p className="text-13 text-ink-2">{t("blocked.not_shipped")}</p>}
+              </CardBody>
+            </Card>
+          )}
 
           {v.steps.length > 0 && (
             <Card>
@@ -91,7 +126,7 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
               <Table minWidth={420}>
                 <thead><tr className="border-b border-line"><th className={th} scope="col">{t("flowObject")}</th><th className={th} scope="col">{t("flowDirection")}</th></tr></thead>
                 <tbody>{v.flows.map((f) => (
-                  <tr key={f.dir + f.object} className="border-b border-line"><td className={td}>{f.object}</td>
+                  <tr key={f.dir + f.object} className="border-b border-line"><td className={td}>{t(f.object)}</td>
                     <td className={td}><span className="inline-flex items-center gap-1 text-ink-2">{f.dir === "in" ? <><ArrowDownLeft className="size-3.5 text-accent" aria-hidden />{t("flowIn")}</> : <><ArrowUpRight className="size-3.5 text-ink-3" aria-hidden />{t("flowOut")}</>}</span></td></tr>
                 ))}</tbody>
               </Table>
@@ -101,7 +136,9 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
           <Card>
             <CardHeader title={t("sectionMap")} />
             <CardBody>
-              {v.map.length === 0 && !r.registered ? <p className="text-13 text-ink-2">{t("mapNone")}</p> : (
+              {v.map.length === 0 && !r.registered ? <p className="text-13 text-ink-2">{t("mapNone")}</p> : editBlocked ? (
+                <MapReadOnly rows={v.map} t={t} reason={editBlocked} />
+              ) : (
                 <FieldMapEditor connectionId={r.connectionId} connectorId={r.id} rows={v.map} tables={MAP_TABLES} transforms={TRANSFORM_KEYS} blocked={editBlocked} defaultSample={defaultSample} labels={mapLabels} />
               )}
             </CardBody>
@@ -139,7 +176,7 @@ export function RealDetail({ v, t, now, ws, failed, manageBlocked }: DetailProps
                 [t("aboutAuth"), <span key="a" className="text-ink-2">{t(`auth.${v.authKind}`)}</span>],
                 ...(r.mode ? [[t("aboutMode"), <span key="m" className="text-ink-2">{t(`mode.${r.mode}`)}</span>] as [string, React.ReactNode]] : []),
                 [t("aboutSandbox"), <span key="sb" className="text-ink-2">{t(v.sandboxSupported ? "sandbox.supported" : "sandbox.unsupported")}</span>],
-                ...(v.sandboxHowTo ? [["", <span key="h" className="text-12 text-ink-3">{t(v.sandboxHowTo)}</span>] as [string, React.ReactNode]] : []),
+                ...(v.sandboxHowTo && r.mode !== "live" ? [["", <span key="h" className="text-12 text-ink-3">{t(v.sandboxHowTo)}</span>] as [string, React.ReactNode]] : []),
               ]} />
             </CardBody>
           </Card>

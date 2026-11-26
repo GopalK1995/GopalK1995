@@ -15,8 +15,17 @@ export interface MapRowView {
 /** One-line Meta connection health (AUD-036). Dates and names only. */
 export interface MetaHealthView {
   scopesGranted: number | null; scopesRequested: number; scopesMissing: string[];
+  /** names for the connect step list: what Meta granted and what we asked for */
+  scopesGrantedList: string[]; scopesRequestedList: string[];
   expiresAt: string | null; neverExpires: boolean; daysLeft: number | null;
   webhook: "yes" | "no" | "unknown"; lastOkAt: string | null; attention: boolean;
+}
+/** What the connect step list needs beyond the health line: chosen Page/Instagram names and sync counts. Names and numbers only. */
+export interface MetaConnectView {
+  /** a connection with credentials exists (connected, needs attention or error) */
+  connected: boolean; needsReconnect: boolean; connectionId: string | null;
+  pageName: string | null; igUsername: string | null;
+  accounts: number; posts: number; lastOkRows: number | null;
 }
 export interface DetailView {
   row: ConnectorRowView; auth: string; authKind: "oauth2" | "api_key" | "service_account" | "webhook_secret" | "none";
@@ -24,5 +33,6 @@ export interface DetailView {
   steps: string[]; flows: { object: string; dir: "in" | "out" }[]; runs: RunView[]; map: MapRowView[]; editable: boolean; accountLabel: string | null;
   oauthReady: boolean;
   metaHealth: MetaHealthView | null;
+  metaConnect: MetaConnectView | null;
 }
 export const MAP_TABLES = ["leads", "contacts", "accounts", "deals"] as const;
