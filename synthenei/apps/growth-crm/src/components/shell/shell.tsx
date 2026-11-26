@@ -22,7 +22,7 @@ import { logout } from "@/lib/auth/actions";
 import { Toaster } from "@/components/ui/toast";
 import { Kbd } from "@/components/ui/kbd";
 import { PendingButton } from "@/components/ui/submit-button";
-import { CommandPalette, openCommandPalette } from "@/components/command";
+import { CommandPalette, ShortcutHelp, openCommandPalette, useSingleKeyShortcuts } from "@/components/command";
 
 const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
@@ -134,7 +134,7 @@ function CommandChip() {
       className="inline-flex h-8 items-center gap-2 rounded-control border border-line bg-paper px-2.5 text-[13px] text-ink-3 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring sm:w-full sm:max-w-sm">
       <Search className="size-4 shrink-0" aria-hidden />
       <span className="hidden min-w-0 flex-1 truncate text-left sm:block">{v.search}</span>{" "}
-      <Kbd className="ml-auto hidden sm:inline-flex" aria-hidden>{keys}</Kbd>
+      <Kbd className="ml-auto hidden sm:inline-flex [@media(hover:none)]:hidden" aria-hidden>{keys}</Kbd>
     </button>
   );
 }
@@ -167,10 +167,8 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
   const t = useTranslations("shell");
   const path = usePathname();
   useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* ignore */ } }, []);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "/" && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); openCommandPalette(); } };
-    window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
-  }, []);
+  // Bare "/" and "?" (WCAG 2.1.4): ignored in form controls, editors and dialogs, and switchable off in the shortcut help.
+  useSingleKeyShortcuts();
   const toggle = () => setCollapsed((c) => { try { localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1"); } catch { /* ignore */ } return !c; });
 
   return (
@@ -219,6 +217,7 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
         </header>
         <Toaster />
         <CommandPalette />
+        <ShortcutHelp />
         <main id="main-content" tabIndex={-1} key={path} className="mx-auto w-full max-w-[1400px] flex-1 scroll-mt-16 px-4 pb-24 pt-6 outline-none sm:px-6 lg:px-8 lg:pb-10">{children}</main>
       </div>
 

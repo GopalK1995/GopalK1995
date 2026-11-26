@@ -1131,7 +1131,26 @@
       "logCall": true,
       "newTask": true,
       "importItems": true,
-      "keys": true
+      "keys": true,
+      "typeTask": true,
+      "typeDeal": true,
+      "typeCampaign": true,
+      "liveSearching": true,
+      "liveCount": true,
+      "liveNone": true,
+      "shortcutsLink": true,
+      "shortcutsTitle": true,
+      "shortcutsClose": true,
+      "shortcutsDescription": true,
+      "scOpenSearch": true,
+      "scOpenSearchSlash": true,
+      "scHelp": true,
+      "scMove": true,
+      "scOpen": true,
+      "scClose": true,
+      "scOff": true,
+      "scSingleToggle": true,
+      "scSingleHint": true
     }
   }
 }
