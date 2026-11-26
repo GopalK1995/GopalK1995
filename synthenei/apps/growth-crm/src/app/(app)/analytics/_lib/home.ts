@@ -4,6 +4,7 @@
 import type { Campaign, CampaignDay, Deal, Lead, Task, TeamMember } from "@/lib/data/types";
 import type { SocialView } from "@/lib/connectors/meta/organic/view";
 import { dayKey, deltaOf } from "@/lib/format";
+import { leadsInWindow } from "@/lib/data/lead-window";
 
 export const DAY_MS = 86400e3;
 type Outcome = "open" | "won" | "lost";
@@ -100,7 +101,7 @@ export interface TileInput {
 const rel = (cur: number | null, prev: number | null, minBase = 0): number | undefined => (Number.isFinite(deltaOf(cur, prev, minBase)) ? deltaOf(cur, prev, minBase) : undefined);
 export function tiles(ids: string[], x: TileInput): Tile[] {
   const { leads, deals, stages, now } = x, nowMs = new Date(now).getTime(), month = monthOf(now);
-  const win = (from: number, to: number) => leads.filter((l) => { const a = nowMs - new Date(l.createdAt).getTime(); return a >= from * DAY_MS && a < to * DAY_MS; });
+  const win = (from: number, to: number) => leadsInWindow(leads, now, { days: to - from, offsetDays: from }); // shared IST definition (AUD-091)
   const l30 = win(0, 30), lPrev = win(30, 60);
   const wonIn = (m: string) => deals.filter((d) => outcomeOf(stages, d.stage) === "won" && d.wonAt && monthOf(d.wonAt) === m);
   const sum = (xs: Deal[]) => xs.reduce((a, d) => a + d.value, 0);

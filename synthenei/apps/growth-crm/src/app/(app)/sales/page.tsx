@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, Clock, Inbox, MessageCircle, Phone, Mail, 
 import { pageCtx } from "@/lib/data/context";
 import { DEAL_STAGES, DEMOS_DONE_TARGET, LEAD_STAGES, SLA_MINUTES, channelMix, repMonth, slaStats } from "@/lib/data/metrics";
 import { dayKey, fmtDate, fmtTime, fmtWeekday, inrCompact, minsToHuman, num, pct, ratio, relTime } from "@/lib/format";
+import { leadsInWindow } from "@/lib/data/lead-window";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/components/ui/kpi";
@@ -49,9 +50,9 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const overdue = touch_overdue();
   const oldest = overdue.length ? Math.ceil((nowMs - new Date(overdue[0].dueAt).getTime()) / DAY) : 0;
   // W3
-  const l30 = leads.filter((l) => nowMs - new Date(l.createdAt).getTime() < 30 * DAY);
+  const l30 = leadsInWindow(leads, now, { days: 30 });
   const sla = slaStats(l30, now); // same definition as repMonth().sla
-  const teamSla = slaStats(allLeads.filter((l) => nowMs - new Date(l.createdAt).getTime() < 30 * DAY), now);
+  const teamSla = slaStats(leadsInWindow(allLeads, now, { days: 30 }), now);
   const slaSpark = Array.from({ length: 8 }, (_, w) => { const ls = leads.filter((l) => { const a = (nowMs - new Date(l.createdAt).getTime()) / DAY; return a >= (7 - w) * 7 && a < (8 - w) * 7; }); return ls.length ? slaStats(ls, now).within * 100 : 60; });
   // W4
   const hot = leads.filter((l) => l.score >= 70 && l.stage !== "won" && l.stage !== "lost").sort((a, b) => b.score - a.score).slice(0, 6);

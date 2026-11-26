@@ -3,6 +3,7 @@
 import type { Account, Activity, Campaign, CampaignDay, Channel, Deal, Ga4Day, Integration, Lead } from "@/lib/data/types";
 import { CHANNEL_LABEL, campaignStats, isDemo, type CampaignStats } from "@/lib/data/metrics";
 import { dayKey, deltaOf, fmtDate, ratio } from "@/lib/format";
+import { leadsInWindow } from "@/lib/data/lead-window";
 
 export const DAY_MS = 86400e3;
 
@@ -61,7 +62,7 @@ export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], 
   const win = (from: number, to: number) => {
     const inW = (t: number) => t >= from * DAY_MS && t < to * DAY_MS;
     const spend = days.filter((d) => inW(ageSpend(d))).reduce((a, d) => a + d.spend, 0);
-    const ls = cLeads.filter((l) => inW(age(l.createdAt))).length;
+    const ls = leadsInWindow(cLeads, nowIso, { days: to - from, offsetDays: from }).length; // shared IST definition (AUD-091)
     const demos = booked.filter((a) => inW(age(a.at))).length;
     return { spend, leads: ls, demos, cpl: ratio(spend, ls), cpd: ratio(spend, demos) };
   };

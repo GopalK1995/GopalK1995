@@ -20,6 +20,7 @@ import { PartialState } from "@/components/ui/states";
 import { ErrorState } from "@/components/ui/states";
 import { DecisionZone, PaidOrganicTable, StageFlow } from "./analytics/_components/home-sections";
 import { CostChart, FunnelChart, MixChart, PairedChart, PerDayChart, RulerChart } from "./analytics/_components/home-charts";
+import { leadsInWindow } from "@/lib/data/lead-window";
 import { costPerConverted, decisions, leadFunnel, leadsPerDay, monthRuler, paidVsOrganic, stageFlow, teamVsTarget, tiles, topAccounts, type StageMap } from "./analytics/_lib/home";
 
 export const metadata = { title: "Home" };
@@ -69,7 +70,7 @@ export default async function Home() {
   const month = new Date(ruler.month + "-01T12:00:00Z").toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
   const tableLabels = { chart: t("chart"), table: t("table"), toggle: t("showAs"), noData: t("noData") };
   const canSettings = can(principal, "settings.read");
-  const l90 = leads.filter((l) => new Date(now).getTime() - new Date(l.createdAt).getTime() < 90 * 864e5);
+  const l90 = leadsInWindow(leads, now, { days: 90 }); // all leads, last 90 IST days (AUD-091)
   const chartIds = cfg.dashboard.charts;
   const funnelSteps = leadFunnel(l90, leadStages, t("funnelFirst"));
   const mix = channelMix(l90, 4, cfg.taxonomies.channelFamily);

@@ -20,6 +20,7 @@ import { ImportCsvDialog, NewCampaignDialog } from "./_components/dialogs";
 import { loadCampaigns, loadDays } from "./_lib/load";
 import { EmptyState } from "@/components/ui/states";
 import { tc } from "./_lib/strings";
+import { leadsInWindow } from "@/lib/data/lead-window";
 
 export const metadata = { title: "Campaigns" };
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
@@ -43,7 +44,8 @@ export default async function Campaigns() {
       </>
     );
   }
-  const stats = allStats(campaigns, days, leads, deals).map((s) => (hosp ? { ...s, demos: s.won, costPerDemo: ratio(s.spend, s.won), leadToDemo: ratio(s.won, s.leads) } : s));
+  const leads90 = leadsInWindow(leads, now, { days: 90 }); // same window as Home: last 90 IST days (AUD-091)
+  const stats = allStats(campaigns, days, leads90, deals).map((s) => (hosp ? { ...s, demos: s.won, costPerDemo: ratio(s.spend, s.won), leadToDemo: ratio(s.won, s.leads) } : s));
   const src = sourceState(integrations, CHANNELS);
   const k = kpiSeries(days, leads, acts, now, hosp ? deals : undefined);
   const tot = stats.reduce((a, s) => ({ spend: a.spend + s.spend, leads: a.leads + s.leads, demos: a.demos + s.demos }), { spend: 0, leads: 0, demos: 0 });
@@ -106,14 +108,14 @@ export default async function Campaigns() {
 
   return (
     <>
-      <PageHeader eyebrow="Marketing · 30-day tiles · 90-day charts and tables" title="Campaigns"
+      <PageHeader eyebrow="Marketing · 30-day tiles · 90-day charts and tables · windows end today, IST" title="Campaigns"
         sub={m.sub}
         actions={<><ImportCsvDialog campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, channel: c.channel }))} /><NewCampaignDialog districts={districts} yyyymm={yyyymm} /></>} />
 
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-5 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
           <Kpi label="Spend · 30 days" metric="M8" value={k.cur.spend} format="inrCompact" spark={k.spendW} foot={<>{Number.isFinite(k.d.spend) ? `${k.d.spend >= 0 ? "+" : "−"}${Math.abs(k.d.spend * 100).toFixed(1)}% vs prior 30d` : "no prior period"} · {inrCompact(tot.spend)} in 90d</>} />
-          <Kpi label={m.kLeads} metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d</>} />
+          <Kpi label={m.kLeads} metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d · campaign-attributed, of {leads90.length} leads in total (IST)</>} />
           <Kpi label={m.kCpl} metric="M9" value={k.cur.cpl} format="inr" spark={k.cplW} delta={k.d.cpl} deltaLabel="" goodWhen="down" foot={<>vs prior 30d · first touch</>} />
           <Kpi label={m.kDemos} metric="M10" value={k.cur.demos} spark={k.demosW} delta={k.d.demos} deltaLabel="" foot={<>{m.kDemosFoot}</>} />
           <Kpi label={m.kCpd} metric="M11" value={k.cur.cpd} format="inr" spark={k.cpdW} delta={k.d.cpd} deltaLabel="" goodWhen="down" className="col-span-2 lg:col-span-1" foot={<>vs prior 30d · {inrCompact(ratio(tot.spend, tot.demos))} over 90d</>} />
@@ -149,7 +151,7 @@ export default async function Campaigns() {
 
         <StaggerItem className="lg:col-span-12">
           <Card>
-            <CardHeader title="All campaigns" sub={`${campaigns.filter((c) => c.status === "live").length} live of ${campaigns.length}. Sorted by CRM leads.`} />
+            <CardHeader title="All campaigns" sub={`${campaigns.filter((c) => c.status === "live").length} live of ${campaigns.length}. Sorted by CRM leads, last 90 days (IST).`} />
             <DataTable rows={ranked} columns={cols} rowKey={(s) => s.id} minWidth={1060} caption={m.tableCaption} />
           </Card>
         </StaggerItem>
