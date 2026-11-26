@@ -36,7 +36,7 @@ export default async function PrivacyInboxPage() {
       <div className="mb-4 grid gap-1 rounded-card border border-line bg-surface p-3">
         <p className="text-13 font-medium text-ink">{t("owner.publicPage")}</p>
         <p className="text-13 text-ink-2">{t("owner.publicPageHelp")}</p>
-        <p className="num text-13 text-ink" data-testid="public-path">{res.publicPath}</p>
+        <p className="num text-13 text-ink" data-testid="public-path">{res.publicPath || "Not available: this workspace has no public slug yet."}</p>
       </div>
       {rows.length === 0 ? <EmptyState title={t("owner.empty")} body={t("owner.emptyBody")} /> : (
         <>

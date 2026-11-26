@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalFooter } from "@/components/legal/legal-page";
 import { ShieldCheck } from "lucide-react";
 import { demoModeOn } from "@/lib/auth/cookies";
 import { AdminLoginForm } from "../_components/admin-login-form";
@@ -24,6 +25,7 @@ export default async function AdminLogin({ searchParams }: { searchParams: Promi
         {sp.error === "not_admin" && <p role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">Not a platform admin. You have been signed out.</p>}
         <AdminLoginForm startOnCode={sp.step === "code"} codeError={sp.error === "code"} next={next} demo={demo} />
         <p className="mt-8 border-t border-line pt-4 text-[12px] text-ink-3">Tenant user? <Link href="/login" className="font-medium text-accent hover:underline">Workspace sign-in</Link>. Platform admin accounts are separate from workspace accounts.</p>
+        <LegalFooter className="mt-3" />
       </main>
     </div>
   );

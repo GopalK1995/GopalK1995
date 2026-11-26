@@ -28,7 +28,15 @@ export type InboxView = Denied | { status: "error" } | { status: "ok"; demo: boo
 export async function loadInbox(): Promise<InboxView> {
   const g = await gate();
   if (g.status === "denied") return g;
-  const now = Date.now(), publicPath = `/privacy/${g.wsSlug}`;
+  const now = Date.now();
+  // wsSlug is the app's workspace id (a UUID on a live deployment), not the public slug the notice route looks up: resolve the real slug (UI-025).
+  let slug: string | null = g.demo || !g.db ? g.wsSlug : null;
+  if (!g.demo && g.db) {
+    const w = await from(g.db, "workspaces").select("slug").eq("id", g.ws).maybeSingle();
+    const s = (w.data as { slug?: unknown } | null)?.slug;
+    slug = !w.error && typeof s === "string" && /^[a-z0-9-]{2,40}$/.test(s) ? s : null;
+  }
+  const publicPath = slug ? `/privacy/${slug}` : "";
   if (g.demo || !g.db) return { status: "ok", demo: true, rows: demoRequests(now, g.ws).sort(inboxCompare(now)), publicPath, now };
   try {
     const reqs = await ownerRepo(g.db, g.ws).list();

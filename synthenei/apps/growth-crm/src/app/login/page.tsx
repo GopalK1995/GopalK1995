@@ -7,6 +7,7 @@ import { supabaseConfigured } from "@/lib/supabase/server";
 import { demoModeOn } from "@/lib/auth/cookies";
 import { Button } from "@/components/ui/button";
 import { vocabFor } from "@/lib/vertical";
+import { LegalFooter } from "@/components/legal/legal-page";
 
 export const metadata = { title: "Sign in" };
 const ICON: Record<string, typeof UserRound> = { "owner-lawsome": Briefcase, "mgr-lawsome": BarChart3, "rep-lawsome": UserRound, "mkt-lawsome": Megaphone, "owner-kaveri": Building2, super: ShieldCheck, "data-lawsome": Database, "viewer-lawsome": Eye };
@@ -99,6 +100,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             <span>Synthan staff?</span>
             <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-medium text-ink-2 hover:text-accent"><ShieldCheck className="size-3.5" aria-hidden />Platform admin sign-in</Link>
           </div>
+          <LegalFooter className="mt-3" />
         </div>
       </main>
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LegalFooter } from "@/components/legal/legal-page";
 
 export const authField = "h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none placeholder:text-ink-3 focus:border-ring";
 
@@ -11,6 +12,7 @@ export function AuthShell({ title, lead, children }: { title: string; lead?: str
       {lead && <p className="mt-1 text-[13px] text-ink-2">{lead}</p>}
       <div className="mt-6">{children}</div>
       <p className="mt-8 border-t border-line pt-4 text-[12px] text-ink-3"><Link href="/login" className="font-medium text-accent hover:underline">Back to sign in</Link></p>
+      <LegalFooter className="mt-3" />
     </main>
   );
 }
