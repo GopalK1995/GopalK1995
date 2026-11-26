@@ -33,17 +33,21 @@ export async function runSearch(q: string): Promise<SearchResponse> {
     const recordsOk = demoAccess(active.role).read;
     const types: HitType[] = [];
     const leadsOk = can(principal, "leads.read"), accountsOk = can(principal, "accounts.read");
+    const tasksOk = can(principal, "tasks.read"), dealsOk = can(principal, "deals.read"), campaignsOk = can(principal, "campaigns.read");
     if (leadsOk) types.push("lead");
     if (accountsOk) types.push("account");
+    if (tasksOk) types.push("task");
+    if (dealsOk) types.push("deal");
+    if (campaignsOk) types.push("campaign");
     if (recordsOk) types.push("record");
     const base = { actions: allowedActions(principal), types, objects: recordsOk ? [obj.key] : [] };
     if (!q) return { hits: [], ...base };
     const pii = roleCan("seePersonalData", { role: active.role, support: active.support });
     const ds = getDataSource(active.ws, { demo: true, piiRead: pii });
-    const [leads, accounts] = await Promise.all([leadsOk ? ds.leads() : null, accountsOk ? ds.accounts() : null]);
+    const [leads, accounts, tasks, deals, campaigns] = await Promise.all([leadsOk ? ds.leads() : null, accountsOk ? ds.accounts() : null, tasksOk ? ds.tasks() : null, dealsOk ? ds.deals() : null, campaignsOk ? ds.campaigns() : null]);
     const label = obj.label.en.one;
     const hits = searchDemo({
-      q, pii, leads, accounts, ownOnly: active.role === "sales_rep" ? { uid: session.uid } : null,
+      q, pii, leads, accounts, tasks, deals, campaigns, ownOnly: active.role === "sales_rep" ? { uid: session.uid } : null,
       records: recordsOk ? { rows: demoRecords().map((r) => ({ id: r.id, title: r.title, data: r.data, objectKey: obj.key, label })), searchableKeys: searchableKeys(objDef, pii), piiKeys: objDef.fields.filter((f) => f.isPii).map((f) => f.key) } : null,
     });
     return { hits, ...base };

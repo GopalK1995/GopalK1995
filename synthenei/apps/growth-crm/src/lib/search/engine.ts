@@ -23,7 +23,8 @@ export interface RealDeps {
 }
 export interface SourceResult { hits: SearchHit[]; failed: boolean }
 
-const ref = (type: "lead" | "contact" | "account", d: RealDeps, ownerId: unknown) => ({ type, workspaceId: d.ws.id, ownerId: typeof ownerId === "string" ? ownerId : null });
+const ref = (type: "lead" | "contact" | "account" | "deal" | "campaign", d: RealDeps, ownerId: unknown) => ({ type, workspaceId: d.ws.id, ownerId: typeof ownerId === "string" ? ownerId : null });
+const taskRef = (d: RealDeps, assigneeId: unknown) => ({ type: "task" as const, workspaceId: d.ws.id, assigneeId: typeof assigneeId === "string" ? assigneeId : null });
 const piiOk = (p: Principal) => can(p, "pii.read");
 
 /** Which hit types and custom objects this viewer may search. Used for the bootstrap response and to skip queries. */
@@ -33,6 +34,9 @@ export function searchableTypes(p: Principal, objects: ObjectSearchDef[]): { typ
   if (can(p, "leads.read")) types.push("lead");
   if (can(p, "accounts.read")) types.push("account");
   if (can(p, "contacts.read")) types.push("contact");
+  if (can(p, "tasks.read")) types.push("task");
+  if (can(p, "deals.read")) types.push("deal");
+  if (can(p, "campaigns.read")) types.push("campaign");
   const objs = objects.filter((o) => can(p, `obj:${o.object.key}.read`));
   if (objs.length) types.push("record");
   return { types, objects: objs };
@@ -85,6 +89,39 @@ export async function searchContacts(d: RealDeps, q: string): Promise<SourceResu
   });
 }
 
+export async function searchTasks(d: RealDeps, q: string): Promise<SourceResult> {
+  return guarded(async () => {
+    const r = await from(await d.db(), "tasks").select("id,title,status,due_at,assignee_id").eq("workspace_id", d.ws.uuid).or(`title.ilike.${likePattern(q)}`).limit(HIT_LIMIT);
+    if (r.error) throw new Error("tasks");
+    return ((r.data ?? []) as Row[]).filter((x) => can(d.principal, "tasks.read", taskRef(d, x.assignee_id))).map((x): SearchHit => ({
+      key: `task:${str(x.id)}`, type: "task", title: str(x.title), subtitle: str(x.status) || undefined, href: "/tasks",
+    }));
+  });
+}
+
+export async function searchDeals(d: RealDeps, q: string): Promise<SourceResult> {
+  return guarded(async () => {
+    const r = await from(await d.db(), "deals").select("id,name,next_step,owner_id").eq("workspace_id", d.ws.uuid).is("deleted_at", null)
+      .or(`name.ilike.${likePattern(q)}`).limit(HIT_LIMIT);
+    if (r.error) throw new Error("deals");
+    return ((r.data ?? []) as Row[]).filter((x) => can(d.principal, "deals.read", ref("deal", d, x.owner_id))).map((x): SearchHit => ({
+      key: `deal:${str(x.id)}`, type: "deal", title: str(x.name), subtitle: str(x.next_step) || undefined, href: "/pipeline",
+    }));
+  });
+}
+
+export async function searchCampaigns(d: RealDeps, q: string): Promise<SourceResult> {
+  return guarded(async () => {
+    const pat = likePattern(q);
+    const r = await from(await d.db(), "campaigns").select("id,name,status,owner_id").eq("workspace_id", d.ws.uuid)
+      .or(`name.ilike.${pat},utm_campaign.ilike.${pat}`).limit(HIT_LIMIT);
+    if (r.error) throw new Error("campaigns");
+    return ((r.data ?? []) as Row[]).filter((x) => can(d.principal, "campaigns.read", ref("campaign", d, x.owner_id))).map((x): SearchHit => ({
+      key: `campaign:${str(x.id)}`, type: "campaign", title: str(x.name), subtitle: str(x.status) || undefined, href: `/campaigns/${str(x.id)}`,
+    }));
+  });
+}
+
 /** Text-like, live, searchable fields. PII fields are only searched for viewers who hold pii.read (no probing of hidden values). */
 export function searchableKeys(o: ObjectSearchDef, pii: boolean): string[] {
   return o.fields.filter((f) => !f.archivedAt && f.isSearchable && TEXTY.has(f.type) && (pii || !f.isPii) && FIELD_KEY_RE.test(f.key)).map((f) => f.key);
@@ -118,6 +155,9 @@ export async function searchReal(d: RealDeps, q: string, locale: "en" | "ta"): P
   if (types.includes("lead")) jobs.push(searchLeads(d, q));
   if (types.includes("account")) jobs.push(searchAccounts(d, q));
   if (types.includes("contact")) jobs.push(searchContacts(d, q));
+  if (types.includes("task")) jobs.push(searchTasks(d, q));
+  if (types.includes("deal")) jobs.push(searchDeals(d, q));
+  if (types.includes("campaign")) jobs.push(searchCampaigns(d, q));
   if (types.includes("record")) jobs.push(searchRecords(d, q, objects, locale));
   const done = await Promise.all(jobs);
   return { hits: done.flatMap((r) => r.hits), partial: done.some((r) => r.failed) };

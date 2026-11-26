@@ -154,4 +154,72 @@ describe("CommandPalette", () => {
     expect(await screen.findByText("K. R.")).toBeInTheDocument();
     expect(screen.getByText("Name masked")).toBeInTheDocument();
   });
+
+  it("never shows No matches while the search is in flight, even when the bootstrap answer lands first (UXB-013)", async () => {
+    let releaseBoot: (v: unknown) => void = () => {};
+    let releaseSearch: (v: unknown) => void = () => {};
+    const f = vi.fn((url: string) => new Promise((r) => { if (url.includes("q=")) releaseSearch = r; else releaseBoot = r; }));
+    render(ui(f as unknown as Fetcher));
+    open();
+    await screen.findByRole("combobox");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "kov" } });
+    await waitFor(() => expect(f.mock.calls.some((c) => String(c[0]).endsWith("q=kov"))).toBe(true));
+    await act(async () => { releaseBoot({ ok: true, status: 200, json: async () => boot }); });
+    expect(screen.queryByText(/No matches/)).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Searching");
+    await act(async () => { releaseSearch({ ok: true, status: 200, json: async () => ({ hits: [] }) }); });
+    expect(await screen.findByText(/No matches for/)).toBeInTheDocument();
+  });
+
+  it("announces the result count and the no-results case in a polite live region", async () => {
+    const hits = [{ key: "lead:1", type: "lead", title: "Kovai One", href: "/leads/1" }, { key: "lead:2", type: "lead", title: "Kovai Two", href: "/leads/2" }];
+    const f = vi.fn((url: string) => reply(url.includes("q=zz") ? { hits: [] } : url.includes("q=") ? { hits } : boot));
+    render(ui(f as Fetcher));
+    open();
+    await screen.findByText("New lead");
+    const live = () => screen.getByRole("status");
+    expect(live()).toHaveAttribute("aria-live", "polite");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "kovai" } });
+    await screen.findByText("Kovai One");
+    await waitFor(() => expect(live()).toHaveTextContent("2 results"));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "zzzz" } });
+    await waitFor(() => expect(live()).toHaveTextContent("No results for zzzz"));
+  });
+
+  it("shows tasks, deals and campaigns with a type tag and opens the right page", async () => {
+    const hits = [
+      { key: "task:t1", type: "task", title: "Call Kovai", subtitle: "open", href: "/tasks" },
+      { key: "deal:d1", type: "deal", title: "Kovai deal", href: "/pipeline" },
+      { key: "campaign:c1", type: "campaign", title: "Kovai launch", subtitle: "active", href: "/campaigns/c1" },
+    ];
+    const f = vi.fn((url: string) => reply(url.includes("q=") ? { hits } : boot));
+    render(ui(f as Fetcher));
+    open();
+    await screen.findByText("New lead");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "kovai" } });
+    expect(await screen.findByText("Task · open")).toBeInTheDocument();
+    expect(screen.getByText("Deal")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Kovai launch"));
+    expect(push).toHaveBeenCalledWith("/campaigns/c1");
+  });
+
+  it("Ctrl+K is not taken from a rich-text editor, but still works in a plain input", async () => {
+    render(<div><div contentEditable suppressContentEditableWarning data-testid="ed">x</div><input data-testid="plain" />{ui(vi.fn(() => reply(boot)))}</div>);
+    const ed = screen.getByTestId("ed");
+    Object.defineProperty(ed, "isContentEditable", { value: true });
+    act(() => { fireEvent.keyDown(ed, { key: "k", ctrlKey: true }); });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => { fireEvent.keyDown(screen.getByTestId("plain"), { key: "k", ctrlKey: true }); });
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("links to the keyboard shortcut help from the palette", async () => {
+    const seen = vi.fn();
+    window.addEventListener("gcrm:open-shortcuts", seen);
+    render(ui(vi.fn(() => reply(boot))));
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Keyboard shortcuts" }));
+    expect(seen).toHaveBeenCalledTimes(1);
+    window.removeEventListener("gcrm:open-shortcuts", seen);
+  });
 });

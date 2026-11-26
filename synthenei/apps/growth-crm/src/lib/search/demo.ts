@@ -5,10 +5,16 @@ import { HIT_LIMIT, type SearchHit } from "./types";
 export interface DemoLead { id: string; name: string; title: string; accountId: string; ownerId: string }
 export interface DemoAccount { id: string; name: string; city: string; district: string }
 export interface DemoRecord { id: string; title: string; data: Record<string, unknown>; objectKey: string; label: string }
+export interface DemoTask { id: string; title: string; ownerId: string }
+export interface DemoDeal { id: string; name: string; ownerId: string }
+export interface DemoCampaign { id: string; name: string; status: string; utmCampaign: string }
 export interface DemoInput {
   q: string;
   leads: DemoLead[] | null;
   accounts: DemoAccount[] | null;
+  tasks?: DemoTask[] | null;
+  deals?: DemoDeal[] | null;
+  campaigns?: DemoCampaign[] | null;
   records: { rows: DemoRecord[]; searchableKeys: string[]; piiKeys: string[] } | null;
   pii: boolean;
   /** Reps see only their own leads. */
@@ -30,6 +36,17 @@ export function searchDemo(i: DemoInput): SearchHit[] {
   if (i.accounts) {
     out.push(...i.accounts.filter((a) => has(a.name, q) || has(a.city, q)).slice(0, HIT_LIMIT)
       .map((a): SearchHit => ({ key: `account:${a.id}`, type: "account", title: a.name, subtitle: [a.city, a.district].filter(Boolean).join(", ") || undefined, href: `/accounts/${a.id}` })));
+  }
+  const mine = <T extends { ownerId: string }>(rows: T[]) => (i.ownOnly ? rows.filter((r) => r.ownerId === i.ownOnly!.uid) : rows);
+  if (i.tasks) {
+    out.push(...mine(i.tasks).filter((t) => has(t.title, q)).slice(0, HIT_LIMIT).map((t): SearchHit => ({ key: `task:${t.id}`, type: "task", title: t.title, href: "/tasks" })));
+  }
+  if (i.deals) {
+    out.push(...mine(i.deals).filter((d) => has(d.name, q)).slice(0, HIT_LIMIT).map((d): SearchHit => ({ key: `deal:${d.id}`, type: "deal", title: d.name, href: "/pipeline" })));
+  }
+  if (i.campaigns) {
+    out.push(...i.campaigns.filter((c) => has(c.name, q) || has(c.utmCampaign, q)).slice(0, HIT_LIMIT)
+      .map((c): SearchHit => ({ key: `campaign:${c.id}`, type: "campaign", title: c.name, subtitle: c.status, href: `/campaigns/${c.id}` })));
   }
   if (i.records) {
     const keys = i.records.searchableKeys.filter((k) => i.pii || !i.records!.piiKeys.includes(k));

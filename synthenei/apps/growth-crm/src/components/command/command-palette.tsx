@@ -7,12 +7,13 @@ import * as D from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Building2, CalendarPlus, Clock, FileText, Loader2, Phone, Search, Upload, UserPlus, Users } from "lucide-react";
+import { Briefcase, Building2, CalendarPlus, Clock, FileText, ListChecks, Loader2, Megaphone, Phone, Search, Upload, UserPlus, Users } from "lucide-react";
 import { useSession, useVocab } from "@/components/shell/providers";
 import { navFor, navLabel } from "@/components/shell/nav";
 import { Kbd } from "@/components/ui/kbd";
 import { MIN_QUERY, sanitizeQuery } from "@/lib/search/sanitize";
 import { pushRecent, readRecent, type KeyValueStore } from "@/lib/search/recent";
+import { openShortcutHelp, paletteChordAllowed } from "./shortcuts";
 import type { HitType, SearchAction, SearchHit, SearchResponse } from "@/lib/search/types";
 
 export const OPEN_PALETTE_EVENT = "gcrm:open-palette";
@@ -20,7 +21,7 @@ export const OPEN_PALETTE_EVENT = "gcrm:open-palette";
 export const openCommandPalette = () => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT));
 const DEBOUNCE_MS = 200;
 const ACTION_ICON = { "new-lead": UserPlus, "log-call": Phone, "new-task": CalendarPlus, "import-leads": Upload } as const;
-const HIT_ICON: Record<HitType, typeof Users> = { lead: Users, account: Building2, contact: Users, record: FileText };
+const HIT_ICON: Record<HitType, typeof Users> = { lead: Users, account: Building2, contact: Users, task: ListChecks, deal: Briefcase, campaign: Megaphone, record: FileText };
 
 type Status = "idle" | "loading" | "error" | "rate_limited" | "ready";
 export type Fetcher = (url: string, init: { signal: AbortSignal }) => Promise<Pick<Response, "ok" | "status" | "json">>;
@@ -42,13 +43,22 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
   const [partial, setPartial] = useState(false);
   const [recent, setRecent] = useState<SearchHit[]>([]);
   const [attempt, setAttempt] = useState(0);
+  const [settledQ, setSettledQ] = useState("");
   const seq = useRef(0);
+  /** True while a search request (not the bootstrap) is outstanding: the bootstrap answer must not overwrite its loading state. */
+  const searchPending = useRef(false);
 
   const { q, tooShort } = useMemo(() => sanitizeQuery(input), [input]);
 
   // Open on Cmd/Ctrl+K (toggle) or on the custom event. Works while typing in a field, like most palettes.
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen((o) => !o); } };
+    const key = (e: KeyboardEvent) => {
+      if (!((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k")) return;
+      // Inside the palette it always toggles. Elsewhere it yields to rich-text editors (Ctrl+K = insert link) and to anything that already handled the key.
+      const inside = e.target instanceof Element && !!e.target.closest("[data-gcrm-palette]");
+      if (!paletteChordAllowed(e, inside)) return;
+      e.preventDefault(); setOpen((o) => !o);
+    };
     const ev = () => setOpen(true);
     window.addEventListener("keydown", key); window.addEventListener(OPEN_PALETTE_EVENT, ev);
     return () => { window.removeEventListener("keydown", key); window.removeEventListener(OPEN_PALETTE_EVENT, ev); };
@@ -57,33 +67,37 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
   // On open: reset, load recent items and the bootstrap (actions + what the viewer may search).
   useEffect(() => {
     if (!open) return;
-    setInput(""); setHits([]); setPartial(false); setStatus("idle");
+    setInput(""); setHits([]); setPartial(false); setSettledQ(""); setStatus("idle"); searchPending.current = false;
     setRecent(readRecent(storage(), uid, ws.id));
     const ctl = new AbortController();
     setStatus("loading");
     fetcher("/api/search", { signal: ctl.signal }).then(async (r) => {
       if (r.status === 429) { setStatus("rate_limited"); return; }
       if (!r.ok) { setStatus("error"); return; }
-      setBoot((await r.json()) as SearchResponse); setStatus("ready");
-    }).catch((e) => { if ((e as { name?: string })?.name !== "AbortError") setStatus("error"); });
+      setBoot((await r.json()) as SearchResponse);
+      // A search typed while this was loading owns the status: never flip it to "ready" (and so to "No matches") under a request in flight.
+      if (!searchPending.current) setStatus("ready");
+    }).catch((e) => { if ((e as { name?: string })?.name !== "AbortError" && !searchPending.current) setStatus("error"); });
     return () => ctl.abort();
   }, [open, uid, ws.id, fetcher, attempt]);
 
   // Debounced search. A newer keystroke aborts the older request and a late answer is dropped.
   useEffect(() => {
-    if (!open || q.length < MIN_QUERY) { setHits([]); setPartial(false); if (open && boot) setStatus("ready"); return; }
+    if (!open || q.length < MIN_QUERY) { searchPending.current = false; setHits([]); setPartial(false); setSettledQ(""); if (open && boot) setStatus("ready"); return; }
     const mine = ++seq.current;
     const ctl = new AbortController();
+    searchPending.current = true; setSettledQ("");
     setStatus("loading");
     const id = setTimeout(() => {
       fetcher(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal }).then(async (r) => {
         if (mine !== seq.current) return;
-        if (r.status === 429) { setStatus("rate_limited"); return; }
-        if (!r.ok) { setStatus("error"); return; }
+        if (r.status === 429) { searchPending.current = false; setStatus("rate_limited"); return; }
+        if (!r.ok) { searchPending.current = false; setStatus("error"); return; }
         const body = (await r.json()) as SearchResponse;
         if (mine !== seq.current) return;
-        setHits(body.hits ?? []); setPartial(!!body.partial); setStatus("ready");
-      }).catch((e) => { if (mine === seq.current && (e as { name?: string })?.name !== "AbortError") setStatus("error"); });
+        searchPending.current = false;
+        setHits(body.hits ?? []); setPartial(!!body.partial); setSettledQ(q); setStatus("ready");
+      }).catch((e) => { if (mine === seq.current && (e as { name?: string })?.name !== "AbortError") { searchPending.current = false; setStatus("error"); } });
     }, debounceMs);
     return () => { clearTimeout(id); ctl.abort(); };
   }, [q, open, fetcher, debounceMs, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,7 +117,12 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
   const recentOk = recent.filter((h) => !!boot?.types?.includes(h.type) && (h.type !== "record" || (!!h.objectKey && !!boot?.objects?.includes(h.objectKey))));
   const hitLabel = (h: SearchHit) => (h.type === "lead" ? v.nav.leads : h.type === "account" ? v.nav.accounts : h.type === "contact" ? t("contacts") : (h.subtitle ?? t("results")));
   const searching = q.length >= MIN_QUERY;
-  const nothing = status === "ready" && searching && !hits.length && !shownPages.length && !shownActions.length;
+  // "No matches" only for the query whose answer has actually arrived (settledQ), never while a request is pending or between keystrokes.
+  const answered = status === "ready" && searching && settledQ === q;
+  const total = hits.length + shownPages.length + shownActions.length;
+  const nothing = answered && total === 0;
+  const liveText = searching && status === "loading" ? t("liveSearching") : answered ? (total === 0 ? t("liveNone", { q }) : t("liveCount", { n: total })) : "";
+  const typeTag = (h: SearchHit) => (h.type === "task" ? t("typeTask") : h.type === "deal" ? t("typeDeal") : h.type === "campaign" ? t("typeCampaign") : null);
 
   const hitRow = (h: SearchHit): ReactNode => {
     const Icon = HIT_ICON[h.type];
@@ -112,7 +131,7 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
         <Icon className="size-4 shrink-0 text-ink-3" aria-hidden />
         <span className="min-w-0 flex-1 truncate">{h.title}</span>
         {h.masked && <span className="shrink-0 text-12 text-ink-3">{t("masked")}</span>}
-        {h.subtitle && h.type !== "record" && <span className="max-w-[45%] shrink-0 truncate text-12 text-ink-3">{h.subtitle}</span>}
+        {(h.subtitle || typeTag(h)) && h.type !== "record" && <span className="max-w-[45%] shrink-0 truncate text-12 text-ink-3">{[typeTag(h), h.subtitle].filter(Boolean).join(" · ")}</span>}
         {h.type === "record" && <span className="shrink-0 text-12 text-ink-3">{hitLabel(h)}</span>}
       </C.Item>
     );
@@ -122,7 +141,7 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
     <D.Root open={open} onOpenChange={setOpen}>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-50 bg-navy-950/45" />
-        <D.Content className="fixed left-1/2 top-[12%] z-50 w-[calc(100vw-32px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-control border border-line bg-surface shadow-pop focus:outline-none">
+        <D.Content data-gcrm-palette="" className="fixed left-1/2 top-[12%] z-50 w-[calc(100vw-32px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-control border border-line bg-surface shadow-pop focus:outline-none">
           <D.Title className="sr-only">{t("title")}</D.Title>
           <D.Description className="sr-only">{t("description")}</D.Description>
           <C label={t("title")} shouldFilter={false} loop>
@@ -132,8 +151,9 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
                 className="h-11 w-full bg-transparent text-14 text-ink focus-ring-inset placeholder:text-ink-3" />
               {status === "loading" && <Loader2 className="size-4 shrink-0 animate-spin text-ink-3" aria-hidden />}
             </div>
+            <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{liveText}</div>
             <C.List className="max-h-[min(24rem,60vh)] overflow-y-auto p-1">
-              {status === "loading" && searching && <div role="status" className="px-3 py-2 text-13 text-ink-3">{t("loading")}</div>}
+              {status === "loading" && searching && <div aria-hidden className="px-3 py-2 text-13 text-ink-3">{t("loading")}</div>}
               {status === "rate_limited" && <div role="alert" className="px-3 py-3 text-13 text-ink-2">{t("rateLimited")}</div>}
               {status === "error" && (
                 <div role="alert" className="flex items-center gap-3 px-3 py-3 text-13 text-ink-2">
@@ -163,7 +183,12 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
                 <C.Item key={p.href} value={`page-${p.href}`} onSelect={() => go(p.href)} className={rowCls}><p.Icon className="size-4 shrink-0 text-ink-3" aria-hidden /><span>{p.label}</span></C.Item>
               ))}</C.Group>}
             </C.List>
-            <div className="flex items-center justify-between border-t border-line px-3 py-1.5 text-12 text-ink-3"><span>{t("keys")}</span><Kbd>Esc</Kbd></div>
+            <div className="flex items-center justify-between border-t border-line px-3 py-1.5 text-12 text-ink-3"><span>{t("keys")}</span>
+              <span className="flex items-center gap-3">
+                <button type="button" onClick={() => { setOpen(false); openShortcutHelp(); }} className="rounded-control px-1.5 py-0.5 text-12 text-ink-2 underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring">{t("shortcutsLink")}</button>
+                <Kbd>Esc</Kbd>
+              </span>
+            </div>
           </C>
         </D.Content>
       </D.Portal>

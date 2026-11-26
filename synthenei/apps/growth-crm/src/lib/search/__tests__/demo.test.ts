@@ -33,4 +33,17 @@ describe("demo search", () => {
   it("sources the viewer may not read are not searched", () => {
     expect(run({ q: "vaigai", leads: null, accounts: null, records: null })).toEqual([]);
   });
+  it("finds tasks, deals and campaigns, and a rep sees only their own tasks and deals", () => {
+    const extra = {
+      tasks: [{ id: "t1", title: "Call Kovai", ownerId: "me" }, { id: "t2", title: "Call Kovai again", ownerId: "other" }],
+      deals: [{ id: "d1", name: "Kovai deal", ownerId: "me" }, { id: "d2", name: "Kovai deal 2", ownerId: "other" }],
+      campaigns: [{ id: "c1", name: "Kovai launch", status: "live", utmCampaign: "meta_kovai_2611" }],
+    };
+    const all = run({ q: "kovai", ...extra }).map((h) => h.key);
+    expect(all).toEqual(expect.arrayContaining(["task:t1", "task:t2", "deal:d1", "deal:d2", "campaign:c1"]));
+    const rep = run({ q: "kovai", ownOnly: { uid: "me" }, ...extra }).map((h) => h.key);
+    expect(rep).toEqual(expect.arrayContaining(["task:t1", "deal:d1", "campaign:c1"]));
+    expect(rep).not.toContain("task:t2"); expect(rep).not.toContain("deal:d2");
+    expect(run({ q: "meta_kovai", ...extra }).find((h) => h.type === "campaign")?.href).toBe("/campaigns/c1");
+  });
 });

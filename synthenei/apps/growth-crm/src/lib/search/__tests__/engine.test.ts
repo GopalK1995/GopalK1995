@@ -90,6 +90,48 @@ describe("searchReal: permissions and masking", () => {
   });
 });
 
+describe("searchReal: tasks, deals and campaigns", () => {
+  const rows = {
+    tasks: [{ id: "t1", title: "Call Kovai Steels", status: "open", assignee_id: "u" }],
+    deals: [{ id: "d1", name: "Kovai Steels - 12 seats", next_step: "Send quote", owner_id: "u" }],
+    campaigns: [{ id: "c1", name: "Kovai launch", status: "active", owner_id: "u" }],
+  };
+  it("owner finds a task, a deal and a campaign through the session client, scoped to the workspace", async () => {
+    const { db, calls } = fakeDb(rows);
+    const r = await searchReal(deps("owner", db), "kov", "en");
+    expect(r.hits.find((h) => h.type === "task")).toMatchObject({ key: "task:t1", href: "/tasks" });
+    expect(r.hits.find((h) => h.type === "deal")).toMatchObject({ key: "deal:d1", href: "/pipeline", subtitle: "Send quote" });
+    expect(r.hits.find((h) => h.type === "campaign")).toMatchObject({ key: "campaign:c1", href: "/campaigns/c1" });
+    for (const t of ["tasks", "deals", "campaigns"]) expect(calls.find((c) => c.table === t)!.eq).toContainEqual(["workspace_id", "ws-uuid"]);
+    expect(calls.find((c) => c.table === "deals")!.is).toContainEqual(["deleted_at", null]);
+    expect(calls.find((c) => c.table === "tasks")!.or[0]).toBe("title.ilike.*kov*");
+  });
+  it("a principal without tasks.read, deals.read or campaigns.read never queries those tables", async () => {
+    const { db, calls } = fakeDb(rows);
+    const d = deps("owner", db);
+    const grants = { ...d.principal.grants }; // copy: the role catalog grants object is shared between principals
+    for (const k of ["tasks.read", "deals.read", "campaigns.read"]) delete grants[k];
+    d.principal = { ...d.principal, grants };
+    expect(searchableTypes(d.principal, []).types).not.toContain("task");
+    const r = await searchReal(d, "kov", "en");
+    for (const t of ["tasks", "deals", "campaigns"]) expect(calls.map((c) => c.table)).not.toContain(t);
+    expect(r.hits.some((h) => ["task", "deal", "campaign"].includes(h.type))).toBe(false);
+  });
+  it("own-scope grants drop other people's rows even if returned", async () => {
+    const { db } = fakeDb({ tasks: [{ id: "a", title: "x1", assignee_id: "u" }, { id: "b", title: "x2", assignee_id: "other" }], deals: [{ id: "a", name: "d1", owner_id: "u" }, { id: "b", name: "d2", owner_id: "other" }] });
+    const d = deps("owner", db);
+    d.principal = { ...d.principal, grants: { ...d.principal.grants, "tasks.read": { scope: "own" }, "deals.read": { scope: "own" } } };
+    const r = await searchReal(d, "xx", "en");
+    expect(r.hits.filter((h) => h.type === "task").map((h) => h.key)).toEqual(["task:a"]);
+    expect(r.hits.filter((h) => h.type === "deal").map((h) => h.key)).toEqual(["deal:a"]);
+  });
+  it("a failing campaigns source is partial, others stay", async () => {
+    const { db } = fakeDb(rows, "campaigns");
+    const r = await searchReal(deps("owner", db), "kov", "en");
+    expect(r.partial).toBe(true); expect(r.hits.some((h) => h.type === "task")).toBe(true);
+  });
+});
+
 describe("searchReal: custom objects", () => {
   const rec = { id: "r1", title: "Pump 7", owner_id: null };
   it("searches the title and searchable text fields of readable objects", async () => {

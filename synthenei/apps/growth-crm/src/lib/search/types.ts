@@ -1,4 +1,4 @@
-export type HitType = "lead" | "account" | "contact" | "record";
+export type HitType = "lead" | "account" | "contact" | "task" | "deal" | "campaign" | "record";
 export interface SearchHit {
   /** Stable key for lists and recent items: `<type>:<id>` (custom objects: `obj:<key>:<id>`). */
   key: string;
