@@ -4,6 +4,7 @@
 import "server-only";
 import type { Db } from "@/lib/db/client";
 import { from } from "@/lib/db/query";
+import { consentRowsForSubject } from "./consent-lookup";
 import type { IntakeStore } from "./intake";
 import { LEAD_CONSENT_FLAG, type ConsentPurpose, type NoticeConfig, type PublicWorkspace } from "./types";
 import { normaliseEmail } from "./subject";
@@ -71,7 +72,7 @@ export function supabaseIntakeStore(db: Db, warn: (m: string) => void = () => un
 
     async withdraw(i) {
       // Latest decision per (subject, purpose): a purpose already withdrawn is not logged twice, so replays add nothing.
-      const prev = await q("consent_log").select("purpose, action, occurred_at").eq("workspace_id", i.wsUuid).eq("subject_ref", i.subjectRef).order("occurred_at", { ascending: false }).limit(200);
+      const prev = await consentRowsForSubject(db, i.wsUuid, i.subjectRef, "purpose, action, occurred_at", { ascending: false, limit: 200 });
       if (prev.error) throw failed("consent read");
       const latest = new Map<string, string>();
       for (const r of (prev.data as R[] | null) ?? []) if (!latest.has(String(r.purpose))) latest.set(String(r.purpose), String(r.action));

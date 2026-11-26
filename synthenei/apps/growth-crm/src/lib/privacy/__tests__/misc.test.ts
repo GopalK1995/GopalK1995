@@ -102,7 +102,7 @@ describe("access bundle", () => {
     for (const n of ["lead", "activities", "conversations", "messages", "consent_log", "lead_events", "tasks", "deals", "payments", "calendar_events", "contact", "records", "privacy_requests"]) expect(names).toContain(n);
     expect(b.manifest.sections.find((s) => s.name === "payments")?.error).toContain("unreadable");
     expect(b.manifest.notes.join(" ")).toContain('"payments" could not be read');
-    for (const o of f.ops.filter((x) => x.table !== "messages" && x.table !== "contacts")) expect(o.filters.some(([k, v]) => k === "eq:workspace_id" && v === "w") || o.table === "leads" || o.table === "records").toBe(true);
+    for (const o of f.ops.filter((x) => x.op !== "rpc" && x.table !== "messages" && x.table !== "contacts")) expect(o.filters.some(([k, v]) => k === "eq:workspace_id" && v === "w") || o.table === "leads" || o.table === "records").toBe(true);
     expect(BUNDLE_ROW_CAP).toBeGreaterThan(0);
   });
 });

@@ -3,6 +3,7 @@
 // manifest instead of silently shrinking the bundle. Internal plumbing columns are dropped; the person's own data is kept.
 import type { Db } from "@/lib/db/client";
 import { from } from "@/lib/db/query";
+import { consentRowsForSubject } from "./consent-lookup";
 
 type R = Record<string, unknown>;
 export const BUNDLE_ROW_CAP = 5000;
@@ -38,7 +39,7 @@ export async function buildAccessBundle(db: Db, i: { workspaceId: string; reques
   const convIds = convs.map((c) => String(c.id));
   if (convIds.length) await take("messages", () => T("messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: true }).limit(cap));
   else { data.messages = []; sections.push({ name: "messages", count: 0, truncated: false, error: null }); }
-  await take("consent_log", () => T("consent_log").select("purpose, action, notice_version, captured_via, occurred_at, note").eq("workspace_id", ws).eq("subject_ref", i.subjectRef).order("occurred_at", { ascending: true }).limit(cap));
+  await take("consent_log", () => consentRowsForSubject(db, ws, i.subjectRef, "purpose, action, notice_version, captured_via, occurred_at, note", { ascending: true, limit: cap }));
   await take("lead_events", () => T("lead_events").select("*").eq("workspace_id", ws).eq("lead_id", lead).order("occurred_at", { ascending: true }).limit(cap));
   await take("tasks", () => T("tasks").select("*").eq("workspace_id", ws).eq("lead_id", lead).limit(cap));
   await take("deals", () => T("deals").select("*").eq("workspace_id", ws).eq("lead_id", lead).limit(cap));
