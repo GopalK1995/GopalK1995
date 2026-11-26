@@ -8,6 +8,8 @@ import { headers } from "next/headers";
 import { createSupabaseServerClient } from "../supabase/server";
 import { loadMyWorkspaces } from "../tenancy";
 import { getEffectiveConfig } from "../config/resolve";
+import { fetchMyGrants } from "../authz/grants-fetch";
+import { fetchNavTypes } from "../metadata/nav-types";
 import { toVerticalOverrides } from "../config/adapter";
 import { isModuleEnabled, moduleForPath } from "../vertical";
 
@@ -26,7 +28,8 @@ export async function requireSession(): Promise<Session> {
   return s;
 }
 /** Session + active workspace/role. Platform admins without a support session are sent to /admin. */
-export async function requireActive(): Promise<{ session: Session; active: Active }> {
+export const requireActive = cache(requireActiveUncached);
+async function requireActiveUncached(): Promise<{ session: Session; active: Active }> {
   const store = await cookies();
   const session = await requireSession();
   const support = session.platformAdmin ? await verifySupport(store.get(SUPPORT_COOKIE)?.value) : null;
@@ -44,6 +47,8 @@ export async function requireActive(): Promise<{ session: Session; active: Activ
   }
   const active = resolveActive(session, store.get(WS_COOKIE)?.value, support, options);
   if (!active) redirect(session.platformAdmin ? "/admin" : "/login?error=no_profile");
+  // Start the grants RPC now so it overlaps the config read below (loadPrincipal awaits the same cached promise).
+  if (!session.demo) { void fetchMyGrants(active.ws.uuid); if (active.tenant.uuid) void fetchNavTypes(active.tenant.uuid); }
   // Tenant configuration (preset + overrides) rides on the tenant object, so vocabFor(active.tenant) needs no changes.
   const cfg = await getEffectiveConfig(active.tenant.id);
   active.tenant = { ...active.tenant, name: cfg.branding.name, product: cfg.branding.product, hue: cfg.branding.hue, config: toVerticalOverrides(cfg) };

@@ -10,10 +10,11 @@ import { loadNavObjects } from "./o/_lib/nav";
 import { stageTones } from "@/lib/config/stage-tone";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { session, active } = await requireActive();
+  // Wave 1: my_workspaces (inside requireActive). Wave 2, in parallel: tenant_config, authz.my_grants and object_types.
+  // requireActive and getEffectiveConfig are request-cached, so the repeat calls below cost nothing.
+  const [{ session, active }, objects] = await Promise.all([requireActive(), loadNavObjects()]);
   const cfg = await getEffectiveConfig(active.tenant.id);
   const workspaces = session.platformAdmin ? [{ ws: active.ws.id, role: active.role }] : session.memberships;
-  const objects = await loadNavObjects();
   const ctx: ShellCtx = {
     uid: session.uid, name: session.name, email: session.email, demo: session.demo, platformAdmin: session.platformAdmin, role: active.role,
     ws: { id: active.ws.id, name: active.ws.name, region: active.ws.region },

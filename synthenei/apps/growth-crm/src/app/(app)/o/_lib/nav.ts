@@ -5,7 +5,8 @@ import { requireActive } from "@/lib/auth/server";
 import { can } from "@/lib/authz";
 import { loadPrincipal } from "@/lib/authz/load";
 import { getLocale } from "@/i18n/server";
-import { listObjectTypes, tenantOfWorkspace } from "@/lib/metadata/repo";
+import { tenantOfWorkspace } from "@/lib/metadata/repo";
+import { fetchNavTypes } from "@/lib/metadata/nav-types";
 import { safeIcon } from "@/lib/layouts/icons";
 import type { NavObject } from "@/components/shell/nav";
 import { demoAccess, demoObject } from "./demo";
@@ -23,8 +24,14 @@ export async function loadNavObjects(): Promise<NavObject[]> {
       const o = demoObject();
       return demoAccess(active.role).read ? [{ key: o.key, label: navLabelOf(o, locale), icon: safeIcon(o.icon) }] : [];
     }
-    const principal = await loadPrincipal();
-    const types = (await listObjectTypes(await tenantOfWorkspace(active.ws.uuid))).filter((o) => o.kind === "custom" && o.isEnabled);
+    // Grants and object types were two sequential waves; both are prefetched in requireActive() and run in parallel with the config read.
+    // The tenant uuid rides on my_workspaces(); tenantOfWorkspace stays as the fallback when it is missing. A grants failure still
+    // rejects here (fail closed: no entries).
+    const tenantUuid = active.tenant.uuid ?? (await tenantOfWorkspace(active.ws.uuid));
+    const [principal, res] = await Promise.all([loadPrincipal(), fetchNavTypes(tenantUuid)]);
+    if (!res.ok) throw res.error;
+    const all = res.types;
+    const types = all.filter((o) => o.kind === "custom" && o.isEnabled);
     return types
       .filter((o) => can(principal, objPerm(o.key, "read"), { type: objType(o.key), workspaceId: active.ws.id }))
       .map((o) => ({ key: o.key, label: navLabelOf(o, locale), icon: safeIcon(o.icon) }));

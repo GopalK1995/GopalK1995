@@ -58,11 +58,15 @@ export function createWiredReads(ws: string, getDb: DbProvider = dbForRequest, o
       const memberships = await table("memberships", (q) => q.eq("is_active", true).order("created_at"));
       if (!memberships.length) return [];
       const db = await getDb();
-      const { data, error } = await from(db, "profiles").select("id, full_name, email").in("id", ids(memberships, "userId"));
+      const month = new Date().toISOString().slice(0, 7) + "-01";
+      // profiles and sales_targets are independent once the member ids are known: one wave instead of two (3 round trips -> 2).
+      const [{ data, error }, targetRows] = await Promise.all([
+        from(db, "profiles").select("id, full_name, email").in("id", ids(memberships, "userId")),
+        table("sales_targets", (q) => q.eq("month", month)),
+      ]);
       throwIfError(error);
       const profiles = new Map(((data as Row[] | null) ?? []).map((r) => toCamel<Row>(r)).map((p) => [String(p.id), p]));
-      const month = new Date().toISOString().slice(0, 7) + "-01";
-      const targets = new Map((await table("sales_targets", (q) => q.eq("month", month))).map((t) => [String(t.repId), t]));
+      const targets = new Map(targetRows.map((t) => [String(t.repId), t]));
       return memberships.map((mm) => m.teamMember(mm, profiles.get(String(mm.userId)), targets.get(String(mm.userId)), piiRead));
     },
 

@@ -8,7 +8,7 @@ import type { Role } from "./data/types";
 import type { TenantConfigOverrides } from "./vertical";
 
 export interface Tenant {
-  id: string; name: string; product: string; hue: number; monogram: string;
+  id: string; /** DB uuid; set for real sessions (from my_workspaces), absent on the demo fixture */ uuid?: string; name: string; product: string; hue: number; monogram: string;
   plan: "Growth" | "Scale" | "Pilot"; seats: number; primaryOwnerId: string; status: "active" | "suspended" | "trial"; createdAt: string; supportEmail: string;
   /** Industry vocabulary set. Absent = legal. */ vertical?: "legal" | "hospitality";
   /** Effective tenant config for this request (attached by requireActive; never stored on the static record). */ config?: TenantConfigOverrides;
@@ -37,7 +37,7 @@ export function activeFromRow(r: MyWorkspaceRow): ActiveOption {
   const b = r.branding ?? {};
   const name = str(b.brand_name, r.tenant_name);
   const tenant: Tenant = {
-    id: r.tenant_slug, name, product: r.tenant_name, hue: DEFAULT_HUE, monogram: (name.trim()[0] ?? "?").toUpperCase(),
+    id: r.tenant_slug, uuid: r.tenant_id, name, product: r.tenant_name, hue: DEFAULT_HUE, monogram: (name.trim()[0] ?? "?").toUpperCase(),
     plan: "Growth", seats: 0, primaryOwnerId: "", status: "active", createdAt: "", supportEmail: str(b.support_email),
   };
   const ws: Workspace = { id: r.workspace_id, uuid: r.workspace_id, tenantId: r.tenant_slug, name: r.workspace_name, region: str(r.region_label), createdAt: "", dataset: "tn" };

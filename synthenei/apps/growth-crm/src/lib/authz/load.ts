@@ -1,7 +1,7 @@
 // Server-side principal loading and enforcement. Imports next/headers via auth/server: do not import from client code.
 import { cache } from "react";
 import { requireActive } from "../auth/server";
-import { createSupabaseServerClient } from "../supabase/server";
+import { fetchMyGrants } from "./grants-fetch";
 import { MODULE_IDS } from "../config/types";
 import { isModuleEnabled } from "../vertical";
 import { AuthzError, decide } from "./engine";
@@ -22,12 +22,12 @@ export const loadPrincipal = cache(async (ws?: string): Promise<Principal> => {
   };
   if (!session.demo) {
     // Real sessions fail CLOSED (AUD-003 / SEC-013): no client, an RPC error or an empty result never falls back to the legacy role matrix.
-    const sb = await createSupabaseServerClient();
-    if (!sb) {
+    const r = await fetchMyGrants(active.ws.uuid);
+    if (!r.client) {
       console.error("[authz] no Supabase client for a real session; denying", { ws: active.ws.id });
       throw new GrantsUnavailableError("no_client");
     }
-    const { data, error } = await sb.schema("authz").rpc("my_grants", { p_ws: active.ws.uuid });
+    const { data, error } = r;
     if (error || !data) {
       console.error("[authz] my_grants lookup failed; denying", { ws: active.ws.id, code: error?.code ?? null, message: error?.message ?? "empty result" });
       throw new GrantsUnavailableError(error ? "rpc_error" : "empty_result");
