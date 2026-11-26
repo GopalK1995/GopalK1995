@@ -59,5 +59,5 @@ import { inr, inrCompact, num, numCompact, pct } from "@/lib/format";
 /** Format keys (functions cannot cross the server/client boundary, so charts take a key). */
 export type Fmt = "num" | "numCompact" | "inr" | "inrCompact" | "pct" | "pct0" | "score";
 export const FMT: Record<Fmt, (n: number) => string> = {
-  num, numCompact, inr, inrCompact, pct: (n) => pct(n, 1), pct0: (n) => pct(n, 0), score: (n) => `${Math.round(n)}`,
+  num, numCompact, inr, inrCompact, pct: (n) => pct(n, 1), pct0: (n) => pct(n, 0), score: (n) => (Number.isFinite(n) && n !== null ? `${Math.round(n)}` : "No data"),
 };

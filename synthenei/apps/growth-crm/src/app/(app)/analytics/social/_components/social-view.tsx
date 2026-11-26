@@ -73,7 +73,7 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
           <CardHeader title={t("trendTitle")} sub={t("trendHelp")} />
           <CardBody>
             <LineTrend label={t("trendTitle")} xKey="date" yFormat="numCompact" height={220}
-              data={view.trend.map((d) => ({ date: d.day, followers: d.followers ?? 0, reach: d.reach ?? 0 }))}
+              data={view.trend.map((d) => ({ date: d.day, followers: d.followers, reach: d.reach }))}
               series={[{ key: "followers", label: t("trendFollowers"), color: "var(--chart-1)" }, { key: "reach", label: t("trendReach"), color: "var(--chart-3)", dashed: true }]} />
           </CardBody>
         </Card>
@@ -123,7 +123,7 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
                 <>
                   <p className="text-12 text-ink-2">{t("sheetCurveHelp")}</p>
                   <LineTrend label={t("sheetCurve")} xKey="date" yFormat="numCompact" height={180}
-                    data={open.series.map((s) => ({ date: s.day, reach: s.reach ?? 0, impressions: s.impressions ?? 0 }))}
+                    data={open.series.map((s) => ({ date: s.day, reach: s.reach, impressions: s.impressions }))}
                     series={[{ key: "reach", label: t("colReach"), color: "var(--chart-1)" }, { key: "impressions", label: t("colImpressions"), color: "var(--chart-3)", dashed: true }]} />
                 </>
               ) : <p className="text-13 text-ink-2">{t("sheetNoCurve")}</p>}

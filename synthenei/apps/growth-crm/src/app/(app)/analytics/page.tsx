@@ -3,7 +3,7 @@ import { PlugZap } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
 import { getT } from "@/i18n/server";
 import { CONSENT_RATE, isDemo } from "@/lib/data/metrics";
-import { dayKey, num, numCompact, pct, ratio } from "@/lib/format";
+import { dayKey, deltaOf, num, numCompact, pct, ratio, secsToHuman } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ export default async function Analytics() {
     { key: "path", header: "Landing page", mobile: "title", cell: (p) => <div className="min-w-0"><div className="truncate font-mono text-[12px] text-ink">{p.path}</div><div className="hidden truncate text-[11px] text-ink-3 md:block">{p.title}</div></div> },
     { key: "s", header: "Sessions", align: "right", mobile: "fact", cell: (p) => <span>{num(p.sessions)}<span className="md:hidden"> sessions</span></span> },
     { key: "er", header: "Engaged", align: "right", cell: (p) => pct(p.engagementRate, 0) },
-    { key: "t", header: "Avg time", align: "right", cell: (p) => `${Math.floor(p.avgSecs / 60)}m ${String(p.avgSecs % 60).padStart(2, "0")}s` },
+    { key: "t", header: "Avg time", align: "right", cell: (p) => secsToHuman(p.avgSecs) },
     { key: "c", header: "Key events", align: "right", mobile: "fact", cell: (p) => <span className={cn(p.path === a.ctaPath && "font-medium")}>{p.conversions}<span className="md:hidden"> key events</span></span> },
   ];
 
@@ -104,13 +104,13 @@ export default async function Analytics() {
 
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid gap-4 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4">
-          <Kpi label="Sessions · 30 days" metric="M20" value={sum(g30, "sessions")} spark={wSpark} delta={ratio(sum(g30, "sessions"), sum(gPrev, "sessions")) - 1} deltaLabel="" foot={<>vs prior 30 days · {num(Math.round(sum(g30, "sessions") / 30))} a day</>} />
+          <Kpi label="Sessions · 30 days" metric="M20" value={sum(g30, "sessions")} spark={wSpark} delta={deltaOf(sum(g30, "sessions"), sum(gPrev, "sessions"))} deltaLabel="" foot={<>vs prior 30 days · {num(Math.round(sum(g30, "sessions") / 30))} a day</>} />
           <Kpi label="Engagement rate" metric="M21" value={er} format="pct" delta={er - erPrev} deltaLabel="" foot={<>points vs prior 30 days · engaged ÷ sessions</>} />
-          <Kpi label="Avg engagement time · seconds" metric="M22" value={Math.round(avgSecs)} delta={ratio(avgSecs, avgPrev) - 1} deltaLabel="" foot={<>vs prior 30 days · {Math.floor(avgSecs / 60)}m {String(Math.round(avgSecs % 60)).padStart(2, "0")}s per session</>} />
+          <Kpi label="Avg engagement time · seconds" metric="M22" value={Number.isFinite(avgSecs) ? Math.round(avgSecs) : null} delta={deltaOf(avgSecs, avgPrev)} deltaLabel="" foot={<>vs prior 30 days · {secsToHuman(avgSecs)} per session</>} />
           <div className={cn("flex min-w-0 flex-col justify-between gap-3 rounded-md border bg-surface p-4 shadow-1", Math.abs(gap) > 0.25 ? "border-warn/50" : "border-line")}>
             <div className="flex items-start justify-between gap-2"><span className="text-[12px] font-medium leading-4 text-ink-2">{a.formsKpi}</span><span className="font-mono text-[10px] text-ink-3">M23</span></div>
             <div>
-              <div className="text-[26px] font-semibold leading-8 tracking-[-0.02em] num">{Number.isFinite(gap) ? `${gap > 0 ? "+" : "−"}${Math.abs(gap * 100).toFixed(0)}%` : "–"}</div>
+              <div className="text-[26px] font-semibold leading-8 tracking-[-0.02em] num">{Number.isFinite(gap) ? `${gap > 0 ? "+" : "−"}${Math.abs(gap * 100).toFixed(0)}%` : "No data"}</div>
               <div className="mt-1 text-[12px] text-ink-2 num">{keyEv} GA4 key events · {crmSubmits} {a.crmSubmits}</div>
             </div>
             <div className="border-t border-line pt-2 text-[12px] leading-4 text-ink-3">{Math.abs(gap) > 0.25 ? <span className="font-medium text-warn-ink">Above the 25% flag. </span> : "Within the 25% tolerance. "}Consent gating and ad blockers make GA4 and the CRM differ.</div>

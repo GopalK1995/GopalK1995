@@ -6,7 +6,7 @@ import { fmtDate } from "@/lib/format";
 export type LineSeries = { key: string; label: string; color: string; dashed?: boolean; area?: boolean; bar?: boolean };
 /** Trend line(s) over dates. One y-axis only; series of different units go in separate charts. */
 export function LineTrend({ data, series, height = 240, label, yFormat: yKey = "num", xKey = "date", legend = true, endLabel = true }: {
-  data: Record<string, number | string>[]; series: LineSeries[]; height?: number; label: string; yFormat?: Fmt; xKey?: string; legend?: boolean; endLabel?: boolean;
+  data: Record<string, number | string | null>[]; series: LineSeries[]; height?: number; label: string; yFormat?: Fmt; xKey?: string; legend?: boolean; endLabel?: boolean;
 }) {
   const anim = useChartAnim();
   const yFormat = FMT[yKey];
@@ -21,7 +21,7 @@ export function LineTrend({ data, series, height = 240, label, yFormat: yKey = "
             <XAxis dataKey={xKey} {...axisProps} interval="preserveStartEnd" minTickGap={40} tickFormatter={(v: string) => (/^\d{4}-\d{2}-\d{2}/.test(v) ? fmtDate(v + "T06:00:00Z") : v)} />
             <YAxis {...axisProps} width={44} tickFormatter={yFormat} allowDecimals={false} />
             <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={({ active, payload, label: l }) => active && payload?.length ? (
-              <TooltipBox title={typeof l === "string" && /^\d{4}-/.test(l) ? fmtDate(l + "T06:00:00Z") : l} rows={series.map((s) => ({ name: s.label, color: s.color, dash: true, value: yFormat(Number(payload.find((p) => p.dataKey === s.key)?.value ?? 0)) }))} />
+              <TooltipBox title={typeof l === "string" && /^\d{4}-/.test(l) ? fmtDate(l + "T06:00:00Z") : l} rows={series.map((s) => ({ name: s.label, color: s.color, dash: true, value: (() => { const v = payload.find((p) => p.dataKey === s.key)?.value; return v === null || v === undefined || !Number.isFinite(Number(v)) ? "No data" : yFormat(Number(v)); })() }))} />
             ) : null} />
             {series.filter((s) => s.area).map((s) => <Area key={s.key + "-a"} dataKey={s.key} type="monotone" fill={s.color} fillOpacity={0.08} stroke="none" {...anim} tooltipType="none" />)}
             {series.filter((s) => s.bar).map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={6} radius={[2, 2, 0, 0]} {...anim} />)}

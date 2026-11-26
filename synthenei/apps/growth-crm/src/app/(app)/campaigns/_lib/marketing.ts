@@ -2,7 +2,7 @@
 // Pure functions over DataSource arrays (workspace-scoped by pageCtx), so mock and Supabase behave the same.
 import type { Account, Activity, Campaign, CampaignDay, Channel, Deal, Ga4Day, Integration, Lead } from "@/lib/data/types";
 import { CHANNEL_LABEL, campaignStats, isDemo, type CampaignStats } from "@/lib/data/metrics";
-import { dayKey, fmtDate, ratio } from "@/lib/format";
+import { dayKey, deltaOf, fmtDate, ratio } from "@/lib/format";
 
 export const DAY_MS = 86400e3;
 
@@ -69,7 +69,7 @@ export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], 
   const leadsW = weeks.map((w) => cLeads.filter((l) => inBucket(leadDay(l), w)).length);
   const demosW = weeks.map((w) => booked.filter((a) => inBucket(dayKey(a.at), w)).length);
   const a = win(0, 30), b = win(30, 60);
-  const delta = (x: number, y: number) => (Number.isFinite(x) && Number.isFinite(y) && y > 0 ? x / y - 1 : NaN);
+  const delta = (x: number, y: number) => deltaOf(x, y);
   return {
     weeks, spendW, leadsW, demosW,
     cplW: weeks.map((_, i) => (leadsW[i] ? spendW[i] / leadsW[i] : 0)),
@@ -81,27 +81,38 @@ export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], 
 
 /** M45 radar rows with campaign ids as keys plus optional extra series (channel average, best). */
 export const RADAR_AXES = ["Reach", "Engagement", "CTR", "Lead rate", "Cost efficiency"] as const;
-export function radarRaw(s: CampaignStats) {
-  return [s.reach, s.engagementRate, s.ctr, s.leadRate, s.spend === 0 && s.leads > 0 ? Infinity : Number.isFinite(s.cpl) && s.cpl > 0 ? 1 / s.cpl : 0];
+/** Raw reading per axis; null = no data (never coerced to 0). Infinity = free (no media spend but leads). */
+export function radarRaw(s: CampaignStats): (number | null)[] {
+  const fin = (v: number) => (Number.isFinite(v) ? v : null);
+  const cost = s.spend === 0 && s.leads > 0 ? Infinity : Number.isFinite(s.cpl) && s.cpl > 0 ? 1 / s.cpl : s.spend === 0 && s.leads === 0 ? 0 : null;
+  return [fin(s.reach), fin(s.engagementRate), fin(s.ctr), fin(s.leadRate), cost];
 }
 /** M45 reach profile, 0-100 per axis by POSITION among this workspace's campaigns in the period (best = 100,
  *  lowest = 100/n). A pure "/ max" scale let one structural outlier (WhatsApp CTR ~19% vs LinkedIn ~0.6%) flatten
  *  every other campaign to a spike, so the chart compared nothing; rank keeps every axis readable and the raw value
- *  sits beside each score in the table. Ties share the higher position. Email with no media spend = best cost efficiency. */
-export function radarScores(stats: CampaignStats[]) {
-  const raw = stats.map(radarRaw).map((r) => r.map((v) => (Number.isFinite(v) || v === Infinity ? v : 0)));
-  const n = stats.length;
-  const scores = new Map<string, number[]>();
+ *  sits beside each score in the table. Ties share the higher position. Email with no media spend = best cost efficiency.
+ *  A missing reading scores null (the axis is excluded and shown as "No data"), never 0. */
+export function radarScores(stats: CampaignStats[]): Map<string, (number | null)[]> {
+  const raw = stats.map(radarRaw);
+  const scores = new Map<string, (number | null)[]>();
   stats.forEach((s, j) => scores.set(s.id, RADAR_AXES.map((_, i) => {
     const v = raw[j][i];
-    const below = raw.filter((r) => r[i] <= v).length; // includes itself and ties
-    return v <= 0 ? 0 : Math.round((below / n) * 100);
+    if (v === null) return null;
+    const peers = raw.map((r) => r[i]).filter((x): x is number => x !== null);
+    const below = peers.filter((x) => x <= v).length; // includes itself and ties
+    return v <= 0 ? 0 : Math.round((below / peers.length) * 100);
   })));
   return scores;
 }
-export function radarRows(series: { key: string; values: number[] }[]) {
+/** Mean of the scores that exist (null axes skipped); -1 when none, so a campaign with no data ranks last. */
+export const meanScore = (xs: (number | null)[]) => { const k = xs.filter((v): v is number => v !== null); return k.length ? k.reduce((a, v) => a + v, 0) / k.length : -1; };
+/** Per-axis average over several score rows, null where nobody has data. */
+export function avgScores(rows: (number | null)[][]): (number | null)[] {
+  return RADAR_AXES.map((_, i) => { const k = rows.map((r) => r[i]).filter((v): v is number => v !== null); return k.length ? Math.round(k.reduce((a, v) => a + v, 0) / k.length) : null; });
+}
+export function radarRows(series: { key: string; values: (number | null)[] }[]) {
   return RADAR_AXES.map((axis, i) => {
-    const row: Record<string, number | string> = { axis };
+    const row: Record<string, number | string | null> = { axis };
     for (const s of series) row[s.key] = s.values[i];
     return row;
   });

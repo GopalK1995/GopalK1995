@@ -14,7 +14,7 @@ import { Donut } from "@/components/charts/donut";
 import { cn } from "@/lib/utils";
 import { vocabFor } from "@/lib/vertical";
 import type { CampaignStats } from "@/lib/data/metrics";
-import { CHANNEL_CHIP, campaignChannels, allStats, kpiSeries, radarScores, shortName, sourceState } from "./_lib/marketing";
+import { CHANNEL_CHIP, campaignChannels, allStats, kpiSeries, radarScores, meanScore as meanOf, shortName, sourceState } from "./_lib/marketing";
 import { RadarPicker, type RadarCampaign } from "./_components/radar-compare";
 import { ImportCsvDialog, NewCampaignDialog } from "./_components/dialogs";
 import { loadCampaigns, loadDays } from "./_lib/load";
@@ -24,7 +24,7 @@ import { tc } from "./_lib/strings";
 export const metadata = { title: "Campaigns" };
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
 const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const;
-const money = (n: number) => (Number.isFinite(n) ? inr(n) : "–");
+const money = (n: number) => inr(n);
 
 export default async function Campaigns() {
   const ctx = await pageCtx();
@@ -68,11 +68,11 @@ export default async function Campaigns() {
   const scores = radarScores(stats);
   const radarCampaigns: RadarCampaign[] = ranked.map((s) => ({
     id: s.id, label: shortName(s.name), scores: scores.get(s.id)!,
-    raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : `${inrCompact(s.cpl)} ${m.radarCpl}`],
+    raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : Number.isFinite(s.cpl) ? `${inrCompact(s.cpl)} ${m.radarCpl}` : "No data"],
   }));
 
   // Radar default: the three campaigns with the fullest profile (mean score), one per channel, so shapes are readable.
-  const meanScore = (id: string) => scores.get(id)!.reduce((a, v) => a + v, 0) / 5;
+  const meanScore = (id: string) => meanOf(scores.get(id)!);
   const radarInit = [...stats].sort((a, b) => meanScore(b.id) - meanScore(a.id)).filter((s, i, xs) => xs.findIndex((x) => x.channel === s.channel) === i).slice(0, 3).map((s) => s.id);
   // Import stats from the sync log (CSV bridge is the live inbound path in MVP).
   const nowMs = new Date(now).getTime();

@@ -17,7 +17,7 @@ import { ChannelMark, LeadStageBadge } from "@/components/ui/domain";
 import type { Lead } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { vocabFor, cap } from "@/lib/vertical";
-import { CHANNEL_CHIP, allStats, dailyJoin, radarScores, shortName, sourceState, weekBuckets, inBucket, leadDay, DAY_MS } from "../_lib/marketing";
+import { CHANNEL_CHIP, allStats, dailyJoin, radarScores, avgScores, meanScore as meanOf, shortName, sourceState, weekBuckets, inBucket, leadDay, DAY_MS } from "../_lib/marketing";
 import { RadarPicker, type RadarCampaign } from "../_components/radar-compare";
 import { ImportCsvDialog, MetricsDayDialog } from "../_components/dialogs";
 import { EditCampaignDialog } from "./_components/edit-dialog";
@@ -86,15 +86,15 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
   // Radar: this campaign vs channel average vs best campaign (highest mean score).
   const scores = radarScores(stats);
   const peers = stats.filter((x) => x.channel === c.channel);
-  const avgOf = (xs: typeof stats) => [0, 1, 2, 3, 4].map((i) => Math.round(xs.reduce((a, x) => a + scores.get(x.id)![i], 0) / xs.length));
+  const avgOf = (xs: typeof stats) => avgScores(xs.map((x) => scores.get(x.id)!));
   const avgLabel = peers.length > 1 ? `${CHANNEL_LABEL[c.channel]} average` : "All-campaign average";
   const avg = avgOf(peers.length > 1 ? peers : stats);
-  const mean = (x: number[]) => x.reduce((a, v) => a + v, 0) / x.length;
+  const mean = (x: (number | null)[]) => meanOf(x);
   const bestS = [...stats].filter((x) => x.id !== c.id).sort((a, b) => mean(scores.get(b.id)!) - mean(scores.get(a.id)!))[0];
   const radar: RadarCampaign[] = [
-    { id: c.id, label: "This campaign", scores: scores.get(c.id)!, raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : `${inrCompact(s.cpl)} ${v.mk.radarCpl}`] },
+    { id: c.id, label: "This campaign", scores: scores.get(c.id)!, raw: [numCompact(s.reach), pct(s.engagementRate, 1), pct(s.ctr, 2), pct(s.leadRate, 1), s.spend === 0 ? "no spend" : Number.isFinite(s.cpl) ? `${inrCompact(s.cpl)} ${v.mk.radarCpl}` : "No data"] },
     { id: "avg", label: avgLabel, scores: avg, raw: ["", "", "", "", ""] },
-    ...(bestS ? [{ id: bestS.id, label: `Best: ${shortName(bestS.name)}`, scores: scores.get(bestS.id)!, raw: [numCompact(bestS.reach), pct(bestS.engagementRate, 1), pct(bestS.ctr, 2), pct(bestS.leadRate, 1), bestS.spend === 0 ? "no spend" : `${inrCompact(bestS.cpl)} ${v.mk.radarCpl}`] }] : []),
+    ...(bestS ? [{ id: bestS.id, label: `Best: ${shortName(bestS.name)}`, scores: scores.get(bestS.id)!, raw: [numCompact(bestS.reach), pct(bestS.engagementRate, 1), pct(bestS.ctr, 2), pct(bestS.leadRate, 1), bestS.spend === 0 ? "no spend" : Number.isFinite(bestS.cpl) ? `${inrCompact(bestS.cpl)} ${v.mk.radarCpl}` : "No data"] }] : []),
   ];
 
   // Funnel: impressions -> clicks -> landing visits -> leads -> demos -> won

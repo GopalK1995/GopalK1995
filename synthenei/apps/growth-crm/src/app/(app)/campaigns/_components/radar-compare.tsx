@@ -5,7 +5,7 @@ import { SERIES } from "@/components/charts/kit";
 import { cn } from "@/lib/utils";
 import { useVocab } from "@/components/shell/providers";
 
-export type RadarCampaign = { id: string; label: string; scores: number[]; raw: string[] };
+export type RadarCampaign = { id: string; label: string; scores: (number | null)[]; raw: string[] };
 
 /** M45 reach profile. Pick up to 3 campaigns (2 on phones). A campaign keeps its colour slot while selected, so
  *  colour follows the campaign, never its position. A values table under the chart carries every number. */
@@ -34,13 +34,16 @@ export function RadarPicker({ campaigns, initial, height = 360, total }: { campa
   });
   const sel = active.map((id, slot) => ({ id, slot })).filter((x): x is { id: string; slot: number } => !!x.id)
     .map(({ id, slot }) => ({ c: campaigns.find((c) => c.id === id)!, slot })).filter((x) => x.c);
-  const data = AXES.map((axis, i) => {
-    const row: Record<string, number | string> = { axis };
-    sel.forEach(({ c }) => { row[c.id] = c.scores[i]; });
+  // An axis with a missing reading for any plotted campaign is left off the chart (a gap is not a score of 0); the table says "No data".
+  const plotted = AXES.map((_, i) => i).filter((i) => sel.every(({ c }) => c.scores[i] !== null));
+  const data = plotted.map((i) => {
+    const row: Record<string, number | string> = { axis: AXES[i] };
+    sel.forEach(({ c }) => { row[c.id] = c.scores[i] as number; });
     return row;
   });
+  const hidden = AXES.filter((_, i) => !plotted.includes(i));
   const series = sel.map(({ c, slot }) => ({ key: c.id, label: c.label, color: SERIES[slot === 0 ? 0 : slot === 1 ? 1 : 2], dashed: slot > 0 }));
-  const summary = sel.map(({ c }) => `${c.label}: ${AXES.map((a, i) => `${a} ${c.scores[i]}`).join(", ")}`).join(". ");
+  const summary = sel.map(({ c }) => `${c.label}: ${AXES.map((a, i) => `${a} ${c.scores[i] ?? "no data"}`).join(", ")}`).join(". ");
   return (
     <div>
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label={`Campaigns to compare (up to ${max})`}>
@@ -55,7 +58,8 @@ export function RadarPicker({ campaigns, initial, height = 360, total }: { campa
           );
         })}
       </div>
-      <div className="[&_svg]:overflow-visible"><RadarCompare label={`Reach profile radar, 0 to 100 per axis. ${summary}`} data={data} series={series} height={height} /></div>
+      {plotted.length >= 3 ? <div className="[&_svg]:overflow-visible"><RadarCompare label={`Reach profile radar, 0 to 100 per axis. ${summary}`} data={data} series={series} height={height} /></div> : <p className="rounded-sm bg-paper-2 px-3 py-6 text-center text-[13px] text-ink-3">No data to draw a profile. The values table below shows what exists.</p>}
+      {hidden.length > 0 && plotted.length >= 3 && <p className="mt-1 text-[11px] text-ink-3">Not plotted, no data: {hidden.join(", ")}.</p>}
       <div className="scrollbar-thin mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-[12px]">
           <caption className="sr-only">Reach profile scores (0–100, position among campaigns; best = 100) with the underlying value</caption>
@@ -75,7 +79,7 @@ export function RadarPicker({ campaigns, initial, height = 360, total }: { campa
                 <th scope="row" className="py-1.5 pr-2 text-left font-normal text-ink-2">{a}</th>
                 {sel.map(({ c }) => (
                   <td key={c.id} className="py-1.5 pl-2 text-right num">
-                    <span className="font-semibold text-ink">{c.scores[i]}</span>{c.raw[i] && <span className="block text-[11px] text-ink-3 sm:ml-1.5 sm:inline sm:text-[12px]">{c.raw[i]}</span>}
+                    {c.scores[i] === null ? <span className="text-ink-3">No data</span> : <span className="font-semibold text-ink">{c.scores[i]}</span>}{c.scores[i] !== null && c.raw[i] && <span className="block text-[11px] text-ink-3 sm:ml-1.5 sm:inline sm:text-[12px]">{c.raw[i]}</span>}
                   </td>
                 ))}
               </tr>

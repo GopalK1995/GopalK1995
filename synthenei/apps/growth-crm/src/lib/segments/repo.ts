@@ -20,26 +20,40 @@ export const segmentsRepo = createSegmentsRepo();
 export interface DayRow extends MetricRow { source: string }
 type Upserter = { upsert(v: Record<string, unknown>[], o: { onConflict: string }): PromiseLike<{ error: { code?: string; message?: string } | null }> };
 
+/** DB column is spend_inr; the app shape says `spend`. Without this map every spend read as undefined -> NaN (AUD-013). */
+export function toDayRow(r: Record<string, unknown>): DayRow {
+  const c = toCamel<DayRow & { spendInr?: unknown }>(r);
+  const raw = c.spend ?? c.spendInr;
+  const n = raw === null || raw === undefined ? 0 : Number(raw);
+  const { spendInr: _drop, ...rest } = c;
+  return { ...rest, spend: Number.isFinite(n) ? n : 0 };
+}
+/** Inverse for writes: `spend` -> spend_inr. */
+export function toDbDay(r: MetricRow): Record<string, unknown> {
+  const { spend, ...rest } = toSnake(r as unknown as Record<string, unknown>);
+  return { ...rest, spend_inr: spend };
+}
+
 export function createMetricsRepo(getDb: DbProvider = dbForRequest) {
   return {
     async listForCampaign(ws: string, campaignId: string, limit = 400): Promise<DayRow[]> {
       const db = await getDb();
       const { data, error } = await from(db, "campaign_daily_metrics").select().eq("workspace_id", ws).eq("campaign_id", campaignId).order("day", { ascending: false }).limit(limit);
       throwIfError(error);
-      return ((data as Record<string, unknown>[] | null) ?? []).map((r) => toCamel<DayRow>(r));
+      return ((data as Record<string, unknown>[] | null) ?? []).map(toDayRow);
     },
     async listAll(ws: string, limit = 5000): Promise<DayRow[]> {
       const db = await getDb();
       const { data, error } = await from(db, "campaign_daily_metrics").select().eq("workspace_id", ws).order("day", { ascending: false }).limit(limit);
       throwIfError(error);
-      return ((data as Record<string, unknown>[] | null) ?? []).map((r) => toCamel<DayRow>(r));
+      return ((data as Record<string, unknown>[] | null) ?? []).map(toDayRow);
     },
     /** Idempotent per (campaign, day): re-importing a file overwrites the same days instead of doubling spend. */
     async upsertDays(ws: string, rows: MetricRow[], source: "manual" | "csv"): Promise<number> {
       if (rows.length === 0) return 0;
       const db = await getDb();
       for (let i = 0; i < rows.length; i += 500) {
-        const body = rows.slice(i, i + 500).map((r) => ({ ...toSnake(r as unknown as Record<string, unknown>), workspace_id: ws, source }));
+        const body = rows.slice(i, i + 500).map((r) => ({ ...toDbDay(r), workspace_id: ws, source }));
         const { error } = await (from(db, "campaign_daily_metrics") as unknown as Upserter).upsert(body, { onConflict: "campaign_id,day" });
         throwIfError(error);
       }
