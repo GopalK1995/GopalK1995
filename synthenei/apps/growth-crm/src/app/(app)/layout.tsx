@@ -7,6 +7,8 @@ import { TENANTS, WORKSPACES } from "@/lib/tenancy";
 import { getEffectiveConfig } from "@/lib/config/resolve";
 import { stageList } from "@/lib/config/types";
 import { loadNavObjects } from "./o/_lib/nav";
+import { NamespaceProvider } from "@/i18n/section";
+import { APP_NS } from "@/i18n/namespaces";
 import { stageTones } from "@/lib/config/stage-tone";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <style>{`:root{--brand-h:${active.tenant.hue};${fonts}}`}</style>
-      <Providers session={ctx}><AppShell bell={<BellSlot />}>{children}</AppShell></Providers>
+      <NamespaceProvider ns={APP_NS}><Providers session={ctx}><AppShell bell={<BellSlot />}>{children}</AppShell></Providers></NamespaceProvider>
     </>
   );
 }

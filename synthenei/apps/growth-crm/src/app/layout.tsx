@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { brandBootScript } from "@/components/shell/providers";
 import { cookies } from "next/headers";
 import { WS_COOKIE } from "@/lib/auth/session";
 import { tenantOf } from "@/lib/tenancy";
-import { getMessages } from "@/i18n/server";
-import { I18nProvider } from "@/i18n/provider";
+import { getLocale } from "@/i18n/server";
 import { intlTag } from "@/i18n/config";
 import { notoSansTamil } from "@/i18n/fonts";
 import "./globals.css";
@@ -23,15 +21,16 @@ const TAMIL_CSS = `html[lang="ta-IN"] body{font-family:var(--font-tamil),var(--f
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const tenant = tenantOf((await cookies()).get(WS_COOKIE)?.value ?? "");
-  const { locale, messages } = await getMessages();
+  // No client i18n provider here: public pages (login, auth/*, legal, docs) have no client component that reads messages, so they ship none.
+  // The signed-in app gets its provider in (app)/layout.tsx (namespaces in src/i18n/namespaces.ts).
+  const locale = await getLocale();
   const ta = locale === "ta";
   return (
     <html lang={intlTag(locale)} data-tenant={tenant?.id ?? "lawsome"} className={`${GeistSans.variable} ${GeistMono.variable}${ta ? ` ${notoSansTamil.variable}` : ""}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: brandBootScript }} />
         {ta && <style>{TAMIL_CSS}</style>}
       </head>
-      <body><I18nProvider locale={locale} messages={messages}>{children}</I18nProvider></body>
+      <body>{children}</body>
     </html>
   );
 }
