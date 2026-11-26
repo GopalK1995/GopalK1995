@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "../supabase/server";
 import { MODULE_IDS } from "../config/types";
 import { isModuleEnabled } from "../vertical";
 import { AuthzError, decide } from "./engine";
+import { GrantsUnavailableError } from "./errors";
 import { principalFromMyGrants, systemPrincipal } from "./principal";
 import { SYSTEM_ROLES } from "./catalog/system-roles";
 import { withBilling } from "../billing/runtime";
@@ -20,18 +21,22 @@ export const loadPrincipal = cache(async (ws?: string): Promise<Principal> => {
     tenant: { status: active.tenant.status }, support: active.support ? { mode: active.support.mode } : null,
   };
   if (!session.demo) {
+    // Real sessions fail CLOSED (AUD-003 / SEC-013): no client, an RPC error or an empty result never falls back to the legacy role matrix.
     const sb = await createSupabaseServerClient();
-    if (sb) {
-      const { data, error } = await sb.schema("authz").rpc("my_grants", { p_ws: active.ws.uuid });
-      if (!error && data) {
-        const p = principalFromMyGrants(data, { uid: session.uid, workspaceId: active.ws.id });
-        return withBilling({ ...p, modulesOff: [...new Set([...p.modulesOff, ...modulesOff])] });
-      }
-      // Transitional: until migration 0013 is applied the RPC does not exist; fall back to the membership role.
+    if (!sb) {
+      console.error("[authz] no Supabase client for a real session; denying", { ws: active.ws.id });
+      throw new GrantsUnavailableError("no_client");
     }
+    const { data, error } = await sb.schema("authz").rpc("my_grants", { p_ws: active.ws.uuid });
+    if (error || !data) {
+      console.error("[authz] my_grants lookup failed; denying", { ws: active.ws.id, code: error?.code ?? null, message: error?.message ?? "empty result" });
+      throw new GrantsUnavailableError(error ? "rpc_error" : "empty_result");
+    }
+    const p = principalFromMyGrants(data, { uid: session.uid, workspaceId: active.ws.id });
+    return withBilling({ ...p, modulesOff: [...new Set([...p.modulesOff, ...modulesOff])] });
   }
   const p = systemPrincipal(base);
-  // Demo/fallback: the legacy page matrix does not derive every seeded permission (audit.read, events.read, comments.*, ...), so the demo owner
+  // Demo only: the legacy page matrix does not derive every seeded permission (audit.read, events.read, comments.*, ...), so the demo owner
   // could not read the audit log while the real owner can. Fill in what the frozen seed grants this role; derived grants and the support overlay win.
   const seeded = SYSTEM_ROLES.find((r) => r.key === p.roleKey);
   const grants = { ...p.grants };

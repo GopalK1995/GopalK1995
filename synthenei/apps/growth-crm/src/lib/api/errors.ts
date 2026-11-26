@@ -1,14 +1,15 @@
 // Error envelope: application/problem+json (CONTRACTS C11).
 import { ZodError } from "zod";
 import { AuthzError } from "../authz/engine";
+import { GrantsUnavailableError } from "../authz/errors";
 import { DbError } from "../db/errors";
 import { serializeRow } from "./serialize";
 
-export type ApiCode = "unauthorized" | "forbidden" | "not_found" | "conflict" | "invalid" | "rate_limited" | "error";
-export const STATUS: Record<ApiCode, number> = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, error: 500 };
+export type ApiCode = "unauthorized" | "forbidden" | "not_found" | "conflict" | "invalid" | "rate_limited" | "unavailable" | "error";
+export const STATUS: Record<ApiCode, number> = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, unavailable: 503, error: 500 };
 const TITLE: Record<ApiCode, string> = {
   unauthorized: "Unauthorized", forbidden: "Forbidden", not_found: "Not found", conflict: "Conflict",
-  invalid: "Invalid request", rate_limited: "Too many requests", error: "Internal error",
+  invalid: "Invalid request", rate_limited: "Too many requests", unavailable: "Service unavailable", error: "Internal error",
 };
 export const ERROR_BASE = "https://docs.synthan.app/errors/";
 
@@ -44,6 +45,7 @@ export const zodIssues = (e: ZodError): FieldIssue[] => e.issues.map((i) => ({ p
 export function toApiError(e: unknown): ApiError {
   if (e instanceof ApiError) return e;
   if (e instanceof ZodError) return new ApiError("invalid", "Request validation failed.", { errors: zodIssues(e) });
+  if (e instanceof GrantsUnavailableError) return new ApiError("unavailable", "Permissions are temporarily unavailable. Try again shortly.", { headers: { "retry-after": "5" } });
   if (e instanceof AuthzError) {
     // A record outside the caller's scope looks exactly like a missing record.
     return e.decision.reason === "out_of_scope" ? new ApiError("not_found", "Resource not found.") : new ApiError("forbidden", "Your key is not allowed to do this.", { extra: { reason: e.decision.reason } });
