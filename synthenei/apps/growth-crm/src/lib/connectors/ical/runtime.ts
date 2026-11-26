@@ -19,7 +19,15 @@ export function icalServiceDeps(workspaceId: string | null = null): IcalDeps {
   return {
     store: supabaseIcalStore(db, supabaseVault(db)), records: supabaseBookingRecordStore(db), fetch: makeFeedFetcher(), log, now: () => new Date(),
     async audit(e) {
-      const { error } = await (db as unknown as Rpc).rpc("audit_record", {
+      // Preferred: the server-only audit_record_server (migration 0025). Before it exists, fall back to audit_record, which a service
+      // client is refused (no signed-in member), as it always was: the failure is thrown and the caller logs it.
+      const client = db as unknown as Rpc;
+      const server = await client.rpc("audit_record_server", {
+        p_actor: null, p_workspace: workspaceId, p_action: e.action, p_summary: e.summary.slice(0, 300), p_object_table: null, p_object_id: null,
+        p_detail: e.detail ?? {}, p_source: "connector", p_actor_kind: "connector", p_request_id: null, p_ip: null, p_user_agent: null,
+      });
+      if (!server.error) return;
+      const { error } = await client.rpc("audit_record", {
         p_workspace: workspaceId, p_action: e.action, p_summary: e.summary.slice(0, 300), p_object_table: null, p_object_id: null, p_reason: null, p_detail: e.detail ?? {},
         p_source: "connector", p_actor_kind: "connector", p_request_id: null, p_ip: null, p_user_agent: null, p_impersonation: false,
       });

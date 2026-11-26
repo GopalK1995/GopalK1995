@@ -2,8 +2,10 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HOME_FOR } from "./roles";
-import { GENERIC_AUTH_ERROR, LOGIN_LIMIT, RESET_LIMIT, SESSION_COOKIE, SUPPORT_COOKIE, TOTP_RE, WS_COOKIE, buildLiveSession, clientIp, isAppCookie, mfaStep, passwordProblem, reSign, sign, signSession, throttleBucket, verifySession, verifySupport, type Session } from "./session";
+import { GENERIC_AUTH_ERROR, LOGIN_LIMIT, RESET_LIMIT, SESSION_COOKIE, SUPPORT_COOKIE, TOTP_RE, WS_COOKIE, buildLiveSession, clientIp, isAppCookie, mfaStep, passwordProblem, reSign, sign, signSession, verifySession, verifySupport, type Session } from "./session";
 import { createSupabaseServerClient } from "../supabase/server";
+import { throttled as throttledBy } from "./throttle";
+import { recordAuthEvent, type AuthEvent } from "./audit-events";
 import { PERSONAS, membershipsFor, tenantOf, userById, workspaceById } from "../tenancy";
 import { SIGNIN_SLUGS } from "../vertical";
 import type { Role } from "../data/types";
@@ -40,15 +42,16 @@ export async function demoLogin(formData: FormData) {
 type Sb = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
 const qs = (o: Record<string, string | null | undefined>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o)) if (v) p.set(k, v); const s = p.toString(); return s ? `?${s}` : ""; };
 
-/** Fixed-window throttle through rate_limit_hit(). Fails open only if the RPC itself is unavailable (never blocks on infra errors). */
+/** Fixed-window throttle (see ./throttle.ts: service-role call, hashed fixed-prefix buckets). Fails open only on infrastructure errors. */
 async function throttled(sb: Sb, kind: "login" | "reset", email: string, lim: { perEmail: number; perIp: number; windowS: number }) {
   const ip = clientIp((await headers()).get("x-forwarded-for"));
-  const hit = async (dim: "email" | "ip", value: string, limit: number) => {
-    const { data, error } = await sb.rpc("rate_limit_hit", { p_bucket: throttleBucket(kind, dim, value), p_limit: limit, p_window_s: lim.windowS });
-    return error ? true : data !== false;
-  };
-  const a = await hit("email", email, lim.perEmail), b = await hit("ip", ip, lim.perIp);
-  return !(a && b);
+  return throttledBy(sb as unknown as Parameters<typeof throttledBy>[0], kind, email, ip, lim);
+}
+
+/** Best-effort audit row for an authentication event (never blocks, never throws). */
+async function authEvent(action: AuthEvent, o: { uid?: string | null; email?: string | null; via?: string } = {}) {
+  const h = await headers();
+  await recordAuthEvent({ action, ...o, ip: clientIp(h.get("x-forwarded-for")), userAgent: h.get("user-agent") });
 }
 
 async function hasVerifiedTotp(sb: Sb) {
@@ -90,7 +93,8 @@ export async function passwordLogin(formData: FormData) {
   if (!sb) redirect("/login?error=no_backend");
   if (await throttled(sb, "login", email, LOGIN_LIMIT)) redirect("/login?error=throttled");
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error || !data.user) redirect(`/login?error=${GENERIC_AUTH_ERROR}`);
+  if (error || !data.user) { await authEvent("auth.login.failure", { email }); redirect(`/login?error=${GENERIC_AUTH_ERROR}`); }
+  await authEvent("auth.login.success", { uid: data.user.id, email });
   await finishLiveLogin(sb, safeNext(formData.get("next")), String(formData.get("tenant") || ""));
 }
 
@@ -109,14 +113,15 @@ export async function adminLogin(formData: FormData) {
   if (demoAllowed() && !password) await start(demoSession("u-vikram"), next);
   if (await throttled(sb, "login", email, LOGIN_LIMIT)) redirect("/admin/login?error=throttled");
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error || !data.user) redirect(`/admin/login?step=code&error=${GENERIC_AUTH_ERROR}`);
+  if (error || !data.user) { await authEvent("auth.login.failure", { email, via: "admin" }); redirect(`/admin/login?step=code&error=${GENERIC_AUTH_ERROR}`); }
   const { data: pa } = await sb.from("platform_admins").select("user_id").eq("user_id", data.user.id).maybeSingle();
   if (!pa) { await sb.auth.signOut(); redirect(`/admin/login?step=code&error=${GENERIC_AUTH_ERROR}`); }
   const { data: factors } = await sb.auth.mfa.listFactors();
   const totp = factors?.totp?.find((f) => f.status === "verified");
   if (!totp) redirect(`/auth/mfa${qs({ enrol: "1", next })}`);
   const { error: mfaErr } = await sb.auth.mfa.challengeAndVerify({ factorId: totp.id, code });
-  if (mfaErr) { await sb.auth.signOut(); redirect("/admin/login?step=code&error=code"); }
+  if (mfaErr) { await authEvent("auth.mfa.failure", { uid: data.user.id, email, via: "admin" }); await sb.auth.signOut(); redirect("/admin/login?step=code&error=code"); }
+  await authEvent("auth.login.success", { uid: data.user.id, email, via: "admin" });
   await finishLiveLogin(sb, next);
 }
 
@@ -129,7 +134,8 @@ export async function verifyMfa(formData: FormData) {
   if (!sb) redirect("/login?error=no_backend");
   if (!factorId || !TOTP_RE.test(code)) redirect(back("code"));
   const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code });
-  if (error) redirect(back("code"));
+  if (error) { await authEvent("auth.mfa.failure"); redirect(back("code")); }
+  await authEvent("auth.mfa.success");
   await finishLiveLogin(sb, next, via);
 }
 

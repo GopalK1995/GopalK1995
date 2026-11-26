@@ -51,12 +51,14 @@ select ok(not has_table_privilege('authenticated', 'public.usage_counters', 'ins
 
 -- ---------- usage ----------
 select pg_temp.act('e0000000-0000-4000-8000-000000000001');
-select is(public.usage_bump('ai_calls', 1), 1::bigint, 'first bump');
-select is(public.usage_bump('ai_calls', 4), 5::bigint, 'bumps accumulate in one atomic upsert');
-select is(public.usage_bump('ai_calls', 2, '10000000-0000-4000-8000-0000000000e0'), 7::bigint, 'explicit own tenant works');
-select throws_ok($$select public.usage_bump('ai_calls', 1, '10000000-0000-4000-8000-0000000000f0')$$, '42501', null, 'bumping another tenant is refused');
-select throws_ok($$select public.usage_bump('AI Calls', 1)$$, '22023', null, 'bad metric names are refused');
-select throws_ok($$select public.usage_bump('ai_calls', 0)$$, '22023', null, 'non-positive increments are refused');
+select throws_ok($$select public.usage_bump('ai_calls', 1)$$, '42501', null, 'usage_bump is service only (0025): a member cannot bump');
+reset role;
+select is(public.usage_bump('ai_calls', 1, '10000000-0000-4000-8000-0000000000e0'), 1::bigint, 'first bump (service path)');
+select is(public.usage_bump('ai_calls', 4, '10000000-0000-4000-8000-0000000000e0'), 5::bigint, 'bumps accumulate in one atomic upsert');
+select is(public.usage_bump('ai_calls', 2, '10000000-0000-4000-8000-0000000000e0'), 7::bigint, 'explicit tenant works');
+select throws_ok($$select public.usage_bump('AI Calls', 1, '10000000-0000-4000-8000-0000000000e0')$$, '22023', null, 'bad metric names are refused');
+select throws_ok($$select public.usage_bump('ai_calls', 0, '10000000-0000-4000-8000-0000000000e0')$$, '22023', null, 'non-positive increments are refused');
+select pg_temp.act('e0000000-0000-4000-8000-000000000001');
 select throws_ok($$insert into public.usage_counters (tenant_id, metric, period, count) values ('10000000-0000-4000-8000-0000000000e0', 'x', current_date, 1)$$, '42501', null, 'direct inserts into usage_counters are refused');
 select is(pg_temp.cnt($$select count from public.usage_counters where metric = 'ai_calls'$$), 7::bigint, 'the owner reads the meter');
 select throws_ok($$select public.usage_set('10000000-0000-4000-8000-0000000000e0', 'storage_bytes', 10)$$, '42501', null, 'usage_set is service only');

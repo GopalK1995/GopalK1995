@@ -101,7 +101,7 @@ select is(public.rate_limit_hit('tap:login:1.2.3.4', 2, 60), false, 'third hit o
 select is(public.rate_limit_hit('tap:login:other', 2, 60), true, 'buckets are independent');
 select throws_ok($$select public.rate_limit_hit('', 2, 60)$$, '22023', null, 'invalid bucket rejected');
 set local role anon;
-select lives_ok($$select public.rate_limit_hit('tap:anon', 5, 60)$$, 'anon may call rate_limit_hit (login throttling)');
+select throws_ok($$select public.rate_limit_hit('tap:anon', 5, 60)$$, '42501', null, 'anon cannot call rate_limit_hit (0025: login throttling goes through the service-role auth_throttle_hit)');
 select throws_ok($$select count(*) from public.rate_limits$$, '42501', null, 'anon cannot read rate_limits');
 reset role;
 
