@@ -104,7 +104,7 @@ export function InboxApp({ mode, items, now, linkable, reps, uid, wsKey, assign,
                 </button>
               ))}
             </div>
-            <div className="flex flex-wrap gap-1.5" aria-label="Channels">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Channels">
               {(vv.ib.channels as Ch[]).map((ch) => {
                 const on = chs.includes(ch);
                 return (
@@ -133,7 +133,7 @@ export function InboxApp({ mode, items, now, linkable, reps, uid, wsKey, assign,
                     <div className="mt-0.5 truncate pl-7 text-[12px] text-ink-3">{c.firm?.name}</div>
                     <div className="mt-1 flex items-center gap-2 pl-7">
                       <p className={cn("min-w-0 flex-1 truncate text-[12px]", unread ? "text-ink" : "text-ink-2")}>{last ? <>{last.from === "us" ? "You: " : ""}{last.body}</> : ""}</p>
-                      {unread && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[12px] font-semibold text-accent-ink num" aria-label={`${c.unread} unread`}>{c.unread}</span>}
+                      {unread && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[12px] font-semibold text-accent-ink num"><span aria-hidden>{c.unread}</span><span className="sr-only">{`${c.unread} unread`}</span></span>}
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7">
                       {c.windowLeftH !== null && <WindowChip h={c.windowLeftH} />}

@@ -25,7 +25,7 @@ export function AskBox({ questions, initial }: { questions: { id: QId; q: string
           className="h-10 min-w-0 flex-1 rounded-sm border border-field-line bg-surface px-3 text-[13px] focus-ring placeholder:text-ink-3 focus:border-ring" />
         <Button type="submit" variant="primary" size="lg" disabled={pending || !text.trim()}><CornerDownLeft />Ask</Button>
       </form>
-      <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Approved questions">
+      <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Approved questions">
         {questions.map((q) => (
           <button key={q.id} onClick={() => run("", q.id)} disabled={pending}
             className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 py-1 text-left text-[12px] text-ink-2 transition-colors duration-150 hover:border-accent hover:text-ink disabled:opacity-60">

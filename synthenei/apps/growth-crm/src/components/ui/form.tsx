@@ -5,7 +5,7 @@ import { Controller, FormProvider, useFormContext, type FieldValues, type UseFor
 import { cn } from "@/lib/utils";
 import { fieldBase } from "./field-styles";
 
-export type ControlProps = { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean };
+export type ControlProps = { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean; "aria-required"?: boolean };
 
 export function Field({ label, help, error, required, className, children }: {
   label: ReactNode; help?: ReactNode; error?: ReactNode; required?: boolean; className?: string;
@@ -15,11 +15,11 @@ export function Field({ label, help, error, required, className, children }: {
   const uid = useId();
   const id = `${uid}-c`, helpId = `${uid}-h`, errId = `${uid}-e`;
   const describedBy = [error ? errId : null, help ? helpId : null].filter(Boolean).join(" ") || undefined;
-  const props: ControlProps = { id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined };
+  const props: ControlProps = { id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined, "aria-required": required ? true : undefined };
   const control = typeof children === "function" ? children(props) : isValidElement(Children.only(children)) ? cloneElement(children, props as unknown as Record<string, unknown>) : children;
   return (
     <div className={cn("grid gap-1", className)}>
-      <label htmlFor={id} className="text-13 font-medium text-ink">{label}{required && <span className="text-danger" aria-hidden> *</span>}</label>
+      <label htmlFor={id} className="text-13 font-medium text-ink">{label}{required && <><span className="text-danger" aria-hidden> *</span><span className="sr-only"> (required)</span></>}</label>
       {control}
       {help && <p id={helpId} className="text-12 text-ink-3">{help}</p>}
       {error && <p id={errId} role="alert" className="text-12 text-danger">{error}</p>}

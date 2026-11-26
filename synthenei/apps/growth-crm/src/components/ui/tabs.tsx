@@ -1,8 +1,9 @@
 "use client";
 import * as T from "@radix-ui/react-tabs";
 import { motion, useReducedMotion } from "motion/react";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { rovingTarget } from "./roving";
 
 export function Tabs({ tabs, defaultValue, className, onChange }: { tabs: { value: string; label: ReactNode; content: ReactNode }[]; defaultValue?: string; className?: string; onChange?: (v: string) => void }) {
   const [val, setVal] = useState(defaultValue ?? tabs[0].value);
@@ -25,12 +26,22 @@ export function Tabs({ tabs, defaultValue, className, onChange }: { tabs: { valu
   );
 }
 
-/** Segmented control for toggles like first/last touch. */
+/** Segmented control for toggles like first/last touch. WAI-ARIA radiogroup: one tab stop, arrow keys move and select. */
 export function Segmented<T extends string>({ options, value, onChange, label }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const sel = options.findIndex((o) => o.value === value);
+  const onKey = (e: React.KeyboardEvent, i: number) => {
+    const j = rovingTarget(e.key, i, options.length);
+    if (j < 0) return;
+    e.preventDefault();
+    refs.current[j]?.focus();
+    onChange(options[j].value);
+  };
   return (
     <div role="radiogroup" aria-label={label} className="inline-flex h-8 items-center rounded-sm border border-line-strong bg-paper-2 p-0.5">
-      {options.map((o) => (
-        <button key={o.value} role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
+      {options.map((o, i) => (
+        <button key={o.value} ref={(el) => { refs.current[i] = el; }} type="button" role="radio" aria-checked={value === o.value} tabIndex={value === o.value || (sel < 0 && i === 0) ? 0 : -1}
+          onClick={() => onChange(o.value)} onKeyDown={(e) => onKey(e, i)}
           className={cn("h-full rounded-[4px] px-2.5 text-[12px] font-medium focus-ring-inset transition-colors", value === o.value ? "bg-surface text-ink shadow-1" : "text-ink-3 hover:text-ink")}>
           {o.label}
         </button>

@@ -30,7 +30,7 @@ export function TabBar({ tabs, current }: { tabs: { value: string; label: string
       {tabs.map((t, i) => {
         const on = t.value === current;
         return (
-          <button key={t.value} ref={(el) => { refs.current[i] = el; }} role="tab" id={`tab-${t.value}`} aria-selected={on} aria-controls={`panel-${t.value}`} tabIndex={on ? 0 : -1}
+          <button key={t.value} ref={(el) => { refs.current[i] = el; }} role="tab" id={`tab-${t.value}`} aria-selected={on} aria-controls={on ? `panel-${t.value}` : undefined} tabIndex={on ? 0 : -1}
             onClick={() => go(t.value)} onKeyDown={(e) => onKey(e, i)}
             className={cn("relative h-10 shrink-0 px-3 text-[13px] font-medium focus-ring-inset transition-colors duration-150 focus-visible:rounded-sm", on ? "text-ink" : "text-ink-3 hover:text-ink")}>
             {t.label}

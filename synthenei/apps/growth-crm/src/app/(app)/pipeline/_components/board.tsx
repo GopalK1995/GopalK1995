@@ -20,6 +20,7 @@ import { Empty, th, thNum, td, tdNum } from "@/components/ui/misc";
 import { DealStageBadge } from "@/components/ui/domain";
 import { toast, toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { StageTabs } from "@/components/ui/stage-tabs";
 import { moveDeal } from "../actions";
 import { field } from "../../leads/_lib/sales";
 import { StageAgeTicks } from "./stage-age";
@@ -164,7 +165,7 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
       <div className="px-3 pb-2 pt-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[13px] font-semibold text-ink">{DEAL_STAGE_LABEL[s]}</h2>
-          <span className="text-[12px] text-ink-3 num" aria-label={pl.deals(ds.length)}>{ds.length}</span>
+          <span className="text-[12px] text-ink-3 num"><span aria-hidden>{ds.length}</span><span className="sr-only">{pl.deals(ds.length)}</span></span>
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[12px] num">
           <span className="font-medium text-ink">{inrCompact(sum)}</span>
@@ -269,16 +270,8 @@ export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason,
 
           {/* Mobile: one column at a time */}
           <div className="md:hidden">
-            <div role="tablist" aria-label="Stages" className="scrollbar-thin -mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4">
-              {DEAL_STAGES.map((s) => (
-                <button key={s} type="button" role="tab" aria-selected={mStage === s} onClick={() => setMStage(s)} ref={(el) => { if (el && mStage === s) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }}
-                  className={cn("inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    mStage === s ? "border-navy-900 bg-navy-900 text-navy-ink" : "border-line-strong bg-surface text-ink-2")}>
-                  {DEAL_STAGE_LABEL[s]}<span className="num text-[12px] opacity-75">{byStage[s].length}</span>
-                </button>
-              ))}
-            </div>
-            <section role="tabpanel" aria-label={DEAL_STAGE_LABEL[mStage]} className="touch-pan-y rounded-md border border-line bg-paper-2/60"
+            <StageTabs label="Stages" tabs={DEAL_STAGES.map((s) => ({ value: s, label: DEAL_STAGE_LABEL[s], count: byStage[s].length }))} value={mStage} onChange={(v) => setMStage(v as DealStage)} panelId="stage-panel" />
+            <section role="tabpanel" id="stage-panel" aria-labelledby={`stage-tab-${mStage}`} className="touch-pan-y rounded-md border border-line bg-paper-2/60"
               onPointerDown={(e) => { swipe.current = { x: e.clientX, y: e.clientY }; }}
               onPointerUp={(e) => {
                 const s0 = swipe.current; swipe.current = null; if (!s0) return;

@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 import { isActive, mobileNavFor, navFor, navGroup, navLabel } from "./nav";
 import { WorkspaceSwitcher } from "./switcher";
 import { endSupport } from "@/lib/auth/actions";
-import { fmtTime, initials } from "@/lib/format";
+import { SampleDataDot } from "./sample-data-dot";
+import { fmtTime } from "@/lib/format";
 import { useSession, useVocab } from "./providers";
 import { Avatar } from "@/components/ui/avatar";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger } from "@/components/ui/dropdown";
@@ -77,7 +78,7 @@ function SupportBanner() {
 
 function DemoChip({ collapsed }: { collapsed?: boolean }) {
   const s = useSession();
-  if (collapsed) return <Tip content={`Sample data: synthetic ${s.tenant.name} · ${s.ws.name}. Nothing is sent.`} side="right"><span className="mx-auto block size-2 rounded-full bg-chart-2" /></Tip>;
+  if (collapsed) return <SampleDataDot label={`Sample data: synthetic ${s.tenant.name}, ${s.ws.name}. Nothing is sent.`} />;
   return (
     <div className="rounded-sm border border-navy-line px-3 py-2 text-[11px] leading-4 text-navy-ink-3">
       <div className="flex items-center gap-1.5 text-navy-ink-2"><span className="size-1.5 rounded-full bg-chart-2" aria-hidden />Sample data</div>
@@ -92,13 +93,12 @@ function UserMenu() {
   const router = useRouter();
   return (
     <Menu>
-      {/* aria-label mirrors the visible content in order -- avatar initials, name, role (adjacent spans render with
-          no literal whitespace between them -- only CSS gap -- which fuses their text into one unsplittable token
-          for axe's label-content-name-mismatch check and for screen readers reading raw text content; the Avatar's
-          initials count as visible text for this check despite being aria-hidden) -- plus "User menu" as a trailing
-          purpose hint. */}
-      <MenuTrigger className="flex items-center gap-2 rounded-sm py-1 pl-1 pr-1.5 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${initials(s.name)} ${s.name} ${v.role[s.role]}. User menu`}>
-        <Avatar name={s.name} size={28} />{" "}
+      {/* Name leads with the purpose ("User menu"), then the visible name and role in order. The avatar initials are drawn
+          with CSS content (pseudo) so they are not DOM text and the label need not start with them (A11Y-020); the
+          separating spaces between the name and role spans keep them from fusing into one token for axe's
+          label-content-name-mismatch check. */}
+      <MenuTrigger className="flex items-center gap-2 rounded-sm py-1 pl-1 pr-1.5 outline-none hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-ring" aria-label={`User menu, ${s.name}, ${v.role[s.role]}`}>
+        <Avatar name={s.name} size={28} pseudo />{" "}
         <span className="hidden text-left leading-tight md:block">
           <span className="block text-[12px] font-medium text-ink">{s.name}</span>{" "}
           <span className="block text-[11px] text-ink-3">{v.role[s.role]}</span>
