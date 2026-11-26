@@ -18,7 +18,7 @@ export interface SettingsVM {
   providers: ProviderVM[];
 }
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none placeholder:text-ink-3 focus:border-ring disabled:opacity-60";
+const field = "h-9 w-full rounded-sm border border-field-line bg-surface px-2.5 text-[13px] focus-ring placeholder:text-ink-3 focus:border-ring disabled:opacity-60";
 const fmt = (n: number | null) => (n == null ? "" : String(n));
 const nz = (s: string) => (s.trim() === "" ? null : Number(s));
 

@@ -83,7 +83,7 @@ export function RuleToggle({ id, name, enabled, blocked }: { id: string; name: s
     <button type="button" role="switch" aria-checked={on} aria-label={`${name}: ${on ? "on" : "off"}`} disabled={pending}
       onClick={() => { const n = !on; set(n); start(async () => { const r = await setAlertRule(id, n); if (!r.ok) set(!n); show(r); }); }}
       className={cn("relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:opacity-50",
-        on ? "border-accent bg-accent" : "border-line-strong bg-paper-2")}>
+        on ? "border-accent bg-accent" : "border-field-line bg-paper-2")}>
       <span className={cn("absolute size-3.5 rounded-full bg-surface shadow-1 transition-transform duration-150", on ? "translate-x-[18px]" : "translate-x-[2px]")} />
     </button>
   );

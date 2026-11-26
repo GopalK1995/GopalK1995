@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { saveMetricsDay } from "../_actions";
 import { MktGate, notify } from "./action";
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring num";
+const field = "h-9 w-full rounded-sm border border-field-line bg-surface px-2.5 text-[13px] text-ink focus-ring focus:border-ring num";
 const FIELDS = [["spend", "Spend (₹)"], ["impressions", "Impressions"], ["reach", "Reach"], ["clicks", "Clicks"], ["platformLeads", "Platform leads"]] as const;
 
 export function MetricsDayDialog({ campaignId }: { campaignId: string }) {

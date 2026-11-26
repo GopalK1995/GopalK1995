@@ -85,7 +85,7 @@ export function NoteDialog({ campaignId, version }: { campaignId: string; versio
       <DialogContent title="Add a note" description="Notes and creative links stay with the campaign. No file uploads in this version.">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Note"
           placeholder={notePh}
-          className="w-full rounded-sm border border-line-strong bg-surface p-2.5 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-ring" />
+          className="w-full rounded-sm border border-field-line bg-surface p-2.5 text-[13px] text-ink focus-ring placeholder:text-ink-3 focus:border-ring" />
         <div className="mt-3 flex justify-end gap-2">
           <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
           <DialogClose asChild><Button variant="primary" disabled={pending} onClick={() => start(async () => notify(await addCampaignNote(campaignId, text, version)))}>Save note</Button></DialogClose>

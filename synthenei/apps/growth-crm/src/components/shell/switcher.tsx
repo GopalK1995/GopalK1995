@@ -58,7 +58,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
           {s.workspaces.length > 5 && (
             <div className="relative mb-1 p-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-ink-3" aria-hidden />
-              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Find workspace" aria-label="Find workspace" className="h-8 w-full rounded-sm border border-line bg-paper pl-7 pr-2 text-[13px] outline-none focus:border-ring" />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Find workspace" aria-label="Find workspace" className="h-8 w-full rounded-sm border border-field-line bg-paper pl-7 pr-2 text-[13px] focus-ring focus:border-ring" />
             </div>
           )}
           {groups.map((g) => (

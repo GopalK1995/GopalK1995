@@ -16,7 +16,7 @@ export interface EditorProps {
   /** Why saving is not possible (permission, support, demo, no connection); null when it is. */
   blocked: string | null; defaultSample: string; labels: Record<string, string>;
 }
-const sel = "h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink disabled:opacity-45";
+const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink disabled:opacity-45";
 
 export function FieldMapEditor(p: EditorProps) {
   const router = useRouter();

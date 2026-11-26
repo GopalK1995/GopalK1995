@@ -27,8 +27,8 @@ export type MemberRow = {
 export type RoleOption = { id: string; name: string; baseRole: Role; custom: boolean; assignable: boolean };
 const STATUS = { active: { tone: "success", key: "statusActive" }, invited: { tone: "outline", key: "statusInvited" }, deactivated: { tone: "neutral", key: "statusDeactivated" } } as const;
 const MANAGER_SCOPE: Role[] = ["sales_rep", "viewer"];
-const selectCls = "h-8 rounded-chip border border-line-strong bg-surface pl-2 pr-7 text-12 text-ink outline-none focus:border-ring disabled:opacity-50";
-const inputCls = "h-9 rounded-chip border border-line-strong bg-surface px-2.5 text-13 text-ink outline-none focus:border-ring";
+const selectCls = "h-8 rounded-chip border border-field-line bg-surface pl-2 pr-7 text-12 text-ink focus-ring focus:border-ring disabled:opacity-50";
+const inputCls = "h-9 rounded-chip border border-field-line bg-surface px-2.5 text-13 text-ink focus-ring focus:border-ring";
 const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
 function Blocked({ reason, children }: { reason: string; children: ReactElement<{ disabled?: boolean }> }) {

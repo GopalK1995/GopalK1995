@@ -43,7 +43,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       {!allowed.length ? <Empty title="No settings for your role in this workspace." /> : (
         <>
           <TabBar tabs={allowed.map((v) => ({ value: v, label: LABEL[v] ?? v }))} current={tab} />
-          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="outline-none">
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="focus-ring">
             {tab === "users" && (session.demo ? <UsersTab wsName={active.ws.name} tenantName={active.tenant.name} rows={members(active.ws.id, now)} /> : (
               <Card><CardBody><p className="text-[13px] text-ink-2">Members, roles and teams now live in <Link href="/settings/roles" className="font-medium text-accent underline">Roles &amp; access</Link>.</p></CardBody></Card>
             ))}

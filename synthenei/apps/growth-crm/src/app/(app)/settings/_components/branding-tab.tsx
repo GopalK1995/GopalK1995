@@ -66,10 +66,10 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
         <CardBody>
           <fieldset disabled={!editable} className="flex flex-col gap-4 disabled:opacity-100">
             <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">Brand name
-              <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} className="h-9 rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring disabled:bg-paper-2 disabled:text-ink-2" />
+              <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} className="h-9 rounded-sm border border-field-line bg-surface px-2.5 text-[13px] text-ink focus-ring focus:border-ring disabled:bg-paper-2 disabled:text-ink-2" />
             </label>
             <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">Product name
-              <input value={product} maxLength={40} onChange={(e) => setProduct(e.target.value)} className="h-9 rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring disabled:bg-paper-2 disabled:text-ink-2" />
+              <input value={product} maxLength={40} onChange={(e) => setProduct(e.target.value)} className="h-9 rounded-sm border border-field-line bg-surface px-2.5 text-[13px] text-ink focus-ring focus:border-ring disabled:bg-paper-2 disabled:text-ink-2" />
             </label>
 
             <div>
@@ -92,7 +92,7 @@ export function BrandingTab({ tenantName, workspaceCount, primaryOwnerName, defa
                 </div>
                 <input id="hue" type="range" min={0} max={359} step={1} value={hue} onChange={(e) => setHue(Number(e.target.value))}
                   aria-valuetext={`Hue ${hue} degrees, contrast ${minRatio.toFixed(1)} to 1, ${passes ? "passes" : "fails"} WCAG AA`}
-                  className="relative h-8 w-full cursor-pointer appearance-none bg-transparent outline-none disabled:cursor-not-allowed [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-accent [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--ink-3)] focus-visible:[&::-webkit-slider-thumb]:shadow-[0_0_0_3px_var(--ring)]" />
+                  className="relative h-8 w-full cursor-pointer appearance-none bg-transparent focus-ring disabled:cursor-not-allowed [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-accent [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--ink-3)] focus-visible:[&::-webkit-slider-thumb]:shadow-[0_0_0_3px_var(--ring)]" />
               </div>
               <div className="mt-1 flex justify-between text-[11px] text-ink-3 num"><span>0</span><span>Tenant default {defaultHue}</span><span>359</span></div>
             </div>

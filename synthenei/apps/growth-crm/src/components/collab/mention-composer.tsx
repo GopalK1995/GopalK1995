@@ -54,7 +54,7 @@ export function MentionComposer({ objectType, objectId, s, value, onChange, onPi
   return (
     <div className="relative">
       <textarea
-        ref={ref} className="min-h-20 w-full rounded-control border border-line-strong bg-surface px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-3 disabled:opacity-45" value={value} rows={3} maxLength={COMMENT_MAX} disabled={disabled} autoFocus={autoFocus}
+        ref={ref} className="min-h-20 w-full rounded-control border border-field-line bg-surface px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-3 disabled:opacity-45" value={value} rows={3} maxLength={COMMENT_MAX} disabled={disabled} autoFocus={autoFocus}
         aria-label={s.composerLabel} placeholder={s.composerPlaceholder}
         role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
         onChange={(e) => { onChange(e.target.value); detect(e.target.value, e.target.selectionStart); }}

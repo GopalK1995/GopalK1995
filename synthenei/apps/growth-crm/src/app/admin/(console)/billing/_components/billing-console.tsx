@@ -1,4 +1,5 @@
 "use client";
+import { fieldCls } from "@/components/ui/field-styles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import type { AdminView } from "../view";
 
 type S = Record<string, string>;
 const t = (s: S, k: string, v?: Record<string, string | number>) => (s[k] ? fill(s[k], v ?? {}) : k);
-const input = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const input = fieldCls;
 const limitsText = (l: Record<string, number>) => Object.entries(l).map(([k, v]) => `${k}=${v}`).join(", ");
 const parseLimits = (x: string): Record<string, number> => Object.fromEntries(x.split(",").map((p) => p.trim()).filter(Boolean).map((p) => { const [k, v] = p.split("="); return [k.trim(), Number(v)]; }).filter(([, v]) => Number.isFinite(v)));
 const rupees = (p: number) => (p / 100).toFixed(2);

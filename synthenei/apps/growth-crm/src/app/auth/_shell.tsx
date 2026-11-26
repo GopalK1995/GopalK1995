@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LegalFooter } from "@/components/legal/legal-page";
 
-export const authField = "h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none placeholder:text-ink-3 focus:border-ring";
+export const authField = "h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring";
 
 /** Shared frame for the account-lifecycle screens (invite, reset, password, MFA). */
 export function AuthShell({ title, lead, children }: { title: string; lead?: string; children: ReactNode }) {

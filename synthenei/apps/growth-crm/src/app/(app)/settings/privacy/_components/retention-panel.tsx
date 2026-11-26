@@ -23,7 +23,7 @@ export function RetentionPanel({ s, rules, job }: { s: S; rules: RuleRow[]; job:
   const [out, setOut] = useState<PolicyOutcome[] | null>(null);
   const [obj, setObj] = useState<(typeof OBJECTS)[number]>("lead"), [key, setKey] = useState(""), [days, setDays] = useState("365"), [action, setAction] = useState<"anonymise" | "delete">("anonymise");
   const run = (fn: () => Promise<ActionResult<unknown>>) => start(async () => { const r = await fn(); setMsg({ ok: r.ok, text: r.message }); if (r.ok) router.refresh(); });
-  const sel = "h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink";
+  const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink";
   const n = Number(days), objectType = obj === "custom" ? `obj:${key.trim().toLowerCase()}` : obj;
   const valid = Number.isInteger(n) && n >= 1 && n <= 3650 && (obj !== "custom" || /^[a-z][a-z0-9_-]{0,40}$/.test(key.trim().toLowerCase()));
   return (

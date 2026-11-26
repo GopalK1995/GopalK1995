@@ -61,7 +61,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
         <>
           <form className="mb-3" role="search">
             <label htmlFor="tq" className="sr-only">Search tenants</label>
-            <input id="tq" name="q" defaultValue={q} placeholder="Search by name or slug" className="h-8 w-full rounded-sm border border-line-strong bg-surface px-3 text-[13px] outline-none placeholder:text-ink-3 focus:border-ring sm:w-72" />
+            <input id="tq" name="q" defaultValue={q} placeholder="Search by name or slug" className="h-8 w-full rounded-sm border border-field-line bg-surface px-3 text-[13px] focus-ring placeholder:text-ink-3 focus:border-ring sm:w-72" />
           </form>
           <Card>
             <DataTable rows={rows} columns={cols} rowKey={(t) => t.tenant.id} minWidth={960} caption="Tenants" empty={`No tenant matches "${q}".`} />

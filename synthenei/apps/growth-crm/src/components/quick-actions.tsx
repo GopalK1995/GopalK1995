@@ -1,4 +1,5 @@
 "use client";
+import { fieldCls } from "@/components/ui/field-styles";
 import { CalendarPlus, MessageCircle, Phone } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { useSession } from "@/components/shell/providers";
 import { can } from "@/lib/auth/roles";
 import { useVocab } from "@/components/shell/providers";
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
+const field = fieldCls;
 const Lbl = ({ t, children }: { t: string; children: ReactNode }) => <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t}</span>{children}</label>;
 
 

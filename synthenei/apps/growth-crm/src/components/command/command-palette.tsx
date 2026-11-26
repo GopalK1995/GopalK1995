@@ -129,7 +129,7 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
             <div className="flex items-center gap-2 border-b border-line px-3">
               <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
               <C.Input value={input} onValueChange={setInput} placeholder={t("placeholder")} maxLength={64} autoComplete="off" spellCheck={false}
-                className="h-11 w-full bg-transparent text-14 text-ink outline-none placeholder:text-ink-3" />
+                className="h-11 w-full bg-transparent text-14 text-ink focus-ring-inset placeholder:text-ink-3" />
               {status === "loading" && <Loader2 className="size-4 shrink-0 animate-spin text-ink-3" aria-hidden />}
             </div>
             <C.List className="max-h-[min(24rem,60vh)] overflow-y-auto p-1">

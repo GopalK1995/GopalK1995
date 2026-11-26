@@ -1,5 +1,6 @@
 // Page-local helpers shared by the SALES routes (/leads, /leads/[id], /pipeline, /tasks).
 // Pure functions only (no server or client APIs) so both server pages and client components can import them.
+import { fieldCls } from "@/components/ui/field-styles";
 import type { Account, Lead, Role, TeamMember } from "@/lib/data/types";
 
 export const DAY = 86400e3;
@@ -53,4 +54,4 @@ export const LOST_REASONS = [
 export const PLANS = ["Practice", "Chambers", "Enterprise"] as const;
 
 /** Field classes for page-local forms (matches the shared quick-actions inputs). */
-export const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30";
+export const field = fieldCls;

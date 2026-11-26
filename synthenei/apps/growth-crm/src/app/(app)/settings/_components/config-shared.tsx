@@ -28,7 +28,7 @@ const Ctx = createContext<EditorCtx | null>(null);
 export const ConfigProvider = ({ value, children }: { value: EditorCtx; children: ReactNode }) => <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 export const useCfg = () => { const c = useContext(Ctx); if (!c) throw new Error("outside ConfigProvider"); return c; };
 
-export const inputCls = "h-8 rounded-sm border border-line-strong bg-surface px-2 text-[13px] text-ink outline-none focus:border-ring disabled:border-line disabled:bg-paper-2 disabled:text-ink-2";
+export const inputCls = "h-8 rounded-sm border border-field-line bg-surface px-2 text-[13px] text-ink focus-ring focus:border-ring disabled:border-line disabled:bg-paper-2 disabled:text-ink-2";
 export const selectCls = inputCls + " pr-6";
 
 export function Field({ label, children, hint, className }: { label: string; children: ReactNode; hint?: string; className?: string }) {
@@ -39,7 +39,7 @@ export function Field({ label, children, hint, className }: { label: string; chi
 export function Toggle({ checked, onChange, disabled, label }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string }) {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}
-      className={cn("relative h-5 w-9 shrink-0 rounded-full border transition-colors outline-none focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50", checked ? "border-accent bg-accent" : "border-line-strong bg-paper-2")}>
+      className={cn("relative h-5 w-9 shrink-0 rounded-full border transition-colors focus-ring disabled:opacity-50", checked ? "border-accent bg-accent" : "border-field-line bg-paper-2")}>
       <span className={cn("absolute top-0.5 size-3.5 rounded-full bg-surface shadow-1 transition-[left]", checked ? "left-[18px]" : "left-0.5")} />
     </button>
   );

@@ -22,7 +22,7 @@ export interface PipelinesViewProps {
   nouns: Record<PipelineObject, Noun>; initialObject: PipelineObject; initialPipeline: string | null;
 }
 
-const inputCls = "h-8 rounded-sm border border-line-strong bg-surface px-2 text-[13px] text-ink outline-none focus:border-ring disabled:border-line disabled:bg-paper-2 disabled:text-ink-2";
+const inputCls = "h-8 rounded-sm border border-field-line bg-surface px-2 text-[13px] text-ink focus-ring focus:border-ring disabled:border-line disabled:bg-paper-2 disabled:text-ink-2";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const OUTCOME_LABEL: Record<Outcome, string> = { open: "Open", won: "Counts as won", lost: "Counts as lost" };
 
@@ -132,7 +132,7 @@ export function PipelinesView(p: PipelinesViewProps) {
             <div role="group" aria-label="Pipelines" className="flex flex-wrap gap-1.5">
               {list.map((x) => (
                 <button key={x.key} type="button" aria-pressed={x.key === current?.key} onClick={() => setKey(x.key)}
-                  className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", x.key === current?.key ? "border-navy-900 bg-navy-900 text-navy-ink" : "border-line-strong bg-surface text-ink-2", x.archived && "opacity-60")}>
+                  className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-ring", x.key === current?.key ? "border-navy-900 bg-navy-900 text-navy-ink" : "border-field-line bg-surface text-ink-2", x.archived && "opacity-60")}>
                   {x.name.en}{x.isDefault && <span className="text-[11px] opacity-75">default</span>}{x.archived && <span className="text-[11px] opacity-75">archived</span>}
                 </button>
               ))}

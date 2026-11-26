@@ -14,7 +14,7 @@ import { addBreach, updateBreach } from "../actions";
 type S = Record<string, string>;
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => String(k in v ? v[k] : m));
 const fmt = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const sel = "h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink";
+const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink";
 
 export function BreachPanel({ s, rows, now }: { s: S; rows: Breach[]; now: number }) {
   const router = useRouter();

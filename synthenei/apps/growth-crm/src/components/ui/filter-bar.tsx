@@ -22,14 +22,14 @@ export function FilterBar({ filters = [], search, className, children }: { filte
       {search && (
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={search} aria-label={search} className="h-8 w-full rounded-sm border border-line-strong bg-surface pl-8 pr-2 text-[13px] outline-none placeholder:text-ink-3 focus:border-ring" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={search} aria-label={search} className="h-8 w-full rounded-sm border border-field-line bg-surface pl-8 pr-2 text-[13px] focus-ring placeholder:text-ink-3 focus:border-ring" />
         </div>
       )}
       {filters.map((f) => (
         <label key={f.key} className="relative">
           <span className="sr-only">{f.label}</span>
           <select value={sp.get(f.key) ?? ""} onChange={(e) => set(f.key, e.target.value)}
-            className={cn("h-8 rounded-sm border bg-surface pl-2.5 pr-7 text-[12px] outline-none focus:border-ring", sp.get(f.key) ? "border-accent text-ink" : "border-line-strong text-ink-2")}>
+            className={cn("h-8 rounded-sm border bg-surface pl-2.5 pr-7 text-[12px] focus-ring focus:border-ring", sp.get(f.key) ? "border-accent text-ink" : "border-field-line text-ink-2")}>
             <option value="">{f.label}: all</option>
             {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>

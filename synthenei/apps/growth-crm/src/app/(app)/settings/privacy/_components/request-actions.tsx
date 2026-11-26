@@ -115,7 +115,7 @@ function Consent({ s, leadId }: { s: S; leadId: string }) {
   const a = useAct();
   const [purpose, setPurpose] = useState<(typeof CONSENT_PURPOSES)[number]>("marketing_email"), [action, setAction] = useState<"granted" | "withdrawn">("granted");
   const [via, setVia] = useState<"manual" | "import" | "whatsapp_optin" | "landing_form">("manual"), [note, setNote] = useState("");
-  const sel = "h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink";
+  const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink";
   return (
     <section className={panel} aria-labelledby="cs-h">
       <h2 id="cs-h" className="text-15 font-semibold text-ink">{s["consent.title"]}</h2>

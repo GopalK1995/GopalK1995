@@ -46,7 +46,7 @@ export function ExportPanel({ objects }: { objects: ObjectOption[] }) {
     <div className="space-y-3" data-testid="export-panel">
       <p className="text-13 text-ink-2">{t("exportDesc")}</p>
       <label className="block max-w-xs text-13"><span className="mb-1 block text-12 font-medium text-ink-2">{t("exportObject")}</span>
-        <select data-testid="export-object" className="h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink" value={object} onChange={(e) => setObject(e.target.value as ImportObject)}>
+        <select data-testid="export-object" className="h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink" value={object} onChange={(e) => setObject(e.target.value as ImportObject)}>
           {objects.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </label>

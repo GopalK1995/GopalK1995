@@ -19,7 +19,7 @@ export function Command({ open, onOpenChange, items, onSelect, placeholder = "Ty
           <D.Title className="sr-only">Command palette</D.Title>
           <D.Description className="sr-only">Search commands and press Enter to run one</D.Description>
           <C label="Command palette" loop>
-            <C.Input placeholder={placeholder} className="h-11 w-full border-b border-line bg-transparent px-4 text-14 text-ink outline-none placeholder:text-ink-3" />
+            <C.Input placeholder={placeholder} className="h-11 w-full border-b border-line bg-transparent px-4 text-14 text-ink focus-ring-inset placeholder:text-ink-3" />
             <C.List className="max-h-80 overflow-y-auto p-1">
               <C.Empty className="px-3 py-6 text-center text-13 text-ink-3">{emptyText}</C.Empty>
               {groups.map((g) => (

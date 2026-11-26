@@ -44,7 +44,7 @@ export function WeightsEditor({ factors, points, scores, edit }: { factors: Fact
               <td className="px-3 py-2 text-right">
                 {edit.ok ? (
                   <input type="number" min={-40} max={40} value={w[i]} aria-label={`${f.label} max points`} onChange={(e) => setW((x) => x.map((v, j) => (j === i ? Math.max(-40, Math.min(40, Number(e.target.value) || 0)) : v)))}
-                    className={cn("h-8 w-16 rounded-sm border bg-surface px-2 text-right text-[13px] outline-none num focus:border-ring", w[i] !== f.weight ? "border-accent" : "border-line-strong")} />
+                    className={cn("h-8 w-16 rounded-sm border bg-surface px-2 text-right text-[13px] focus-ring num focus:border-ring", w[i] !== f.weight ? "border-accent" : "border-field-line")} />
                 ) : <span className="num font-medium">{f.weight > 0 ? "+" : ""}{f.weight}</span>}
               </td>
               <td className="px-3 py-2 text-right num text-ink-2">{f.avg.toFixed(1)}</td>

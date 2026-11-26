@@ -43,14 +43,14 @@ export function AssetPicker({ connectionId }: { connectionId: string }) {
       <CardBody>
         <div className="grid max-w-md gap-3">
           <label className="grid gap-1 text-13 text-ink-2">{t("pickPage")}
-            <select value={pageId} onChange={(e) => setPageId(e.target.value)} className="h-8 rounded-control border border-line-strong bg-surface px-2 text-13 text-ink">
+            <select value={pageId} onChange={(e) => setPageId(e.target.value)} className="h-8 rounded-control border border-field-line bg-surface px-2 text-13 text-ink">
               {pages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           {chosen && <p className="text-12 text-ink-3">{chosen.igUsername ? t("pickWithIg", { name: chosen.igUsername }) : t("pickNoIg")}</p>}
           {ads.length > 0 && (
             <label className="grid gap-1 text-13 text-ink-2">{t("pickAds")}
-              <select value={adId} onChange={(e) => setAdId(e.target.value)} className="h-8 rounded-control border border-line-strong bg-surface px-2 text-13 text-ink">
+              <select value={adId} onChange={(e) => setAdId(e.target.value)} className="h-8 rounded-control border border-field-line bg-surface px-2 text-13 text-ink">
                 <option value="">{t("pickNone")}</option>
                 {ads.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>

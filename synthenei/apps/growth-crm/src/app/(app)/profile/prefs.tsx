@@ -1,10 +1,11 @@
 "use client";
+import { fieldCls } from "@/components/ui/field-styles";
 import { useVocab } from "@/components/shell/providers";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
+const field = fieldCls;
 export function Prefs({ name, email }: { name: string; email: string }) {
   const nt = useVocab().st.notify;
   const [notify, setNotify] = useState({ sla: true, demo: true, digest: false });

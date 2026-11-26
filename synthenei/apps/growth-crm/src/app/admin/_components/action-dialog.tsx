@@ -8,7 +8,7 @@ import { toastResult } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "./actions";
 
-export const fieldCls = "h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] text-ink outline-none placeholder:text-ink-3 focus:border-ring aria-[invalid=true]:border-danger";
+export const fieldCls = "h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] text-ink focus-ring placeholder:text-ink-3 focus:border-ring aria-[invalid=true]:border-danger";
 export type Field = {
   name: string; label: string; type?: "text" | "email" | "number" | "select" | "hidden"; placeholder?: string; defaultValue?: string;
   options?: { value: string; label: string }[]; hint?: ReactNode; mono?: boolean; autoComplete?: string;

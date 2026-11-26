@@ -163,7 +163,7 @@ function Timeline({ posts, onOpen, kindLabel, label }: { posts: SocialPostView[]
           const h = p.metrics.reach === null ? 2 : Math.max(3, (p.metrics.reach / maxReach) * ih), cx = x(Date.parse(p.postedAt)), y = H - PAD.b - h;
           return (
             <g key={p.id} role="button" tabIndex={0} aria-label={`${kindLabel(p.kind)}, ${fmtDate(p.postedAt)}, ${p.metrics.reach === null ? "reach not reported" : `reach ${num(p.metrics.reach)}`}`}
-              onClick={() => onOpen(p)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(p); } }} className="cursor-pointer outline-none" data-cy="social-mark">
+              onClick={() => onOpen(p)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(p); } }} className="cursor-pointer focus-ring" data-cy="social-mark">
               <rect x={cx - 8} y={PAD.t} width={16} height={ih} fill="transparent" />
               <rect x={cx - 4} y={y} width={8} height={h} rx={2} fill={KIND_COLOR[p.kind]} opacity={p.metrics.reach === null ? 0.5 : 1} />
               {top.has(p.id) && <text x={cx} y={y - 6} fontSize={11} fontWeight={600} fill="var(--ink-2)" textAnchor="middle" className="num">{num(p.metrics.reach ?? 0)}</text>}

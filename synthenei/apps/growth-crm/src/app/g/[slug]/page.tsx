@@ -74,9 +74,9 @@ export default async function ClientSignIn({ params, searchParams }: { params: P
           <form action={passwordLogin} className="mt-6 space-y-3">
             <input type="hidden" name="next" value={sp.next ?? ""} /><input type="hidden" name="tenant" value={tenant.id} />
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Work email</span>
-              <input name="email" type="email" autoComplete="email" required placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
+              <input name="email" type="email" autoComplete="email" required placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Password</span>
-              <input name="password" type="password" autoComplete="current-password" required disabled={!live} className="h-10 w-full rounded-sm border border-line-strong bg-surface px-3 text-[14px] outline-none focus:border-ring disabled:bg-paper-2" /></label>
+              <input name="password" type="password" autoComplete="current-password" required disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring focus:border-ring disabled:bg-paper-2" /></label>
             <SubmitButton variant="primary" size="lg" className="w-full" disabled={!live} pendingLabel="Signing in…">Sign in</SubmitButton>
             {!live && <p className="text-[12px] text-ink-3">Password sign-in activates when the Supabase project is connected. This deployment runs in demo mode.</p>}
           </form>

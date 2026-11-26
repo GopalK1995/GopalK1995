@@ -15,8 +15,8 @@ import { sa } from "../roles/_lib/strings";
 
 export interface TeamView { id: string; name: string; parentTeamId: string | null; members: { userId: string; name: string; isManager: boolean }[] }
 export interface PersonOption { userId: string; name: string }
-const selectCls = "h-8 rounded-chip border border-line-strong bg-surface pl-2 pr-7 text-12 text-ink outline-none focus:border-ring disabled:opacity-50";
-const inputCls = "h-9 w-full rounded-chip border border-line-strong bg-surface px-2.5 text-13 text-ink outline-none focus:border-ring";
+const selectCls = "h-8 rounded-chip border border-field-line bg-surface pl-2 pr-7 text-12 text-ink focus-ring focus:border-ring disabled:opacity-50";
+const inputCls = "h-9 w-full rounded-chip border border-field-line bg-surface px-2.5 text-13 text-ink focus-ring focus:border-ring";
 
 export function TeamsTab({ teams, people, canManage, uid, isOwner, demo }: { teams: TeamView[]; people: PersonOption[]; canManage: boolean; uid: string; isOwner: boolean; demo: boolean }) {
   const router = useRouter();

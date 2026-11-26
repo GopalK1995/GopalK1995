@@ -14,7 +14,7 @@ import { confirmImport, errorReportUrl, getImportJob, inspectUpload, previewImpo
 import type { InspectView, JobView, ObjectOption, PreviewView } from "../types";
 
 type Step = "file" | "map" | "review" | "run";
-const sel = "h-8 w-full rounded-control border border-line-strong bg-surface px-2 text-13 text-ink";
+const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink";
 
 export function ImportWizard({ objects, object: fixed, demo, onClose }: { objects: ObjectOption[]; object?: ImportObject; demo: boolean; onClose?: () => void }) {
   const t = useTranslations("imports");

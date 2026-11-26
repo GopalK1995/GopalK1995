@@ -32,7 +32,7 @@ export function TabBar({ tabs, current }: { tabs: { value: string; label: string
         return (
           <button key={t.value} ref={(el) => { refs.current[i] = el; }} role="tab" id={`tab-${t.value}`} aria-selected={on} aria-controls={`panel-${t.value}`} tabIndex={on ? 0 : -1}
             onClick={() => go(t.value)} onKeyDown={(e) => onKey(e, i)}
-            className={cn("relative h-10 shrink-0 px-3 text-[13px] font-medium outline-none transition-colors duration-150 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring", on ? "text-ink" : "text-ink-3 hover:text-ink")}>
+            className={cn("relative h-10 shrink-0 px-3 text-[13px] font-medium focus-ring-inset transition-colors duration-150 focus-visible:rounded-sm", on ? "text-ink" : "text-ink-3 hover:text-ink")}>
             {t.label}
             {on && <motion.span layoutId="settings-tab" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" transition={reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }} />}
           </button>

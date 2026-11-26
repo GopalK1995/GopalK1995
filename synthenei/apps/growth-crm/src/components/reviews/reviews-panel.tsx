@@ -58,7 +58,7 @@ function ReviewCard({ review: r, actions, canReply, canApprove, onChanged }: { r
         {(editable || r.replyDraft) && (
           <div className="flex flex-col gap-2">
             <label className="text-12 font-medium text-ink-2" htmlFor={`reply-${r.id}`}>{t("replyLabel")}</label>
-            <textarea id={`reply-${r.id}`} data-testid="reply-text" className="min-h-20 w-full rounded-control border border-line-strong bg-paper p-2 text-13"
+            <textarea id={`reply-${r.id}`} data-testid="reply-text" className="min-h-20 w-full rounded-control border border-field-line bg-paper p-2 text-13"
               value={text} onChange={(e) => setText(e.target.value)} readOnly={!editable || status === "approved" || status === "pending_approval"} aria-invalid={tooLong} />
             {r.replySource && r.replyDraft && <p className="flex items-center gap-1 text-12 text-ink-3" data-testid="reply-source">{r.replySource !== "human" && <Sparkles className="size-3" aria-hidden />}{t(`source.${r.replySource}`)}</p>}
             {status === "approved" && <p className="text-12 text-ink-3">{t("approvedHint")}</p>}

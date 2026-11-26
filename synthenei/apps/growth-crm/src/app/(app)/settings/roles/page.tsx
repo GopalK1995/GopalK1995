@@ -41,7 +41,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
         </div>
       )}
       <TabBar tabs={TABS.map((v) => ({ value: v, label: labels[v] }))} current={tab} />
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="outline-none">
+      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="focus-ring">
         {tab === "members" && <Members d={d} now={now} />}
         {tab === "roles" && <Roles d={d} objectPerms={await loadObjectPermissionDefs()} />}
         {tab === "teams" && <Teams d={d} />}

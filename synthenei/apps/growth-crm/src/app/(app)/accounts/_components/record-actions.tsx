@@ -2,6 +2,7 @@
 // Persisted account actions: add, edit, reassign, merge, remove, export. Each write sends the version the page rendered;
 // a stale write returns code "conflict" and the dialog shows the conflict banner instead of overwriting. "Saved" toasts
 // come only from an ok result (the server returns it after the commit).
+import { fieldCls } from "@/components/ui/field-styles";
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Download, GitMerge, Pencil, Trash2, UserCog } from "lucide-react";
@@ -15,7 +16,7 @@ import type { Verdict } from "./perms";
 import { at } from "../_lib/strings";
 import { assignAccountOwner, createAccount, deleteAccount, exportAccounts, mergeAccounts, updateAccount } from "../persisted";
 
-export const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
+export const field = fieldCls;
 export type Option = { id: string; name: string };
 export type EditableAccount = { id: string; version: number; name: string; city: string; district: string; website: string; ownerId: string | null };
 

@@ -1,5 +1,6 @@
 "use client";
 // Edit a campaign. The UTM and channel are fixed so attribution holds. A version conflict says so and offers a reload.
+import { fieldCls } from "@/components/ui/field-styles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { editCampaign } from "../../_actions";
 import { MktGate, notify } from "../../_components/action";
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring";
+const field = fieldCls;
 const lbl = "mb-1 block text-[12px] font-medium text-ink-2";
 type C = { id: string; name: string; objective: string; budget: number; startDate: string; endDate: string | null; version?: number };
 

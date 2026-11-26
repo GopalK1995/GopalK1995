@@ -1,4 +1,5 @@
 "use client";
+import { fieldCls } from "@/components/ui/field-styles";
 import { useMemo, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -7,7 +8,7 @@ import { createCampaign } from "../_actions";
 import { MktGate, notify } from "./action";
 import { useVocab } from "@/components/shell/providers";
 
-const field = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring";
+const field = fieldCls;
 const lbl = "mb-1 block text-[12px] font-medium text-ink-2";
 
 

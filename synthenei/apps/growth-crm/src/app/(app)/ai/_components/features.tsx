@@ -16,7 +16,7 @@ export type Feature = { key: string; name: string; does: string; sends: string; 
 function Switch({ on, label, onClick, disabled }: { on: boolean; label: string; onClick?: () => void; disabled?: boolean }) {
   return (
     <button role="switch" aria-checked={on} aria-label={label} onClick={onClick} disabled={disabled}
-      className={cn("relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:opacity-50", on ? "border-accent bg-accent" : "border-line-strong bg-paper-2")}>
+      className={cn("relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:opacity-50", on ? "border-accent bg-accent" : "border-field-line bg-paper-2")}>
       <span className={cn("absolute left-0.5 size-[18px] rounded-full bg-surface shadow-1 transition-transform duration-150 ease-out", on && "translate-x-4")} />
     </button>
   );

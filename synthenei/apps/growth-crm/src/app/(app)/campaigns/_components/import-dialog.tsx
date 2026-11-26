@@ -47,7 +47,7 @@ export function ImportCsvDialog({ campaigns, campaignId }: { campaigns: { id: st
         <div className="space-y-4">
           <div>
             <label className={lbl} htmlFor="imp-platform">Platform template</label>
-            <select id="imp-platform" className="h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink" value={platform} onChange={(e) => setPlatform(e.target.value)} disabled={!!fixed}>
+            <select id="imp-platform" className="h-9 w-full rounded-sm border border-field-line bg-surface px-2.5 text-[13px] text-ink" value={platform} onChange={(e) => setPlatform(e.target.value)} disabled={!!fixed}>
               {v.platforms.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
             </select>
           </div>

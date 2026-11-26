@@ -76,7 +76,7 @@ export function RealBuilder({ saved, options, fields, campaigns, labels }: {
         )}
         <label className="block">
           <span className="mb-1 block text-[12px] font-medium text-ink-2">Segment name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-ring" />
+          <input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-full rounded-sm border border-field-line bg-surface px-2.5 text-[13px] text-ink focus-ring focus:border-ring" />
         </label>
         {rules.map((r, i) => (
           <fieldset key={r.field} className="rounded-sm border border-line p-3">
@@ -97,7 +97,7 @@ export function RealBuilder({ saved, options, fields, campaigns, labels }: {
         {free.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="seg-add">Add rule</label>
-            <select id="seg-add" value={adding} onChange={(e) => setAdding(e.target.value)} className="h-8 rounded-sm border border-line-strong bg-surface pl-2.5 pr-7 text-[12px] text-ink-2">
+            <select id="seg-add" value={adding} onChange={(e) => setAdding(e.target.value)} className="h-8 rounded-sm border border-field-line bg-surface pl-2.5 pr-7 text-[12px] text-ink-2">
               <option value="">Add a rule…</option>
               {free.map((f) => <option key={f} value={f}>{LABEL[f] ?? f}</option>)}
             </select>
@@ -118,7 +118,7 @@ export function RealBuilder({ saved, options, fields, campaigns, labels }: {
         <div className="mt-4 space-y-2 border-t border-line pt-4">
           <MktGate can="editSegments"><Button className="w-full" disabled={pending || name.trim().length < 3} onClick={save}><Save />{current ? "Save changes" : "Save segment"}</Button></MktGate>
           <label htmlFor="seg-cmp" className="block pt-1 text-[12px] font-medium text-ink-2">Link to campaign</label>
-          <select id="seg-cmp" value={target} onChange={(e) => setTarget(e.target.value)} className="h-9 w-full rounded-sm border border-line-strong bg-surface px-2 text-[12px] text-ink">
+          <select id="seg-cmp" value={target} onChange={(e) => setTarget(e.target.value)} className="h-9 w-full rounded-sm border border-field-line bg-surface px-2 text-[12px] text-ink">
             {campaigns.length === 0 && <option value="">No campaigns yet</option>}
             {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>

@@ -41,7 +41,7 @@ function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onN
               const active = isActive(it.href, path);
               const link = (
                 <Link href={it.href} onClick={onNavigate} aria-current={active ? "page" : undefined}
-                  className={cn("relative flex h-9 items-center gap-3 rounded-sm px-3 text-[13px] font-medium outline-none transition-colors duration-150",
+                  className={cn("relative flex h-9 items-center gap-3 rounded-sm px-3 text-[13px] font-medium focus-ring-inset transition-colors duration-150",
                     active ? "text-navy-ink" : "text-navy-ink-2 hover:bg-navy-800/70 hover:text-navy-ink", collapsed && "justify-center px-0")}>
                   {active && (
                     <motion.span layoutId={`nav-active-${layoutKey}`} className="absolute inset-0 rounded-sm bg-navy-800" transition={reduce ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>

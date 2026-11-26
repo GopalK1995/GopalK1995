@@ -1,4 +1,5 @@
 "use client";
+import { fieldCls } from "@/components/ui/field-styles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { fill } from "@/lib/billing/strings";
 import { cancel, saveDetails, subscribe } from "../actions";
 import type { OwnerView } from "../_lib/view";
 
-const input = "h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const input = fieldCls;
 type S = Record<string, string>;
 const t = (s: S, k: string, v?: Record<string, string | number>) => (s[k] ? fill(s[k], v ?? {}) : k);
 

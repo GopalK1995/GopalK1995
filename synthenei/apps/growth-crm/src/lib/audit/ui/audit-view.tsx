@@ -15,7 +15,7 @@ export type AuditScreen =
   | { kind: "error"; message?: string }
   | { kind: "denied"; body: string };
 
-const field = "h-8 rounded-control border border-line-strong bg-surface px-2 text-13 text-ink outline-none focus:border-ring";
+const field = "h-8 rounded-control border border-field-line bg-surface px-2 text-13 text-ink focus-ring focus:border-ring";
 const lbl = "flex flex-col gap-1 text-12 text-ink-3";
 
 function FilterForm({ t, basePath, filters, platform, fixed }: { t: T; basePath: string; filters: AuditFilters; platform: boolean; fixed?: Record<string, string> }) {

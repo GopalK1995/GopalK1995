@@ -31,7 +31,7 @@ const versionOf = (r: Act): number | undefined => (r.ok ? (r.data as { version?:
 
 const CH_LABEL: Record<Ch, string> = { whatsapp: "WhatsApp", email: "Email", linkedin: "LinkedIn" };
 const CH_INTEGRATION: Record<Ch, string> = { whatsapp: "whatsapp", email: "gmail", linkedin: "linkedin" };
-const field = "w-full rounded-sm border border-line-strong bg-surface px-2.5 text-[13px] outline-none focus:border-ring";
+const field = "w-full rounded-sm border border-field-line bg-surface px-2.5 text-[13px] focus-ring focus:border-ring";
 
 type Env = {
   mode: InboxMode; strings: Strings; templates: TemplateOpt[]; wsKey: string; uid: string; masked: boolean;

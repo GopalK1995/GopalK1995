@@ -91,7 +91,7 @@ function Sync({ it, onNavy }: { it: GridItem; onNavy?: boolean }) {
 function FeaturedCard({ it, large }: { it: GridItem; large: boolean }) {
   return (
     <Link href={`/integrations/${it.id}`}
-      className="group flex h-full min-w-0 flex-col rounded-md border border-line bg-surface p-4 shadow-1 outline-none transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-2 focus-visible:border-ring sm:p-5">
+      className="group flex h-full min-w-0 flex-col rounded-md border border-line bg-surface p-4 shadow-1 focus-ring transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-2 focus-visible:border-ring sm:p-5">
       <div className="flex items-start gap-3">
         <Monogram text={it.monogram} size={large ? 48 : 40} />
         <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ function FeaturedCard({ it, large }: { it: GridItem; large: boolean }) {
 
 function CompactRow({ it }: { it: GridItem }) {
   return (
-    <Link href={`/integrations/${it.id}`} className="group flex h-full min-w-0 items-start gap-3 p-4 outline-none transition-colors duration-150 hover:bg-paper focus-visible:bg-paper">
+    <Link href={`/integrations/${it.id}`} className="group flex h-full min-w-0 items-start gap-3 p-4 focus-ring-inset transition-colors duration-150 hover:bg-paper focus-visible:bg-paper">
       <Monogram text={it.monogram} size={32} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

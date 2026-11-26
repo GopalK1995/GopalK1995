@@ -24,8 +24,8 @@ export interface RoleView { id: string; name: string; description: string; baseR
 const BASES: BaseRole[] = ["owner", "sales_manager", "sales_rep", "marketing", "data", "viewer"];
 const SCOPES: Scope[] = ["none", "own", "team", "all"];
 const scopeLabel = (s: Scope) => sa(`scope${s[0].toUpperCase()}${s.slice(1)}`);
-const selectCls = "h-8 rounded-chip border border-line-strong bg-surface pl-2 pr-7 text-12 text-ink outline-none focus:border-ring disabled:opacity-50";
-const inputCls = "h-9 w-full rounded-chip border border-line-strong bg-surface px-2.5 text-13 text-ink outline-none focus:border-ring";
+const selectCls = "h-8 rounded-chip border border-field-line bg-surface pl-2 pr-7 text-12 text-ink focus-ring focus:border-ring disabled:opacity-50";
+const inputCls = "h-9 w-full rounded-chip border border-field-line bg-surface px-2.5 text-13 text-ink focus-ring focus:border-ring";
 
 // Conditions the editor can build. Anything else on an existing grant is kept untouched (shown as a custom condition).
 const PRESETS = {
