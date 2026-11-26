@@ -14,8 +14,8 @@ export interface ConnectionPatch {
 }
 
 export interface RunStart { connectionId: string; tenantId: string; workspaceId: string; kind: "poll" | "webhook" | "csv" | "outbound" | "manual"; stream: string | null; mode: ConnMode; startedBy?: string | null }
-export interface RunFinish { status: "success" | "partial" | "failed"; rowsIn: number; rowsOut: number; rowsRejected: number; error?: string | null; payloadSample?: unknown }
-export interface RunRow { id: number; connectionId: string; stream: string | null; kind: string; status: "running" | "success" | "partial" | "failed"; startedAt: string; finishedAt: string | null; rowsIn: number; rowsOut: number; rowsRejected: number; error: string | null; payloadSample: unknown }
+export interface RunFinish { status: "success" | "partial" | "failed" | "skipped"; rowsIn: number; rowsOut: number; rowsRejected: number; error?: string | null; payloadSample?: unknown }
+export interface RunRow { id: number; connectionId: string; stream: string | null; kind: string; status: "running" | "success" | "partial" | "failed" | "skipped"; startedAt: string; finishedAt: string | null; rowsIn: number; rowsOut: number; rowsRejected: number; error: string | null; payloadSample: unknown }
 
 export interface LinkRow { id: string; localTable: string; localId: string; contentHash: string | null }
 
@@ -31,6 +31,8 @@ export interface ConnectorStore {
   finishRun(id: number, f: RunFinish): Promise<void>;
   /** A run for this connection+stream still marked running that started after `sinceIso`. */
   findRunningRun(connectionId: string, stream: string | null, sinceIso: string): Promise<RunRow | null>;
+  /** Marks runs still "running" that started before `staleBeforeIso` as failed (a crashed or timed-out worker never finishes its row). Returns how many. Optional for fakes. */
+  reapStaleRuns?(connectionId: string, staleBeforeIso: string): Promise<number>;
   listRuns(connectionId: string, limit: number): Promise<RunRow[]>;
   getFieldMap(connectionId: string): Promise<FieldMapSpec[]>;
   getLink(connectionId: string, externalObject: string, externalId: string): Promise<LinkRow | null>;

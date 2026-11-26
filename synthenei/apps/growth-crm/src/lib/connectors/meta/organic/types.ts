@@ -32,7 +32,11 @@ export interface OrganicGateway {
   stories(p: SocialPlatform): Promise<RemotePost[]>;
   /** Null = Meta has no metrics for this post (too old, converted account, removed): stored as nulls, not zeros. */
   postMetrics(p: SocialPlatform, post: Pick<RemotePost, "externalId" | "kind" | "inline">): Promise<PostMetrics | null>;
-  accountDays(p: SocialPlatform, i: { since: string; until: string }): Promise<AccountDay[]>;
+  /**
+   * Trailing account days. A metric Meta refuses is reported through `report(metric, graphCode)` and the rest still return; it throws only
+   * when nothing could be read at all (so the run records a failure instead of an empty success).
+   */
+  accountDays(p: SocialPlatform, i: { since: string; until: string }, report?: (metric: string, code: number) => void): Promise<AccountDay[]>;
 }
 
 export interface StoredPost { id: string; externalId: string; kind: PostKind; postedAt: string; status: PostStatus; lastMetricsAt: string | null; hasMetrics: boolean }
@@ -47,5 +51,5 @@ export interface SocialStore {
   upsertPostMetrics(rows: { postId: string; day: string; metrics: PostMetrics; at: string }[], scope: Scope): Promise<void>;
   upsertAccountMetrics(rows: (AccountDay & { accountId: string; at: string })[], scope: Scope): Promise<void>;
   /** Outcome of the run on the account row (last_synced_at, last_sync_status, last_error). */
-  markSynced(accountId: string, r: { at: string; status: "ok" | "partial" | "error" | "needs_attention"; error?: string | null }): Promise<void>;
+  markSynced(accountId: string, r: { at: string; status: "ok" | "partial" | "no_data" | "error" | "needs_attention"; error?: string | null }): Promise<void>;
 }

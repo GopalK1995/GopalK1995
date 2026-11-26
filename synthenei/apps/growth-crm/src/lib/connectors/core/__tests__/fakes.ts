@@ -44,6 +44,7 @@ export class FakeStore implements ConnectorStore {
   }
   async finishRun(id: number, f: RunFinish) { Object.assign(this.runs[id - 1], { status: f.status, rowsIn: f.rowsIn, rowsOut: f.rowsOut, rowsRejected: f.rowsRejected, error: f.error ?? null, payloadSample: f.payloadSample ?? null, finishedAt: "done" }); }
   async findRunningRun(id: string, stream: string | null) { return this.runs.find((r) => r.connectionId === id && r.status === "running" && (!stream || r.stream === stream)) ?? null; }
+  async reapStaleRuns(id: string, staleBeforeIso: string) { let n = 0; for (const r of this.runs) if (r.connectionId === id && r.status === "running" && r.startedAt < staleBeforeIso) { r.status = "failed"; r.error = "reaped"; n++; } return n; }
   async listRuns(id: string, limit: number) { return this.runs.filter((r) => r.connectionId === id).slice(-limit); }
   async getFieldMap() { return this.fieldMap; }
   async getLink(id: string, o: string, e: string) { const l = this.links.find((x) => x.key === `${id}|${o}|${e}`); return l ?? null; }

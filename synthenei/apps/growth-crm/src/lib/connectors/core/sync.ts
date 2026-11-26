@@ -8,13 +8,13 @@ import { safeError, stripPii } from "./pii";
 import type { RuntimeDeps } from "./ports";
 import { loadSecrets } from "./secrets";
 import { makeUpserter } from "./upserter";
-import { CredentialError, TransientError, type ConnectionRow, type ConnectorDef, type SyncContext } from "./types";
+import { CredentialError, TransientError, type ConnectionRow, type ConnectorDef, type SyncContext, type SyncResult } from "./types";
 
 export const RUNNING_STALE_MS = 15 * 60_000;
 export const MAX_PAGES_PER_RUN = 20;
 
 export type RunTrigger = "poll" | "manual";
-export interface StreamOutcome { stream: string; runId: number | null; status: "success" | "partial" | "failed" | "skipped"; rowsIn: number; rowsRejected: number; error?: string }
+export interface StreamOutcome { stream: string; runId: number | null; status: "success" | "partial" | "failed" | "skipped"; rowsIn: number; rowsRejected: number; error?: string; /** run finished fine but the vendor had nothing to import */ noData?: boolean }
 export interface SyncOutcome { connectionId: string; skipped?: "not_found" | "not_connected" | "not_available" | "unknown_connector" | "needs_attention"; streams: StreamOutcome[]; /** true when the job should be retried (transient vendor failure) */ retry: boolean }
 
 const nowOf = (d: RuntimeDeps) => (d.now ? d.now() : new Date());
@@ -65,6 +65,8 @@ export async function runSync(d: RuntimeDeps, input: { connectionId: string; str
   const tenantMap = await d.store.getFieldMap(conn.id);
   for (const stream of streams) {
     const stale = new Date(nowOf(d).getTime() - RUNNING_STALE_MS).toISOString();
+    // A worker that crashed or timed out never closes its row; without this the stream would look "running" forever (BE-010).
+    try { await d.store.reapStaleRuns?.(conn.id, stale); } catch { /* best effort: the check below still ignores stale rows */ }
     if (await d.store.findRunningRun(conn.id, stream.key, stale)) {
       out.streams.push({ stream: stream.key, runId: null, status: "skipped", rowsIn: 0, rowsRejected: 0 });
       continue;
@@ -77,19 +79,27 @@ export async function runSync(d: RuntimeDeps, input: { connectionId: string; str
       upsert: makeUpserter({ store: d.store, conn, defaults: def.defaultFieldMap, tenantMap, log: d.log, onFieldReject: reject }),
     };
     let cursor = await d.store.getCursor(conn.id, stream.key);
-    let rowsIn = 0, rowsRejected = 0, pages = 0, sample: unknown = undefined;
+    let rowsIn = 0, rowsRejected = 0, pages = 0, sample: unknown = undefined, kindSeen: SyncResult["status"], reason: string | undefined;
     try {
       for (;;) {
         const r = await stream.run(ctx, cursor);
         rowsIn += r.rowsIn; rowsRejected += r.rowsRejected; cursor = r.cursor; pages++;
         if (r.sample !== undefined) sample = r.sample;
+        if (r.status) { kindSeen = r.status === "partial" || !kindSeen ? r.status : kindSeen; reason = r.reason ?? reason; }
         await d.store.setCursor(conn.id, stream.key, cursor);   // progress survives a crash on the next page
         if (r.done || pages >= MAX_PAGES_PER_RUN || (input.deadlineMs && Date.now() > input.deadlineMs)) break;
       }
-      const status = rowsRejected > 0 ? "partial" : "success";
-      await d.store.finishRun(runId, { status, rowsIn, rowsOut: 0, rowsRejected, error: rowsRejected > 0 ? `${rowsRejected} row${rowsRejected === 1 ? "" : "s"} could not be imported` : null, payloadSample: stripPii({ rows: sample, rejected: rejectReasons }) });
-      await d.store.updateConnection(conn.id, { lastSyncAt: nowOf(d).toISOString(), lastError: null });
-      out.streams.push({ stream: stream.key, runId, status, rowsIn, rowsRejected });
+      // Honest status: a run that did not run is "skipped", never "success"; a run that stopped early or lost rows is "partial";
+      // a run that ran but found nothing stays "success" with a visible "no data" reason (the vendor answered; there is just nothing).
+      const skipped = kindSeen === "skipped" && rowsIn === 0;
+      const status: StreamOutcome["status"] = skipped ? "skipped" : rowsRejected > 0 || kindSeen === "partial" ? "partial" : "success";
+      const noData = !skipped && kindSeen === "no_data" && rowsIn === 0;
+      const rejectedNote = rowsRejected > 0 ? `${rowsRejected} row${rowsRejected === 1 ? "" : "s"} could not be imported` : null;
+      const note = skipped ? `Skipped: ${reason ?? "nothing to do"}` : noData ? `No data: ${reason ?? "the vendor returned nothing"}` : kindSeen === "partial" && !rejectedNote ? `Stopped early: ${reason ?? "the next run continues"}` : rejectedNote ? (reason ? `${rejectedNote} (${reason})` : rejectedNote) : null;
+      await d.store.finishRun(runId, { status, rowsIn, rowsOut: 0, rowsRejected, error: note, payloadSample: stripPii({ rows: sample, rejected: rejectReasons, ...(skipped || noData || reason ? { reason } : {}) }) });
+      // A skipped run did not sync anything: it must not move "last synced" or clear a previous error.
+      if (!skipped) await d.store.updateConnection(conn.id, { lastSyncAt: nowOf(d).toISOString(), lastError: null });
+      out.streams.push({ stream: stream.key, runId, status, rowsIn, rowsRejected, ...(noData ? { noData: true } : {}) });
       await emitSafe(d, "connector.sync.completed", conn, { connector: def.id, stream: stream.key, rows_in: rowsIn, rows_rejected: rowsRejected });
     } catch (e) {
       const msg = e instanceof CredentialError ? "The vendor rejected the saved credentials. Reconnect it to resume syncing." : e instanceof TransientError ? "The vendor is busy or unreachable. Syncing will retry." : `Sync stopped: ${safeError(e, 200)}`;

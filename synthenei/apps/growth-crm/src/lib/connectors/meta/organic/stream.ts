@@ -25,10 +25,10 @@ export async function socialRun(ctx: SyncContext, rt?: OrganicRuntime): Promise<
   const r = rt ?? await runtime();
   const secrets = await ctx.secrets();
   if (!r.gateway && (isMockCredentials(secrets) || (r.env.APP_ENV === "demo" && !secrets[CRED.accessToken]))) {
-    return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "sandbox" } };   // sample data is a page-level, in-memory demo
+    return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "sandbox" }, status: "skipped", reason: "sandbox_credentials" };   // sample data is a page-level, in-memory demo
   }
   const pageId = secrets[CRED.pageId], igUserId = secrets[CRED.igUserId];
-  if (!pageId && !igUserId) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_accounts" } };
+  if (!pageId && !igUserId) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_accounts" }, status: "skipped", reason: "no_page_or_instagram_selected" };
 
   if (!r.gateway) {
     // Availability gate: the token must carry the insights permissions. A dead token is needs_attention; any other failure here does not block.
@@ -36,7 +36,7 @@ export async function socialRun(ctx: SyncContext, rt?: OrganicRuntime): Promise<
       const dbg = await gatewayFor({ connectionId: ctx.conn.id, secrets, env: r.env, fetchImpl: r.fetchImpl }).debugToken();
       if (!dbg.valid) throw new CredentialError("Meta says this access token is no longer valid");
       const missing = missingOrganicScopes(dbg.scopes);
-      if (missing.length) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "needs_vendor_approval", missing_scopes: missing } };
+      if (missing.length) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "needs_vendor_approval", missing_scopes: missing }, status: "skipped", reason: `missing_scopes:${missing.join("|")}` };
     } catch (e) { if (e instanceof CredentialError) throw e; }
   }
   const gateway = r.gateway ?? makeOrganicGraph({

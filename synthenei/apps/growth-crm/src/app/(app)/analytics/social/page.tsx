@@ -42,6 +42,12 @@ export default async function SocialPage() {
                 <Link href="/integrations/meta-ads" className="font-medium text-accent hover:underline">{t("reconnectCta")}</Link>
               </div>
             )}
+            {!view.demo && view.accounts.filter((a) => a.status === "no_data" || a.status === "partial").length > 0 && (
+              <div role="note" className="rounded-md border border-warn/50 bg-surface px-4 py-3 text-13 text-ink-2" data-testid="sync-note">
+                <p className="font-medium text-warn-ink">{t("syncNoteTitle")}</p>
+                <ul className="mt-1 list-disc pl-4">{view.accounts.filter((a) => a.status === "no_data" || a.status === "partial").map((a) => <li key={a.id}>{t(a.status === "no_data" ? "syncNoteNoData" : "syncNotePartial", { name: a.name, detail: a.lastError ?? "" })}</li>)}</ul>
+              </div>
+            )}
             {view.synced.total > 0 && view.synced.done < view.synced.total && (
               <PartialState done={view.synced.done} total={view.synced.total} noun={t("partialNoun")} items={[{ label: t("partialLabel"), status: "pending" }]} />
             )}

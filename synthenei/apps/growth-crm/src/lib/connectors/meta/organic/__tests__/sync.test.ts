@@ -21,7 +21,7 @@ class MemStore implements SocialStore {
     const k = `${i.workspaceId}|${i.platform}|${i.externalId}`;
     if (!this.accounts.has(k)) this.accounts.set(k, { id: `a${this.accounts.size + 1}`, platform: i.platform, followers: i.followers });
     const id = this.accounts.get(k)!.id;
-    const last = [...this.posts.values()].filter((x) => x.accountId === id).map((x) => x.p.postedAt).sort().at(-1) ?? null;
+    const last = [...this.posts.values()].filter((x) => x.accountId === id && x.p.kind !== "story").map((x) => x.p.postedAt).sort().at(-1) ?? null;
     return { id, lastPostAt: last };
   }
   async upsertPosts(i: Parameters<SocialStore["upsertPosts"]>[0]) { for (const p of i.posts) { const k = `${i.accountId}|${p.externalId}`; this.posts.set(k, { id: this.posts.get(k)?.id ?? `p${this.posts.size + 1}`, accountId: i.accountId, p, status: p.status }); } }
@@ -55,7 +55,7 @@ describe("organic sync", () => {
     await run(st, gw(s)); await run(st, gw(s)); await run(st, gw(s));
     expect(st.posts.size).toBe(2);
     expect(st.pm.size).toBe(2);
-    expect(st.am.size).toBe(2);   // one per platform account
+    expect(st.am.size).toBe(4);   // per platform account: the reported day plus the follower snapshot of today
   });
 
   it("stores nulls, never zeros, when Meta has no insights for a post", async () => {

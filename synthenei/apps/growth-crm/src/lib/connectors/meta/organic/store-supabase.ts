@@ -30,7 +30,8 @@ export function supabaseSocialStore(db: Db): SocialStore {
       await upsert("social_accounts", [row], "workspace_id,platform,external_id", "account upsert");
       const a = (await rows(q("social_accounts").select("id").eq("workspace_id", i.workspaceId).eq("platform", i.platform).eq("external_id", i.externalId).limit(1), "account read"))[0];
       if (!a) throw failed("account read");
-      const last = (await rows(q("social_posts").select("posted_at").eq("account_id", a.id).order("posted_at", { ascending: false }).limit(1), "last post"))[0];
+      // Stories are not "the newest post": a fresh story used to move the cut-off past every older feed post and reel, which were then never read (INTG-010).
+      const last = (await rows(q("social_posts").select("posted_at").eq("account_id", a.id).neq("kind", "story").order("posted_at", { ascending: false }).limit(1), "last post"))[0];
       return { id: String(a.id), lastPostAt: typeof last?.posted_at === "string" ? last.posted_at : null };
     },
     async upsertPosts(i) {
@@ -66,7 +67,12 @@ export function supabaseSocialStore(db: Db): SocialStore {
       })), "account_id,day", "account metrics upsert");
     },
     async markSynced(accountId, r) {
-      await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: r.status, last_error: r.error ?? null }).eq("id", accountId).select("id"), "account status");
+      try { await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: r.status, last_error: r.error ?? null }).eq("id", accountId).select("id"), "account status"); }
+      catch (e) {
+        // 'no_data' needs migration 0025 (check constraint). Until it is applied it is stored as 'partial' (never 'ok') with the same note.
+        if (r.status !== "no_data") throw e;
+        await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: "partial", last_error: r.error ?? "No data from Meta" }).eq("id", accountId).select("id"), "account status");
+      }
     },
   };
 }

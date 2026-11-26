@@ -18,6 +18,7 @@ export function toConnection(r: R): ConnectionRow {
     mode: r.mode === "live" ? "live" : "sandbox", status: String(r.status) as IntegrationStatus, settings: (r.settings as Record<string, unknown>) ?? {},
     credentialSecretId: str(r.credential_secret_id), webhookSecretId: str(r.webhook_secret_id), tokenExpiresAt: str(r.token_expires_at),
     lastSyncAt: str(r.last_sync_at), lastError: str(r.last_error),
+    health: r.health && typeof r.health === "object" && !Array.isArray(r.health) ? (r.health as Record<string, unknown>) : {},
   };
 }
 export function toRun(r: R): RunRow {
@@ -69,7 +70,17 @@ export function supabaseStore(db: Db, appEnv: string): ConnectorStore {
       return Number(out[0]?.id);
     },
     async finishRun(id, f: RunFinish) {
-      await rows(q("sync_runs").update({ status: f.status, rows_in: f.rowsIn, rows_out: f.rowsOut, rows_rejected: f.rowsRejected, error: f.error ?? null, payload_sample: f.payloadSample ?? null, finished_at: new Date().toISOString() }).eq("id", id).select("id"), "finish run");
+      const patch = { status: f.status, rows_in: f.rowsIn, rows_out: f.rowsOut, rows_rejected: f.rowsRejected, error: f.error ?? null, payload_sample: f.payloadSample ?? null, finished_at: new Date().toISOString() };
+      try { await rows(q("sync_runs").update(patch).eq("id", id).select("id"), "finish run"); }
+      catch (e) {
+        // 'skipped' needs migration 0025 (enum value). Until it is applied, a skipped run is stored as 'partial' with its reason in `error`: never as success.
+        if (f.status !== "skipped") throw e;
+        await rows(q("sync_runs").update({ ...patch, status: "partial", error: f.error ?? "Skipped" }).eq("id", id).select("id"), "finish run");
+      }
+    },
+    async reapStaleRuns(id, staleBeforeIso) {
+      const r = await rows(q("sync_runs").update({ status: "failed", error: "The run never finished (worker crashed or timed out) and was closed automatically.", finished_at: new Date().toISOString() }).eq("integration_id", id).eq("status", "running").lt("started_at", staleBeforeIso).select("id"), "reap runs");
+      return r.length;
     },
     async findRunningRun(id, stream, sinceIso) {
       let b = q("sync_runs").select().eq("integration_id", id).eq("status", "running").gte("started_at", sinceIso);

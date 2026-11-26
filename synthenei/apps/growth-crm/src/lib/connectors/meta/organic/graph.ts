@@ -18,6 +18,7 @@ type R = Record<string, unknown>;
 const isObj = (v: unknown): v is R => !!v && typeof v === "object" && !Array.isArray(v);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const afterOf = (j: R): string | undefined => (isObj(j.paging) && typeof j.paging.next === "string" && isObj(j.paging.cursors) && typeof j.paging.cursors.after === "string" ? j.paging.cursors.after.slice(0, 500) : undefined);
+const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) + 86400e3).toISOString().slice(0, 10);
 const unix = (iso: string): string => String(Math.floor(Date.parse(`${iso}T00:00:00Z`) / 1000));
 
 const IG_MEDIA_FIELDS = "id,caption,media_type,media_product_type,permalink,media_url,thumbnail_url,timestamp";
@@ -70,8 +71,12 @@ export function makeOrganicGraph(o: OrganicGraphOpts): OrganicGateway {
       throw err;
     }
   }
-  /** Insights Meta refuses for one post (too old, account converted, removed) are "no data", not a failed sync. */
-  const noData = (e: unknown): boolean => e instanceof MetaApiError && (e.failure === "not_found" || e.failure === "permission" || e.code === 100 || e.code === 10);
+  /**
+   * Insights Meta refuses for ONE post because of the post itself (removed, or created before the account became a business account:
+   * subcode 2108006) are "no data", not a failed sync. Codes 100 (bad field/metric/parameter) and 10 (permission) used to be swallowed
+   * here too, which hid a wrong metric name for every post behind "ok" (INTG-008): they now propagate so the run records the code.
+   */
+  const noData = (e: unknown): boolean => e instanceof MetaApiError && (e.failure === "not_found" || e.subcode === 2108006);
 
   return {
     kind: "graph",
@@ -86,7 +91,9 @@ export function makeOrganicGraph(o: OrganicGraphOpts): OrganicGateway {
     },
     async posts(plat, i): Promise<Page<RemotePost>> {
       if (plat === "instagram") {
-        const j = await get(`${ig()}/media`, { fields: IG_MEDIA_FIELDS, limit: String(PAGE_SIZE), after: i.after, since: i.since ? String(Math.floor(Date.parse(i.since) / 1000)) : undefined });
+        // No `since` here: the /media edge is cursor-paged newest first and the time filter is not reliable on it, so a `since` could hide
+        // posts. The sync stops paging itself once a page is entirely older than its cut-off.
+        const j = await get(`${ig()}/media`, { fields: IG_MEDIA_FIELDS, limit: String(PAGE_SIZE), after: i.after });
         return { items: arr(j.data).map((x) => mapIgMedia(x)).filter((x): x is RemotePost => !!x), after: afterOf(j) };
       }
       const j = await get(`${page()}/published_posts`, { fields: FB_POST_FIELDS, limit: String(PAGE_SIZE), after: i.after, since: i.since ? String(Math.floor(Date.parse(i.since) / 1000)) : undefined });
@@ -104,15 +111,44 @@ export function makeOrganicGraph(o: OrganicGraphOpts): OrganicGateway {
         return mapFbPostInsights(await get(`${post.externalId}/insights`, { metric: "post_impressions,post_impressions_unique,post_clicks" }), inline);
       } catch (e) { if (noData(e)) return null; throw e; }
     },
-    async accountDays(plat, i): Promise<AccountDay[]> {
-      try {
-        if (plat === "instagram") {
-          const j = await get(`${ig()}/insights`, { metric: "reach,profile_views,website_clicks,follower_count", period: "day", since: unix(i.since), until: unix(i.until) });
-          return mapAccountInsights(j);
+    async accountDays(plat, i, report): Promise<AccountDay[]> {
+      // Each metric group is its own call: one unsupported metric makes Graph fail the WHOLE request with code 100, which used to blank
+      // every account metric (INTG-009). A failed group is reported with its Graph code and the others still land.
+      const out: unknown[] = [];
+      let firstError: unknown = null, ok = 0;
+      const attempt = async (label: string, run: () => Promise<R[]>): Promise<void> => {
+        try { out.push(...(await run())); ok++; }
+        catch (e) {
+          if (e instanceof CredentialError || e instanceof TransientError) throw e;
+          firstError ??= e;
+          report?.(label, e instanceof MetaApiError ? e.code : 0);
         }
-        const j = await get(`${page()}/insights`, { metric: "page_impressions_unique,page_daily_follows_unique,page_follows", period: "day", since: unix(i.since), until: unix(i.until) });
-        return mapAccountInsights(j);
-      } catch (e) { if (noData(e)) return []; throw e; }
+      };
+      const range = { since: unix(i.since), until: unix(i.until) };
+      if (plat === "instagram") {
+        // time_series metrics (period=day): reach, follower_count (Meta only keeps the last 30 days of follower_count).
+        await attempt("reach", async () => arr((await get(`${ig()}/insights`, { metric: "reach", period: "day", ...range })).data) as R[]);
+        await attempt("follower_count", async () => arr((await get(`${ig()}/insights`, { metric: "follower_count", period: "day", ...range })).data) as R[]);
+        // total_value-only metrics: one total per call, so one call per day, re-labelled as that day's value.
+        const days: string[] = [];
+        for (let d = i.since; d <= i.until && days.length < 8; d = nextDay(d)) days.push(d);
+        for (const metric of ["profile_views", "website_clicks"]) {
+          await attempt(metric, async () => {
+            const rows: R[] = [];
+            for (const d of days) {
+              const j = await get(`${ig()}/insights`, { metric, metric_type: "total_value", period: "day", since: unix(d), until: unix(nextDay(d)) });
+              for (const e of arr(j.data)) if (isObj(e) && isObj(e.total_value)) rows.push({ name: e.name, values: [{ value: e.total_value.value, end_time: `${nextDay(d)}T00:00:00+0000` }] });
+            }
+            return rows;
+          });
+        }
+      } else {
+        for (const metric of ["page_impressions_unique", "page_daily_follows_unique", "page_follows"]) {
+          await attempt(metric, async () => arr((await get(`${page()}/insights`, { metric, period: "day", ...range })).data) as R[]);
+        }
+      }
+      if (ok === 0 && firstError) throw firstError;   // nothing worked: a failure, never an empty "ok"
+      return mapAccountInsights(out);
     },
   };
 }
