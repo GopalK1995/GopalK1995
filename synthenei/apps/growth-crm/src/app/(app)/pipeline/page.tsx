@@ -14,6 +14,7 @@ import { PartialState } from "@/components/ui/states";
 import { getLocale } from "@/i18n/server";
 import { fill, pipelineLabels } from "./_lib/labels";
 import { DEFAULT_STAGE_MAX_DAYS } from "./_lib/stage-age";
+import { fmtIstMonth } from "@/lib/datetime";
 
 export const metadata = { title: "Pipeline" };
 type SP = { owner?: string; district?: string; close?: string; value?: string; pipeline?: string };
@@ -69,7 +70,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   // Totals know two terminal keys; map by the stage's outcome so a pipeline with differently named terminal stages sums correctly.
   const t = pipelineTotals(filtered.map((d) => { const m = stageMeta.get(d.stage); return m ? { ...d, probability: m.probability / 100, stage: m.outcome === "open" ? d.stage : m.outcome } : d; }), now);
   const months = [...new Set(deals.map((d) => (d.wonAt ?? d.expectedClose).slice(0, 7)))].sort();
-  const monthLabel = (m: string) => new Date(`${m}-15T00:00:00Z`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  const monthLabel = (m: string) => fmtIstMonth(`${m}-15T00:00:00Z`);
   const districts = [...new Set(deals.map((d) => acc.get(d.accountId)?.district).filter(Boolean) as string[])].sort();
   const owners = team.filter((m) => deals.some((d) => d.ownerId === m.id));
   const filters = [

@@ -35,7 +35,7 @@ export function GatewaySettings({ vm }: { vm: SettingsVM }) {
   const patch = (p: string, v: Partial<ProviderVM>) => setRows((xs) => xs.map((x) => (x.provider === p ? { ...x, ...v } : x)));
   const meter = (label: string, used: number, cap: number | null) => (
     <div>
-      <div className="flex justify-between text-[12px]"><span className="text-ink-2">{label}</span><span className="num text-ink-3">{used.toLocaleString()}{cap != null ? ` / ${cap.toLocaleString()}` : ` / ${t("settings.noCap")}`}</span></div>
+      <div className="flex justify-between text-[12px]"><span className="text-ink-2">{label}</span><span className="num text-ink-3">{used.toLocaleString("en-IN")}{cap != null ? ` / ${cap.toLocaleString("en-IN")}` : ` / ${t("settings.noCap")}`}</span></div>
       <div className="mt-1 h-1.5 rounded-full bg-paper-2" aria-hidden><div className={cn("h-full rounded-full", cap != null && used >= cap ? "bg-danger" : "bg-accent")} style={{ width: cap ? `${Math.min(100, (used / Math.max(1, cap)) * 100)}%` : "0%" }} /></div>
     </div>
   );
@@ -59,7 +59,7 @@ export function GatewaySettings({ vm }: { vm: SettingsVM }) {
           <label className="text-[12px] text-ink-2">{t("settings.tokenCap")}<input data-cy="cap-tokens" className={cn(field, "mt-1")} inputMode="numeric" value={tokens} onChange={(e) => setTokens(e.target.value)} disabled={ro} placeholder={t("settings.noCap")} /></label>
           <label className="text-[12px] text-ink-2">{t("settings.userCap")}<input data-cy="cap-user" className={cn(field, "mt-1")} inputMode="numeric" value={perUser} onChange={(e) => setPerUser(e.target.value)} disabled={ro} placeholder={t("settings.noCap")} /></label>
         </div>
-        {vm.usage?.planCalls != null && <p className="mt-2 text-[11px] text-ink-3">{t("settings.planLimit", { n: vm.usage.planCalls.toLocaleString() })}</p>}
+        {vm.usage?.planCalls != null && <p className="mt-2 text-[11px] text-ink-3">{t("settings.planLimit", { n: vm.usage.planCalls.toLocaleString("en-IN") })}</p>}
       </section>
 
       <section aria-labelledby="ai-privacy">

@@ -9,6 +9,7 @@ import { getPrT } from "@/lib/privacy/strings-server";
 import { DueChip } from "../_components/due-chip";
 import { RequestActions } from "../_components/request-actions";
 import { loadDetail } from "../_lib/view";
+import { fmtIstDateTimeZ } from "@/lib/datetime";
 
 export const metadata = { title: "Privacy request" };
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function PrivacyRequestPage({ params }: { params: Promise<{
   if (res.status === "missing") notFound();
   if (res.status === "error") return <>{header}<ErrorState source={t("owner.loadErrorSource")} message={t("owner.loadErrorBody")} retry={<Link href={`/settings/privacy/${id}`}><Button>{t("owner.retry")}</Button></Link>} /></>;
   const { req, now } = res;
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = fmtIstDateTimeZ; // received/due moments start legal clocks: show the time and say IST
   return (
     <main className="grid gap-4" data-testid="privacy-request">
       <PageHeader title={t(`kind.${req.kind}`)} sub={<Link href="/settings/privacy" className="text-accent underline">{t("detail.back")}</Link>} />

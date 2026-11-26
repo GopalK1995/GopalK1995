@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { AlarmClock, Check, Pencil, Plus, UserRoundCheck } from "lucide-react";
+import { IST_LABEL } from "@/lib/datetime";
 import { dayKey, fmtDate, fmtTime, fmtWeekday } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ export function TasksApp({ rows: initial, now, team, leads, weekOffset, holidays
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, now]);
   const snooze = snoozeTargets(now, t);
-  const label = (iso: string) => `${fmtWeekday(iso)} ${fmtDate(iso)}, ${fmtTime(iso)}`;
+  const label = (iso: string) => `${fmtWeekday(iso)} ${fmtDate(iso)}, ${fmtTime(iso)} ${IST_LABEL}`; // the zone is named wherever a due moment is spelled out
 
   /** Runs a write: optimistic change first, rollback on failure, conflict banner on 409, version bump on success. */
   const run = (id: string | null, optimistic: (xs: TaskRow[]) => TaskRow[], call: () => Promise<ActionResult<{ version: number }> | ActionResult>, failSub: string) => {

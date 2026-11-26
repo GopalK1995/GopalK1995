@@ -113,7 +113,7 @@ export default async function Copilot() {
     { I: Scale, t: a_.guardLegal[0], d: a_.guardLegal[1] },
     { I: ShieldCheck, t: "Numbers come from metric queries", d: "The model writes words around numbers the CRM passes in, with sources shown." },
     { I: Ban, ...(real
-      ? { t: ov?.policy.monthlyCallCap != null ? tAi("guard.cap", { n: ov.policy.monthlyCallCap.toLocaleString() }) : tAi("guard.noCap"), d: tAi("guard.capDetail", { used: ov?.caps?.usage.calls_month ?? 0 }) }
+      ? { t: ov?.policy.monthlyCallCap != null ? tAi("guard.cap", { n: ov.policy.monthlyCallCap.toLocaleString("en-IN") }) : tAi("guard.noCap"), d: tAi("guard.capDetail", { used: ov?.caps?.usage.calls_month ?? 0 }) }
       : { t: "Monthly cap: 2,000 calls", d: "0 used this month. Showcase outputs are sample text; no model is called." }) },
   ];
   const realLog = (ov?.audit ?? []).map((a) => ({ at: a.at, feature: tAi(`feature.${a.feature}`), object: a.id.slice(0, 8), for: a.model, outcome: a.excerpt?.startsWith("[failed") ? tAi("log.failed") : tAi("log.shown"), basedOn: a.model }));

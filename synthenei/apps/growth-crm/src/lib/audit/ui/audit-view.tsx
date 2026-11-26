@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState, ErrorState, PartialState, type PartialItem } from "@/components/ui/states";
-import { fmtDateTime } from "@/lib/format";
 import { AUDIT_SOURCES, type AuditFilters, type AuditView } from "../types";
 import type { T } from "../strings";
+import { fmtIstDateTimeZ } from "@/lib/datetime";
 
 export type AuditScreen =
   | { kind: "ok"; rows: AuditView[]; nextCursor: string | null; partial?: { done: number; total: number; items: PartialItem[] } }
@@ -61,7 +61,7 @@ export function AuditViewBody({ t, basePath, filters, screen, platform = false, 
   const { rows, nextCursor, partial } = screen;
   const sourceLabel = (s: string) => (t(`source_${s}`) === `source_${s}` ? s : t(`source_${s}`));
   const cols: Column<AuditView>[] = [
-    { key: "at", header: t("colWhen"), mobile: "fact", cell: (a) => <span className="num text-ink-2">{fmtDateTime(a.at)}</span> },
+    { key: "at", header: t("colWhen"), mobile: "fact", cell: (a) => <span className="num text-ink-2">{fmtIstDateTimeZ(a.at)}</span> },
     { key: "action", header: t("colAction"), mobile: "title", cell: (a) => (
       <span className="inline-flex items-center gap-1.5">
         {a.support && <ShieldAlert className="size-3.5 text-warn-ink" aria-label={t("supportRow")} />}

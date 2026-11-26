@@ -10,6 +10,7 @@ import { Chip, type ChipTone } from "@/components/ui/chip";
 import { Card, CardBody } from "@/components/ui/card";
 import { StarRating } from "./star-rating";
 import type { ReviewActions, ReviewView, ReplyStatusKey } from "./types";
+import { fmtIstDate } from "@/lib/datetime";
 
 const TONE: Record<ReplyStatusKey, ChipTone> = { none: "neutral", draft: "info", pending_approval: "warn", approved: "accent", posted: "success", failed: "danger" };
 const MAX = 4096;
@@ -49,7 +50,7 @@ function ReviewCard({ review: r, actions, canReply, canApprove, onChanged }: { r
         <div className="flex flex-wrap items-center gap-2">
           <StarRating rating={r.rating} label={r.rating === null ? t("noRating") : t("stars", { count: r.rating })} />
           <span className="text-13 font-medium">{r.author ?? t("anonymous")}</span>
-          {r.reviewedAt && <span className="text-12 text-ink-3">{new Date(r.reviewedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>}
+          {r.reviewedAt && <span className="text-12 text-ink-3">{fmtIstDate(r.reviewedAt)}</span>}
           <Chip tone={TONE[status]} icon={icon} className="ml-auto" data-testid="reply-status">{t(`status.${status}`)}</Chip>
         </div>
         <p className="whitespace-pre-wrap text-13">{r.text ?? <span className="text-ink-3">{t("noText")}</span>}</p>

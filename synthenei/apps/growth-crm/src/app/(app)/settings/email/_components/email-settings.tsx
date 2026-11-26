@@ -15,6 +15,7 @@ import type { DomainState } from "@/lib/connectors/email/transport";
 import type { McAudience } from "@/lib/connectors/mailchimp/api";
 import { chooseAudience, checkDomain, createMailchimpHook, pushSegment, saveIdentity, saveWebhookSecret } from "../actions";
 import type { ConnView, McView, SegmentOption, SuppressionRow } from "../_lib/view";
+import { fmtIstDate, fmtIstDateTimeZ } from "@/lib/datetime";
 
 type S = Record<string, string>;
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => String(k in v ? v[k] : m));
@@ -112,7 +113,7 @@ function Domain({ s, c }: { s: S; c: ConnView }) {
             </tr>))}</tbody>
         </Table>
       )}
-      {d && <p className="text-12 text-ink-3">{fill(s.domainCheckedAt, { when: d.status === "showcase" ? "-" : new Date(d.checkedAt).toLocaleString() })}</p>}
+      {d && <p className="text-12 text-ink-3">{fill(s.domainCheckedAt, { when: d.status === "showcase" ? "-" : fmtIstDateTimeZ(d.checkedAt) })}</p>}
       <div className="flex items-center gap-3">
         <Button variant="quiet" disabled={a.pending || !c.sender.fromEmail} disabledReason={!c.sender.fromEmail ? s.domainNoSender : undefined} onClick={() => a.run(() => checkDomain(c.id))}>{s.domainCheck}</Button>
         <Msg m={a.msg} />
@@ -148,7 +149,7 @@ function Suppressions({ s, rows, missing }: { s: S; rows: SuppressionRow[]; miss
       {rows.length > 0 && (
         <Table minWidth={560}>
           <thead><tr><th className={th}>{s.colEmail}</th><th className={th}>{s.colReason}</th><th className={th}>{s.colSource}</th><th className={th}>{s.colWhen}</th></tr></thead>
-          <tbody>{rows.map((r, i) => <tr key={i}><td className={td}>{r.email}</td><td className={td}>{s[`reason.${r.reason}`] ?? r.reason}</td><td className={td}>{r.source}</td><td className={td}>{new Date(r.at).toLocaleDateString()}</td></tr>)}</tbody>
+          <tbody>{rows.map((r, i) => <tr key={i}><td className={td}>{r.email}</td><td className={td}>{s[`reason.${r.reason}`] ?? r.reason}</td><td className={td}>{r.source}</td><td className={td}>{fmtIstDate(r.at)}</td></tr>)}</tbody>
         </Table>
       )}
     </section>

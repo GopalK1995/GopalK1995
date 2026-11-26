@@ -8,6 +8,7 @@ import { getPrT } from "@/lib/privacy/strings-server";
 import { DueChip } from "./_components/due-chip";
 import { PrivacyNav } from "./_components/privacy-nav";
 import { loadInbox } from "./_lib/view";
+import { fmtIstDate } from "@/lib/datetime";
 
 export const metadata = { title: "Privacy requests" };
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function PrivacyInboxPage() {
   const open = rows.filter((r) => dueState(r.status, r.dueAt, now) !== "closed");
   const overdue = open.filter((r) => dueState(r.status, r.dueAt, now) === "overdue").length;
   const soon = open.filter((r) => dueState(r.status, r.dueAt, now) === "due_soon").length;
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = fmtIstDate; // IST, whatever the server zone is
   return (
     <main data-testid="privacy-inbox">
       {header}

@@ -4,6 +4,7 @@
 import type { Db } from "@/lib/db/client";
 import { from } from "@/lib/db/query";
 import { mapPgError } from "@/lib/db/errors";
+import { addHoursIso } from "@/lib/datetime";
 
 type R = Record<string, unknown>;
 export const BREACH_STATUSES = ["open", "contained", "closed"] as const;
@@ -21,7 +22,8 @@ export interface BreachInput {
   detectedAt: string; occurredAt?: string | null; summary: string; categories: string[]; affectedCount?: number | null; severity: BreachSeverity; remediation?: string | null;
 }
 
-export const boardReportDueAt = (detectedAt: string): string => new Date(new Date(detectedAt).getTime() + BOARD_REPORT_HOURS * 3_600_000).toISOString();
+/** Detection instant (UTC ISO) + 72 elapsed hours. Zone-free: the same instant whatever zone the server or browser runs in. */
+export const boardReportDueAt = (detectedAt: string): string => addHoursIso(detectedAt, BOARD_REPORT_HOURS);
 export type NotifyState = "done" | "overdue" | "pending";
 export function boardState(b: Pick<Breach, "detectedAt" | "boardNotifiedAt" | "status">, now: number): NotifyState {
   if (b.boardNotifiedAt) return "done";

@@ -1,6 +1,6 @@
 "use client";
 // Breach register: the ledger (what, who is affected, who has been told, with the 72 hour Board report clock) and the entry form.
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,11 @@ import { Field, Input, Textarea } from "@/components/ui/form";
 import type { ActionResult } from "@/lib/actions/result";
 import { boardReportDueAt, boardState, type Breach } from "@/lib/privacy/breach";
 import { addBreach, updateBreach } from "../actions";
+import { IST_LABEL, fmtIstDateTimeZ, istInputToIso, toIstInputValue } from "@/lib/datetime";
 
 type S = Record<string, string>;
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => String(k in v ? v[k] : m));
-const fmt = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const fmt = fmtIstDateTimeZ; // every breach moment is shown in IST with the zone named
 const sel = "h-8 w-full rounded-control border border-field-line bg-surface px-2 text-13 text-ink";
 
 export function BreachPanel({ s, rows, now }: { s: S; rows: Breach[]; now: number }) {
@@ -21,9 +22,11 @@ export function BreachPanel({ s, rows, now }: { s: S; rows: Breach[]; now: numbe
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const run = (fn: () => Promise<ActionResult<unknown>>, after?: () => void) => start(async () => { const r = await fn(); setMsg({ ok: r.ok, text: r.message }); if (r.ok) { after?.(); router.refresh(); } });
-  const [f, setF] = useState({ detectedAt: new Date().toISOString().slice(0, 16), occurredAt: "", summary: "", categories: "", affected: "", severity: "medium" as "low" | "medium" | "high", remediation: "" });
+  const [f, setF] = useState({ detectedAt: "", occurredAt: "", summary: "", categories: "", affected: "", severity: "medium" as "low" | "medium" | "high", remediation: "" });
+  // "Now" on the IST wall clock, filled after mount (never during render: the server and the browser would disagree by the minute).
+  useEffect(() => { setF((x) => (x.detectedAt ? x : { ...x, detectedAt: toIstInputValue(new Date()) })); }, []);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
-  const ok = f.summary.trim().length >= 5 && !Number.isNaN(new Date(f.detectedAt).getTime());
+  const ok = f.summary.trim().length >= 5 && istInputToIso(f.detectedAt) !== null;
   return (
     <div className="grid gap-5">
       <p className="text-13 text-ink-3">{s["breach.hint72"]}</p>
@@ -70,8 +73,8 @@ export function BreachPanel({ s, rows, now }: { s: S; rows: Breach[]; now: numbe
       <section className="grid gap-3 rounded-card border border-line bg-surface p-4" aria-labelledby="add-b">
         <h2 id="add-b" className="text-15 font-semibold text-ink">{s["breach.add"]}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label={s["breach.detected"]} required><Input type="datetime-local" value={f.detectedAt} onChange={set("detectedAt")} data-testid="breach-detected" /></Field>
-          <Field label={s["breach.occurred"]}><Input type="datetime-local" value={f.occurredAt} onChange={set("occurredAt")} /></Field>
+          <Field label={`${s["breach.detected"]} (${IST_LABEL})`} required><Input type="datetime-local" value={f.detectedAt} onChange={set("detectedAt")} data-testid="breach-detected" /></Field>
+          <Field label={`${s["breach.occurred"]} (${IST_LABEL})`}><Input type="datetime-local" value={f.occurredAt} onChange={set("occurredAt")} /></Field>
           <Field label={s["breach.severity"]}>{(c) => <select {...c} className={sel} value={f.severity} onChange={set("severity")}><option value="low">{s["breach.sev.low"]}</option><option value="medium">{s["breach.sev.medium"]}</option><option value="high">{s["breach.sev.high"]}</option></select>}</Field>
         </div>
         <Field label={s["breach.summary"]} required><Textarea maxLength={2000} value={f.summary} onChange={set("summary")} data-testid="breach-summary" /></Field>
@@ -81,7 +84,7 @@ export function BreachPanel({ s, rows, now }: { s: S; rows: Breach[]; now: numbe
         </div>
         <Field label={s["breach.remediation"]}><Textarea maxLength={2000} value={f.remediation} onChange={set("remediation")} /></Field>
         <div><Button size="sm" variant="primary" disabled={pending || !ok} data-testid="breach-save" onClick={() => run(() => addBreach({
-          detectedAt: new Date(f.detectedAt).toISOString(), occurredAt: f.occurredAt ? new Date(f.occurredAt).toISOString() : undefined, summary: f.summary,
+          detectedAt: istInputToIso(f.detectedAt) ?? "", occurredAt: f.occurredAt ? istInputToIso(f.occurredAt) ?? undefined : undefined, summary: f.summary,
           categories: f.categories.split(",").map((x) => x.trim()).filter(Boolean), affectedCount: f.affected === "" ? null : Number(f.affected), severity: f.severity, remediation: f.remediation || undefined,
         }), () => setF({ ...f, summary: "", categories: "", affected: "", remediation: "" }))}>{s["breach.save"]}</Button></div>
       </section>

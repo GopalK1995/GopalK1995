@@ -5,13 +5,14 @@ import { supabaseConfigured } from "@/lib/supabase/server";
 import { VERIFY_TTL_MS, previewConfirm } from "@/lib/privacy/intake";
 import { getPrT } from "@/lib/privacy/strings-server";
 import { confirmVerification } from "../../../actions";
+import { fmtIstDateLong, IST_LABEL } from "@/lib/datetime";
 
 // The link in the verification email. GET never writes (mail scanners prefetch links): the person presses a button, which posts to a
 // server action. The result comes back as a query-string outcome that carries no personal data.
 export const metadata: Metadata = { title: "Confirm request", robots: { index: false, follow: false }, referrer: "no-referrer" };
 export const dynamic = "force-dynamic";
 
-const fmtDue = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }); };
+const fmtDue = (iso: string) => (fmtIstDateLong(iso) ? `${fmtIstDateLong(iso)} ${IST_LABEL}` : iso);
 
 export default async function VerifyPage({ params, searchParams }: { params: Promise<{ ws: string; token: string }>; searchParams: Promise<{ r?: string; due?: string; k?: string; w?: string }> }) {
   const { ws: slug, token: raw } = await params, q = await searchParams;
