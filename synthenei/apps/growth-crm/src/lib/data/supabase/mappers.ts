@@ -1,7 +1,7 @@
 // Pure mappers: camelCased DB rows (see src/lib/db/map.ts) -> domain types in src/lib/data/types.ts.
 // No I/O here so they are unit-testable. Unknown or missing columns degrade to honest empty values, never to invented data.
 import type {
-  Deal, DealStage, Lead, LeadStage, LeadStatus,
+  Account, Campaign, CampaignDay, Task, Deal, DealStage, Lead, LeadStage, LeadStatus,
   Activity, ActivityKind, AuditEntry, ConsentEntry, Conversation, Ga4Channel, Ga4Day, Ga4Page, Holiday, Integration,
   IntegrationCategory, IntegrationStatus, Message, Role, SyncRun, TeamMember,
 } from "../types";
@@ -191,5 +191,55 @@ export function deal(r: Row, keys: Map<string, string> = new Map(), pipelines: M
     plan: (plan.charAt(0).toUpperCase() + plan.slice(1)) as Deal["plan"], probability: 0,
     createdAt: iso(r.createdAt), expectedClose: s(r.expectedCloseOn), stageEnteredAt: iso(r.stageEnteredAt ?? r.createdAt),
     wonAt: r.wonAt ? iso(r.wonAt) : undefined, lostReason: r.lostReason ? s(r.lostReason) : undefined, version: n(r.version, 1),
+  };
+}
+
+// ---- accounts / tasks / campaigns (real sessions): table columns -> domain types ----
+// These used to be passed through as raw camelCased rows, so pages read `account.courts.join(...)`, `task.dueAt`, etc. on rows that did
+// not have those fields and the server render threw (live crash on /accounts, /ai, /leads/<id>). Unknown columns degrade to honest empties.
+const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+const SIZE: Record<string, Account["size"]> = { solo: "Solo", "1": "Solo", "2-5": "2–5", "2–5": "2–5", "6-20": "6–20", "6–20": "6–20", "21-50": "21–50", "21–50": "21–50", "50+": "50+" };
+const ACCOUNT_STATUS: Account["status"][] = ["prospect", "trial", "customer", "churned"];
+
+export function account(r: Row): Account {
+  const status = s(r.customerStatus ?? r.status, "prospect") as Account["status"];
+  const sites = Array.isArray(r.sites) ? (r.sites as Row[]) : [];
+  const locality = s(r.locality) || s(r.addressLine) || s(sites[0]?.label);
+  return {
+    id: s(r.id), name: s(r.name), city: s(r.city), locality, district: s(r.district) || s(r.city),
+    courts: strs(r.courtFocus ?? r.courts), practiceAreas: strs(r.practiceAreas) as Account["practiceAreas"],
+    size: SIZE[s(r.sizeBand ?? r.size).toLowerCase()] ?? "Solo", lawyers: n(r.lawyersCount ?? r.lawyers),
+    founded: n(r.founded), website: s(r.website), ownerId: s(r.ownerId),
+    status: ACCOUNT_STATUS.includes(status) ? status : "prospect", icpTier: "C", arr: n(r.arr),
+    lastActivityAt: iso(r.lastActivityAt ?? r.updatedAt ?? r.createdAt),
+  };
+}
+
+const TASK_KIND: Record<string, Task["kind"]> = { call: "call", whatsapp: "whatsapp", email: "email", demo: "demo", demo_prep: "demo", follow_up: "follow_up", proposal: "proposal" };
+export function task(r: Row): Task {
+  const p = n(r.priority, 2);
+  return {
+    id: s(r.id), leadId: sn(r.leadId), dealId: sn(r.dealId), title: s(r.title), kind: TASK_KIND[s(r.kind)] ?? "follow_up",
+    ownerId: s(r.assigneeId ?? r.ownerId), dueAt: iso(r.dueAt, iso(r.createdAt)), status: s(r.status) === "done" ? "done" : "open",
+    priority: p <= 1 ? "high" : p === 2 ? "normal" : "low",
+  };
+}
+
+const CHANNELS: Campaign["channel"][] = ["linkedin", "whatsapp", "email", "meta", "google_ads", "referral"];
+export function campaign(r: Row): Campaign {
+  const ch = s(r.channel) as Campaign["channel"], st = s(r.status), end = r.endsOn ?? r.endDate;
+  return {
+    id: s(r.id), name: s(r.name), channel: CHANNELS.includes(ch) ? ch : "email",
+    status: st === "paused" ? "paused" : st === "ended" || st === "completed" ? "ended" : "live", objective: s(r.objective),
+    startDate: s(r.startsOn ?? r.startDate).slice(0, 10), endDate: end ? s(end).slice(0, 10) : null, budget: n(r.budgetInr ?? r.budget),
+    audience: "", audienceSize: 0, creative: { format: "", headline: "", body: "", cta: "" },
+    utmCampaign: s(r.utmCampaign), ownerId: s(r.ownerId), dataSource: "api",
+  };
+}
+
+export function campaignDay(r: Row): CampaignDay {
+  return {
+    campaignId: s(r.campaignId), date: s(r.day).slice(0, 10), spend: n(r.spendInr), impressions: n(r.impressions), reach: n(r.reach), clicks: n(r.clicks),
+    platformLeads: n(r.platformLeads), engagements: n(r.reactions) + n(r.comments) + n(r.shares),
   };
 }

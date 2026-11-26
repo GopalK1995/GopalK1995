@@ -1,6 +1,6 @@
 // Data access layer. Screens depend ONLY on the DataSource interface, never on the mock module directly,
 // so a Supabase-backed source can replace the synthetic one without touching pages.
-import { deal as mapDeal, lead as mapLead, pipelineKeys, stageKeys } from "./supabase/mappers";
+import { account as mapAccount, campaign as mapCampaign, campaignDay as mapCampaignDay, deal as mapDeal, lead as mapLead, pipelineKeys, stageKeys, task as mapTask } from "./supabase/mappers";
 import type {
   Account, Activity, AuditEntry, Campaign, CampaignDay, ConsentEntry, Conversation, Deal, Ga4Day, Ga4Page,
   Integration, Lead, PrivacyRequest, SyncRun, Task, TeamMember,
@@ -97,10 +97,10 @@ function supabaseSource(ws: Workspace, piiRead: boolean): DataSource {
   const byId = <T extends { id: string },>(get: () => Promise<T[]>) => async (id: string) => (await get()).find((x) => x.id === id) ?? null;
   const stages = async () => stageKeys(await read<Record<string, unknown>>("pipeline_stages", camel));
   const leads = async () => { const k = await stages(); return read<Lead>("leads", (r) => mapLead(camel(r), k, piiRead)); };
-  const accounts = () => read<Account>("accounts", camel);
+  const accounts = () => read<Account>("accounts", (r) => mapAccount(camel(r)));
   const deals = async () => { const [k, p] = await Promise.all([stages(), read<Record<string, unknown>>("pipelines", camel).then(pipelineKeys)]); return read<Deal>("deals", (r) => mapDeal(camel(r), k, p)); };
-  const tasks = () => read<Task>("tasks", camel), campaigns = () => read<Campaign>("campaigns", camel);
-  const campaignDays = async (id?: string) => { const xs = await read<CampaignDay>("campaign_daily_metrics", camel); return id ? xs.filter((x) => x.campaignId === id) : xs; };
+  const tasks = () => read<Task>("tasks", (r) => mapTask(camel(r))), campaigns = () => read<Campaign>("campaigns", (r) => mapCampaign(camel(r)));
+  const campaignDays = async (id?: string) => { const xs = await read<CampaignDay>("campaign_daily_metrics", (r) => mapCampaignDay(camel(r))); return id ? xs.filter((x) => x.campaignId === id) : xs; };
   const w = createWiredReads(ws.uuid, undefined, { piiRead });
   return {
     kind: "supabase", workspaceId: ws.id,
