@@ -50,13 +50,15 @@ export function MentionComposer({ objectType, objectId, s, value, onChange, onPi
     requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(before.length, before.length); });
   };
   const open = q !== null && people !== null;
+  const optId = (i: number) => `${listId}-o${i}`;
+  const activeId = open && people && people.length > 0 ? optId(Math.min(active, people.length - 1)) : undefined;
 
   return (
     <div className="relative">
       <textarea
         ref={ref} className="min-h-20 w-full rounded-control border border-field-line bg-surface px-2.5 py-1.5 text-13 text-ink placeholder:text-ink-3 disabled:opacity-45" value={value} rows={3} maxLength={COMMENT_MAX} disabled={disabled} autoFocus={autoFocus}
         aria-label={s.composerLabel} placeholder={s.composerPlaceholder}
-        role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
+        role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined} aria-activedescendant={activeId} aria-autocomplete="list"
         onChange={(e) => { onChange(e.target.value); detect(e.target.value, e.target.selectionStart); }}
         onKeyDown={(e) => {
           if (!open || !people?.length) { if (e.key === "Escape") setQ(null); return; }
@@ -71,11 +73,9 @@ export function MentionComposer({ objectType, objectId, s, value, onChange, onPi
           {people.length === 0 ? (
             <li role="option" aria-selected={false} aria-disabled className="px-3 py-2 text-12 text-ink-3">{s.mentionNobody}</li>
           ) : people.map((p, i) => (
-            <li key={p.id} role="option" aria-selected={i === active}>
-              <button type="button" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); choose(p); }}
-                className={`flex h-8 w-full items-center gap-2 px-3 text-left ${i === active ? "bg-paper-2" : ""}`}>
-                <Avatar name={p.name} size={20} /><span className="truncate">{p.name}</span>
-              </button>
+            <li key={p.id} id={optId(i)} role="option" aria-selected={i === active} onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setActive(i)}
+              className={`flex h-8 w-full cursor-pointer items-center gap-2 px-3 text-left ${i === active ? "bg-paper-2" : ""}`}>
+              <Avatar name={p.name} size={20} /><span className="truncate">{p.name}</span>
             </li>
           ))}
         </ul>

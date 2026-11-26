@@ -30,6 +30,8 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const lv = vocabFor(tenant).login;
   const live = supabaseConfigured();
   const demo = demoModeOn();
+  // Credential and throttle errors belong to the email/password fields: mark them invalid and point them at the message.
+  const fieldErr = sp.error === "credentials" || sp.error === "throttled" ? { "aria-invalid": true as const, "aria-describedby": "login-error" } : {};
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(420px,5fr)_7fr]">
       <style>{`:root{--brand-h:${tenant.hue}}`}</style>
@@ -54,14 +56,14 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Sign in</h1>
           <p className="mt-1 text-[12px] text-ink-3">Internal demo hub. Client links are /g/&lt;client&gt;, for example /g/shola-mist and /g/lawsome.</p>
           <p className="mt-1 text-[13px] text-ink-2">{sp.signed_out ? "You have been signed out." : "Use your work email, or open the demo as one of the personas below."}</p>
-          {sp.error && <p role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">{ERR[sp.error] ?? "Sign-in failed."}</p>}
+          {sp.error && <p id="login-error" role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">{ERR[sp.error] ?? "Sign-in failed."}</p>}
 
           <form action={passwordLogin} className="mt-6 space-y-3">
             <input type="hidden" name="next" value={sp.next ?? ""} />
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Work email</span>
-              <input name="email" type="email" autoComplete="email" required placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
+              <input name="email" type="email" autoComplete="email" required {...fieldErr} placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
             <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Password</span>
-              <input name="password" type="password" autoComplete="current-password" required disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring focus:border-ring disabled:bg-paper-2" /></label>
+              <input name="password" type="password" autoComplete="current-password" required {...fieldErr} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring focus:border-ring disabled:bg-paper-2" /></label>
             <SubmitButton variant="primary" size="lg" className="w-full" disabled={!live} pendingLabel="Signing in…">Sign in</SubmitButton>
             {live && <p className="text-[12px]"><Link href="/auth/reset" className="font-medium text-accent hover:underline">Forgot password?</Link></p>}
             {!live && <p className="text-[12px] text-ink-3">Password sign-in activates when the Supabase project is connected. This deployment runs in demo mode.</p>}

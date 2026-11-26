@@ -17,6 +17,6 @@ export function AuthShell({ title, lead, children }: { title: string; lead?: str
   );
 }
 
-export function AuthAlert({ children, tone = "danger" }: { children: ReactNode; tone?: "danger" | "info" }) {
-  return <p role={tone === "danger" ? "alert" : "status"} className={tone === "danger" ? "mb-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mb-4 rounded-sm border border-line bg-surface px-3 py-2 text-[13px] text-ink-2"}>{children}</p>;
+export function AuthAlert({ children, tone = "danger", id }: { children: ReactNode; tone?: "danger" | "info"; id?: string }) {
+  return <p id={id} role={tone === "danger" ? "alert" : "status"} className={tone === "danger" ? "mb-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mb-4 rounded-sm border border-line bg-surface px-3 py-2 text-[13px] text-ink-2"}>{children}</p>;
 }

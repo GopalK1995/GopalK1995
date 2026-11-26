@@ -27,7 +27,7 @@ export default async function Mfa({ searchParams }: { searchParams: Promise<{ en
   }
   return (
     <AuthShell title={enrol ? "Set up two-step verification" : "Enter your code"} lead={enrol ? "Scan the QR code with an authenticator app, then enter the 6-digit code it shows." : "Open your authenticator app and enter the current 6-digit code."}>
-      {sp.error && <AuthAlert>That code was not accepted. Enter the current code from your authenticator.</AuthAlert>}
+      {sp.error && <AuthAlert id="mfa-error">That code was not accepted. Enter the current code from your authenticator.</AuthAlert>}
       {enrol && (
         <div className="mb-4 rounded-md border border-line bg-surface p-4">
           {/* eslint-disable-next-line @next/next/no-img-element -- data: SVG from Supabase */}
@@ -42,7 +42,7 @@ export default async function Mfa({ searchParams }: { searchParams: Promise<{ en
         <input type="hidden" name="next" value={safeNext(sp.next) ?? ""} />
         <input type="hidden" name="via" value={sp.via ?? ""} />
         <label className="block"><span className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-ink-2"><KeyRound className="size-3.5" aria-hidden />6-digit code</span>
-          <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus className={authField + " text-center font-mono text-[20px] tracking-[0.4em]"} placeholder="000000" /></label>
+          <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus aria-invalid={sp.error ? true : undefined} aria-describedby={sp.error ? "mfa-error" : undefined} className={authField + " text-center font-mono text-[20px] tracking-[0.4em]"} placeholder="000000" /></label>
         <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Verifying…">{enrol ? "Verify and finish setup" : "Verify and sign in"}</SubmitButton>
       </form>
     </AuthShell>

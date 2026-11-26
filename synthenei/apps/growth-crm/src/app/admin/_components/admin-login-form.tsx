@@ -33,9 +33,9 @@ export function AdminLoginForm({ startOnCode, codeError, next, demo }: { startOn
       setPwErr(""); setStep("code"); setTimeout(() => codeRef.current?.focus(), 0);
     }}>
       <div><label htmlFor={`${id}-e`} className="mb-1 block text-[12px] font-medium text-ink-2">Email</label>
-        <input id={`${id}-e`} name="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} aria-describedby={pwErr ? `${id}-err` : undefined} /></div>
+        <input id={`${id}-e`} name="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} aria-invalid={pwErr ? true : undefined} aria-describedby={pwErr ? `${id}-err` : undefined} /></div>
       <div><label htmlFor={`${id}-p`} className="mb-1 block text-[12px] font-medium text-ink-2">Password</label>
-        <input id={`${id}-p`} name="password" type="password" autoComplete="current-password" defaultValue={demo ? "demo-password" : ""} className={fieldCls} aria-describedby={pwErr ? `${id}-err` : undefined} /></div>
+        <input id={`${id}-p`} name="password" type="password" autoComplete="current-password" defaultValue={demo ? "demo-password" : ""} className={fieldCls} aria-invalid={pwErr ? true : undefined} aria-describedby={pwErr ? `${id}-err` : undefined} /></div>
       {pwErr && <p id={`${id}-err`} role="alert" className="text-[12px] text-danger">{pwErr}</p>}
       <Button type="submit" variant="navy" size="lg" className="w-full">Continue</Button>
       {demo && <p className="text-[12px] text-ink-3">Demo: credentials are prefilled and not checked.</p>}
