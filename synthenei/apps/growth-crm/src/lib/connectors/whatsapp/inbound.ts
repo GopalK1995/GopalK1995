@@ -50,8 +50,10 @@ async function handleMessage(c: InboundCtx, evt: Extract<WaEvent, { kind: "messa
   const text = m.type === "text" ? m.text ?? "" : "";
   const optOut = isOptOut(text);
 
-  let leadId = await st.findLeadByPhone(conn.workspaceId, e164);
-  if (!leadId && !optOut) leadId = await st.createLead(newLeadRow(conn, e164, evt.profileName, m));
+  // AUD-035: an unknown sender is NEVER turned into a lead here. A lead (name, number, ad click id) needs consent evidence the
+  // person gave on purpose (a form, a staff-recorded opt-in), so the message is kept as an unlinked conversation for the team to
+  // read, and nothing about the person is profiled. Outbound to an unlinked conversation is blocked (no_lead).
+  const leadId = await st.findLeadByPhone(conn.workspaceId, e164);
 
   const conv = await st.upsertConversation({ tenantId: conn.tenantId, workspaceId: conn.workspaceId, waId: m.from, leadId });
   const pending = m.media ? [{ kind: m.media.kind, media_id: m.media.mediaId, mime: m.media.mime ?? null, sha256: m.media.sha256 ?? null, filename: m.media.filename ?? null, status: "pending" }] : undefined;
@@ -61,29 +63,19 @@ async function handleMessage(c: InboundCtx, evt: Extract<WaEvent, { kind: "messa
 
   if (m.media) await storeMedia(c, ins.id, m);
 
+  // PRIV-016: a first message opens the 24 h service window (outbound.ts) and nothing more. It never records a consent grant:
+  // the old inbound_implies_optin connection setting is ignored on purpose, and a STOP is never overwritten by a later message.
   if (optOut) await optOutOf(c, leadId, e164);
-  else if (leadId && conn.settings.inbound_implies_optin === true && (await st.latestConsent(leadId)) === null) {
-    await st.recordConsent({ tenantId: conn.tenantId, workspaceId: conn.workspaceId, leadId, subjectRef: sha256Hex(e164), purpose: "whatsapp", action: "granted", note: "customer messaged first" });
-    await st.emit({ type: "consent.changed", workspaceId: conn.workspaceId, objectType: "lead", objectId: leadId, data: { purpose: "whatsapp", action: "granted", via: "integration" } });
-  }
   await st.emit({ type: "message.received", workspaceId: conn.workspaceId, objectType: "message", objectId: ins.id, data: { channel: "whatsapp", conversation_id: conv.id, kind: m.type } });
-}
-
-function newLeadRow(conn: ConnectionRow, e164: string, profileName: string | undefined, m: WaInboundMessage): Record<string, unknown> {
-  const ref = m.referral;
-  return {
-    tenant_id: conn.tenantId, workspace_id: conn.workspaceId, full_name: profileName ?? e164, phone: e164, source: "whatsapp",
-    utm: { source: "whatsapp", medium: ref ? "click_to_whatsapp" : "inbound", ...(ref?.sourceId ? { campaign: ref.sourceId } : {}) },
-    click_ids: ref?.ctwaClid ? { ctwa_clid: ref.ctwaClid } : {},
-    ...(ref?.sourceUrl ? { landing_path: ref.sourceUrl.slice(0, 300) } : {}),
-  };
 }
 
 /** Honours STOP: withdraws WhatsApp consent. can_contact() then blocks every later send, including queued ones. */
 async function optOutOf(c: InboundCtx, leadId: string | null, e164: string): Promise<void> {
   const { store } = c.deps;
+  const subjectRef = sha256Hex(e164);
   if (leadId && (await store.latestConsent(leadId)) === "withdrawn") return;   // already withdrawn: idempotent
-  await store.recordConsent({ tenantId: c.conn.tenantId, workspaceId: c.conn.workspaceId, leadId, subjectRef: sha256Hex(e164), purpose: "whatsapp", action: "withdrawn", note: "customer sent an opt-out keyword" });
+  if (!leadId && (await store.subjectConsent(c.conn.workspaceId, subjectRef)) === "withdrawn") return;
+  await store.recordConsent({ tenantId: c.conn.tenantId, workspaceId: c.conn.workspaceId, leadId, subjectRef, purpose: "whatsapp", action: "withdrawn", note: "customer sent an opt-out keyword" });
   await store.emit({ type: "consent.changed", workspaceId: c.conn.workspaceId, objectType: leadId ? "lead" : "integration", objectId: leadId ?? c.conn.id, data: { purpose: "whatsapp", action: "withdrawn", via: "integration" } });
 }
 

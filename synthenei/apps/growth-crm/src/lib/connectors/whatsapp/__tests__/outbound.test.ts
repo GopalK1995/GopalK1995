@@ -3,6 +3,7 @@ import { CredentialError, TransientError } from "../../core/types";
 import { dispatchMessage, dispatchQueued } from "../outbound";
 import { makeMockGateway, type MockGateway } from "../mock";
 import { META_LANG } from "../templates";
+import { sha256Hex } from "../inbound";
 import { CONN, fakeDeps, type TestDeps } from "./fake-store";
 
 let deps: TestDeps, gw: MockGateway;
@@ -67,8 +68,18 @@ describe("templates", () => {
 });
 
 describe("consent and opt-out", () => {
-  it("no consent on record: blocked and marked failed, nothing sent", async () => {
+  it("AUD-035: a free-text service reply inside the 24 h window needs no marketing grant, only no withdrawal", async () => {
     const id = deps.store.addOutbound({ lastInboundAt: OPEN });
+    expect((await dispatchMessage(deps, CONN, gw, id)).kind).toBe("sent");
+  });
+  it("a withdrawal recorded only against the number hash still blocks a service reply", async () => {
+    deps.store.consent.push({ tenantId: "t-1", workspaceId: "w-1", leadId: null, subjectRef: sha256Hex("+919800000001"), purpose: "whatsapp", action: "withdrawn", note: "stop" });
+    const id = deps.store.addOutbound({ lastInboundAt: OPEN });
+    expect(await dispatchMessage(deps, CONN, gw, id)).toEqual({ kind: "blocked", reason: "no_consent" });
+    expect(gw.sent).toHaveLength(0);
+  });
+  it("no consent on record: a template (business-initiated) is blocked and marked failed, nothing sent", async () => {
+    const id = deps.store.addOutbound({ body: "Hi Asha, your demo is booked", templateId: "tpl-1" });
     expect(await dispatchMessage(deps, CONN, gw, id)).toEqual({ kind: "blocked", reason: "no_consent" });
     expect(deps.store.msgs.find((m) => m.id === id)).toMatchObject({ status: "failed", errorCode: "no_consent" });
     expect(gw.sent).toHaveLength(0);
@@ -82,7 +93,7 @@ describe("consent and opt-out", () => {
   });
   it("a failing consent check propagates (fail closed, the job retries)", async () => {
     grant();
-    deps.store.canContact = async () => { throw new Error("db down"); };
+    deps.store.subjectConsent = async () => { throw new Error("db down"); };
     const id = deps.store.addOutbound({ lastInboundAt: OPEN });
     await expect(dispatchMessage(deps, CONN, gw, id)).rejects.toThrow("db down");
     expect(deps.store.msgs.find((m) => m.id === id)!.status).toBe("queued");

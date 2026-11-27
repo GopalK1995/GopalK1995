@@ -58,6 +58,8 @@ export interface WaStore {
   /** Latest consent action for the lead and purpose, or null when none is recorded. */
   latestConsent(leadId: string): Promise<"granted" | "withdrawn" | null>;
   recordConsent(c: ConsentEntry): Promise<void>;
+  /** Latest WhatsApp consent action recorded against the subject hash (sha256 of the E.164 number), lead-less rows included. */
+  subjectConsent(workspaceId: string, subjectRef: string): Promise<"granted" | "withdrawn" | null>;
 
   getTemplate(tenantId: string, id: string): Promise<TemplateRow | null>;
   upsertTemplate(t: TemplateUpsert): Promise<"created" | "updated" | "skipped">;

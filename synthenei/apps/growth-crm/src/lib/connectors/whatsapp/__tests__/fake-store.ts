@@ -78,6 +78,7 @@ export class FakeStore implements WaStore {
   async canContact(leadId: string) { const last = [...this.consent].reverse().find((c) => c.leadId === leadId); return last?.action === "granted"; }
   async latestConsent(leadId: string) { const last = [...this.consent].reverse().find((c) => c.leadId === leadId); return last ? last.action : null; }
   async recordConsent(c: ConsentEntry) { this.consent.push(c); }
+  async subjectConsent(_ws: string, ref: string) { const last = [...this.consent].reverse().find((c) => c.subjectRef === ref); return last ? last.action : null; }
   async getTemplate(_t: string, id: string) { return this.tpl[id] ?? null; }
   async upsertTemplate(t: TemplateUpsert) {
     const own = this.templates.find((x) => x.connectionId === t.connectionId && x.providerTemplateId === t.providerTemplateId);

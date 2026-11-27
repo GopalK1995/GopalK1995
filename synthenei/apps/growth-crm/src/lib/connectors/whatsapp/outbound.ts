@@ -9,6 +9,7 @@ import { WhatsAppApiError, type WhatsAppGateway } from "./gateway";
 import { extractTemplateParams, vendorLanguage } from "./templates";
 import type { OutboundRow, WaDeps } from "./store";
 import { serviceWindow } from "./window";
+import { sha256Hex } from "./inbound";
 
 export type BlockReason = "no_lead" | "no_consent" | "no_recipient" | "template_not_approved" | "template_params" | "text_too_long" | "window_closed";
 export type DispatchOutcome =
@@ -35,10 +36,13 @@ export async function dispatchMessage(d: WaDeps, conn: ConnectionRow, gw: WhatsA
   if (row.channel !== "whatsapp") return { kind: "skipped", why: "not_whatsapp" };
   if (!row.leadId) return block(d, row.id, "no_lead");
   // Consent is re-checked at send time: a STOP that arrived after the message was queued must still win. A throw propagates (fail closed, job retries).
-  if (!(await d.store.canContact(row.leadId, "whatsapp"))) return block(d, row.id, "no_consent");
-
+  // AUD-035 split: a template is business-initiated (marketing/utility) and needs a recorded grant (can_contact). Free text is a
+  // service reply: allowed only inside the 24 h window the customer opened, never over a withdrawal (lead-level or by number hash).
   const phone = row.waId ?? (await d.store.leadPhone(row.leadId));
   const to = phone ? digitsOnly(phone) : "";
+  if ((await d.store.latestConsent(row.leadId)) === "withdrawn") return block(d, row.id, "no_consent");
+  if (to && (await d.store.subjectConsent(row.workspaceId, sha256Hex(`+${to}`))) === "withdrawn") return block(d, row.id, "no_consent");
+  if (row.templateId && !(await d.store.canContact(row.leadId, "whatsapp"))) return block(d, row.id, "no_consent");
   if (to.length < 6) return block(d, row.id, "no_recipient");
 
   const now = d.now();

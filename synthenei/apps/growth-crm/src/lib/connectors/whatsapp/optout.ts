@@ -2,7 +2,9 @@
 // punctuation folded) is one of these keywords: "please don't stop the updates" is not a STOP. Native-script keywords included.
 const KEYWORDS = new Set([
   "stop", "stop all", "stopall", "unsubscribe", "unsub", "opt out", "optout", "end", "quit",
-  "நிறுத்து", "நிறுத்துங்கள்", "நிறுத்தவும்", "வேண்டாம்",
+  "stop messages", "stop messaging", "stop sending", "do not message", "dont message",
+  "நிறுத்து", "நிறுத்துங்கள்", "நிறுத்தவும்", "வேண்டாம்", "நிறுத்திடு", "நிறுத்துக", "நிறுத்துங்க", "எனக்கு வேண்டாம்",
+  "ஸ்டாப்", "ஸ்டாப் செய்", "அன்சப்ஸ்க்ரைப்", "அன்சப்ஸ்கிரைப்",
   "बंद", "बंद करो", "रोकें", "रुकें",
 ]);
 

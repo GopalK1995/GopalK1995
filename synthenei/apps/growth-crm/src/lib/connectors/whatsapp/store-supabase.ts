@@ -6,6 +6,7 @@ import "server-only";
 import type { Db } from "@/lib/db/client";
 import { from, type Qb } from "@/lib/db/query";
 import { emitEvent } from "@/lib/events/emit";
+import { consentRowsForSubject } from "@/lib/privacy/consent-lookup";
 import type { ConsentEntry, ConversationRef, InsertResult, NewInboundMessage, NumberUpsert, OutboundPatch, OutboundRow, TemplateRow, TemplateUpsert, WaStore } from "./store";
 
 type R = Record<string, unknown>;
@@ -119,6 +120,14 @@ export function supabaseWaStore(db: Db): WaStore {
     async latestConsent(leadId) {
       const r = await rows(q("consent_log").select("action").eq("lead_id", leadId).eq("purpose", "whatsapp").order("occurred_at", { ascending: false }).limit(1), "consent read");
       const a = r[0]?.action;
+      return a === "granted" || a === "withdrawn" ? a : null;
+    },
+    async subjectConsent(workspaceId, subjectRef) {
+      // consent_log_for_subject() matches the plain, h1 and h2 (0030/0031) forms; before it exists this falls back to the plain hash.
+      const r = await consentRowsForSubject(db, workspaceId, subjectRef, "action, purpose", { ascending: false, limit: 20 });
+      if (r.error) throw failed("consent read");   // fail closed
+      const hit = ((r.data as R[] | null) ?? []).find((x) => x.purpose === "whatsapp");
+      const a = hit?.action;
       return a === "granted" || a === "withdrawn" ? a : null;
     },
     async recordConsent(c: ConsentEntry) {

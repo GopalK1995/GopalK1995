@@ -10,6 +10,9 @@ import { makeMockGateway } from "../mock";
 
 const SECRETS = { waba_id: F.WABA, phone_number_id: F.PNID, access_token: "wa-mock-token", app_secret: "s" };
 const NOW = "2026-01-01T00:00:00.000Z";
+const PHONE = "+919800000001";
+/** A lead that already exists (came in through a form with consent), so the sender is a known contact. */
+const seedLead = () => deps.store.createLead({ tenant_id: "t-1", workspace_id: "w-1", full_name: "Known Person", phone: PHONE, source: "form" });
 let deps: TestDeps, rejected: string[];
 beforeEach(() => { deps = fakeDeps(); rejected = []; resetMockGateways(); });
 
@@ -18,18 +21,29 @@ async function feed(raw: string, conn = CONN, secrets: Record<string, string> = 
 }
 
 describe("inbound messages", () => {
-  it("creates a lead, a conversation and a message, and starts the 24 h window at the message time", async () => {
+  it("a known contact: stores the conversation and message on their lead and starts the 24 h window at the message time", async () => {
+    const lead = await seedLead();
     await feed(F.textMessage("Hello there"));
     const s = deps.store;
     expect(s.leads).toHaveLength(1);
-    expect(s.leads[0]).toMatchObject({ tenant_id: "t-1", workspace_id: "w-1", full_name: "Test Customer", phone: "+919800000001", source: "whatsapp" });
     expect(s.convs).toHaveLength(1);
-    expect(s.convs[0]).toMatchObject({ waId: F.WA_ID, leadId: "lead-1", lastInboundAt: NOW, status: "open" });
+    expect(s.convs[0]).toMatchObject({ waId: F.WA_ID, leadId: lead, lastInboundAt: NOW, status: "open" });
     expect(s.msgs).toHaveLength(1);
     expect(s.msgs[0]).toMatchObject({ direction: "inbound", status: "received", body: "Hello there", externalId: "wamid.IN1", tenantId: "t-1" });
     expect(s.events.map((e) => e.type)).toEqual(["message.received"]);
   });
-  it("dedupes by wamid: the same delivery twice stores one message, one lead, one event", async () => {
+  it("AUD-035: an unknown sender is kept as an unlinked conversation: no lead, no profile, no consent, no outbound", async () => {
+    await feed(F.textMessage("Hello there"));
+    const s = deps.store;
+    expect(s.leads).toHaveLength(0);
+    expect(s.consent).toHaveLength(0);
+    expect(s.convs).toHaveLength(1);
+    expect(s.convs[0]).toMatchObject({ waId: F.WA_ID, leadId: null, lastInboundAt: NOW });
+    expect(s.msgs).toHaveLength(1);
+    expect(s.msgs.every((m) => m.direction === "inbound")).toBe(true);
+  });
+  it("dedupes by wamid: the same delivery twice stores one message and one event", async () => {
+    await seedLead();
     await feed(F.textMessage());
     await feed(F.textMessage());
     expect(deps.store.msgs).toHaveLength(1);
@@ -37,6 +51,7 @@ describe("inbound messages", () => {
     expect(deps.store.events).toHaveLength(1);
   });
   it("a second message from a known number reuses the lead and conversation and reopens a closed thread", async () => {
+    await seedLead();
     await feed(F.textMessage("one", "wamid.A"));
     deps.store.convs[0].status = "closed";
     await feed(F.textMessage("two", "wamid.B"));
@@ -50,9 +65,10 @@ describe("inbound messages", () => {
     expect(deps.store.msgs).toHaveLength(0);
     expect(deps.store.leads).toHaveLength(0);
   });
-  it("click-to-WhatsApp referral becomes lead attribution", async () => {
+  it("click-to-WhatsApp from an unknown number does not store the ad click id or create a lead", async () => {
     await feed(F.clickToWhatsApp());
-    expect(deps.store.leads[0]).toMatchObject({ utm: { source: "whatsapp", medium: "click_to_whatsapp", campaign: "ad-123" }, click_ids: { ctwa_clid: "clid-xyz" }, landing_path: "https://ads.example/post/1" });
+    expect(deps.store.leads).toHaveLength(0);
+    expect(JSON.stringify(deps.store.msgs)).not.toContain("clid-xyz");
   });
   it("media is stored by reference: bytes go to the private bucket, the message keeps only the path", async () => {
     await feed(F.imageMessage());
@@ -95,8 +111,8 @@ describe("tenant isolation", () => {
 
 describe("STOP handling", () => {
   it("withdraws WhatsApp consent for a known lead, blocks can_contact, and is idempotent", async () => {
+    const lead = await seedLead();
     await feed(F.textMessage("hello", "wamid.A"));
-    const lead = String(deps.store.leads[0].id);
     deps.store.consent.push({ tenantId: "t-1", workspaceId: "w-1", leadId: lead, subjectRef: "x", purpose: "whatsapp", action: "granted", note: "form" });
     expect(await deps.store.canContact(lead)).toBe(true);
     await feed(F.stopMessage("STOP", "wamid.S1"));
@@ -121,19 +137,28 @@ describe("STOP handling", () => {
   });
 });
 
-describe("consent from a first inbound message (connection setting, default off)", () => {
-  it("off: nothing is recorded", async () => {
-    await feed(F.textMessage());
+describe("a first inbound message never records consent (PRIV-016)", () => {
+  it("nothing is recorded, even when the legacy inbound_implies_optin setting is on", async () => {
+    const conn = { ...CONN, settings: { inbound_implies_optin: true } };
+    await seedLead();
+    await feed(F.textMessage("hi", "wamid.A"), conn);
+    await feed(F.textMessage("hi again", "wamid.B"));
     expect(deps.store.consent).toHaveLength(0);
   });
-  it("on: a grant is recorded once, and never over a prior withdrawal", async () => {
-    const conn = { ...CONN, settings: { inbound_implies_optin: true } };
-    await feed(F.textMessage("hi", "wamid.A"), conn);
-    await feed(F.textMessage("again", "wamid.B"), conn);
-    expect(deps.store.consent.map((c) => c.action)).toEqual(["granted"]);
-    await feed(F.stopMessage("STOP", "wamid.C"), conn);
-    await feed(F.textMessage("changed my mind", "wamid.D"), conn);
-    expect(deps.store.consent.map((c) => c.action)).toEqual(["granted", "withdrawn"]);
+  it("a STOP from an unknown number is remembered by hash and a repeat STOP is not logged twice", async () => {
+    await feed(F.stopMessage("STOP", "wamid.S1"));
+    await feed(F.stopMessage("STOP", "wamid.S2"));
+    await feed(F.textMessage("changed my mind", "wamid.D"));
+    expect(deps.store.consent.map((c) => c.action)).toEqual(["withdrawn"]);
+    expect(deps.store.leads).toHaveLength(0);
+    expect(await deps.store.subjectConsent("w-1", sha256Hex(PHONE))).toBe("withdrawn");
+  });
+  it("Tamil and English keywords both count as a STOP", async () => {
+    for (const [i, w] of ["நிறுத்து", "ஸ்டாப்", "STOP", "Unsubscribe"].entries()) {
+      deps = fakeDeps();
+      await feed(F.stopMessage(w, `wamid.K${i}`));
+      expect(deps.store.consent.map((c) => c.action), w).toEqual(["withdrawn"]);
+    }
   });
 });
 
