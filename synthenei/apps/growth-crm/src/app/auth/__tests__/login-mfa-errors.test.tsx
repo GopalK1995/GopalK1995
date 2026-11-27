@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ host: "localhost" }), cookies: async () => ({ get: () => undefined }) }));
 vi.mock("@/lib/auth/actions", () => ({ demoLogin: vi.fn(), passwordLogin: vi.fn(), verifyMfa: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseConfigured: () => true,
@@ -17,7 +19,7 @@ vi.mock("@/components/legal/legal-page", () => ({ LegalFooter: () => null }));
 vi.mock("@/i18n/server", async () => {
   const { createTranslator } = await import("next-intl");
   const { BASE } = await import("@/i18n/registry");
-  return { getT: async (namespace: string) => createTranslator({ locale: "en", messages: BASE.en, namespace } as never), pageTitle: () => async () => ({}) };
+  return { getT: async (namespace: string) => createTranslator({ locale: "en", messages: BASE.en, namespace } as never), getLocale: async () => "en", pageTitle: () => async () => ({}) };
 });
 
 import Login from "../../login/page";
