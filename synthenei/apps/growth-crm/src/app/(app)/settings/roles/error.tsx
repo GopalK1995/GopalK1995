@@ -1,9 +1,7 @@
 "use client";
-import { ErrorState } from "@/components/ui/states";
-import { Button } from "@/components/ui/button";
-import en from "../../../../../messages/en/settings-access.json";
+import { RouteError } from "@/components/ui/route-error";
 
-// Route error boundary: names the failing source and offers retry (English draft; the page renders locale-aware text).
-export default function AccessError({ reset }: { error: Error; reset: () => void }) {
-  return <ErrorState source={en.loadErrorSource} message={en.loadErrorBody} retry={<Button onClick={reset}>{en.retry}</Button>} />;
+/** Route boundary: names the area that failed, with the shared heading, Retry and error id (copy lives in the errors message files). */
+export default function RouteBoundary({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  return <RouteError error={error} reset={reset} source="Roles and access" />;
 }

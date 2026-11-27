@@ -1,8 +1,7 @@
 "use client";
-import { ErrorState } from "@/components/ui/states";
-import { Button } from "@/components/ui/button";
+import { RouteError } from "@/components/ui/route-error";
 
-// Route error boundary: names the failing source and offers retry.
-export default function AudienceError({ reset }: { error: Error; reset: () => void }) {
-  return <ErrorState source="Audience" message="Audience data could not be loaded. Nothing was changed." retry={<Button variant="secondary" onClick={reset}>Try again</Button>} />;
+/** Route boundary: names the area that failed, with the shared heading, Retry and error id (copy lives in the errors message files). */
+export default function RouteBoundary({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  return <RouteError error={error} reset={reset} source="Audience" />;
 }

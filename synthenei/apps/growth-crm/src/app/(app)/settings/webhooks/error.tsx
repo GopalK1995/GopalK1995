@@ -1,8 +1,7 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/ui/states";
-import { wh } from "./_lib/strings";
+import { RouteError } from "@/components/ui/route-error";
 
-export default function WebhooksError({ reset }: { error: Error; reset: () => void }) {
-  return <ErrorState source={wh("loadErrorSource")} message={wh("loadErrorBody")} retry={<Button onClick={reset}>{wh("retry")}</Button>} />;
+/** Route boundary: names the area that failed, with the shared heading, Retry and error id (copy lives in the errors message files). */
+export default function RouteBoundary({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  return <RouteError error={error} reset={reset} source="Webhooks" />;
 }

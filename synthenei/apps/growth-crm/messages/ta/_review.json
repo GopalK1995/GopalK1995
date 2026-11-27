@@ -213,7 +213,20 @@
       "notFound": true,
       "forbidden": true,
       "conflict": true,
-      "validation": true
+      "validation": true,
+      "boundaryTitle": true,
+      "boundarySourceTitle": true,
+      "boundaryBody": true,
+      "boundaryBodyData": true,
+      "boundaryBodyGeneric": true,
+      "boundaryRetry": true,
+      "boundaryId": true,
+      "boundaryHome": true,
+      "notFoundTitle": true,
+      "notFoundBody": true,
+      "notFoundHome": true,
+      "fatalTitle": true,
+      "fatalBody": true
     },
     "accounts": {
       "saved": true,

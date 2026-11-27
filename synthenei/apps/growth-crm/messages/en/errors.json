@@ -3,5 +3,18 @@
   "notFound": "We could not find that page.",
   "forbidden": "You do not have access to this.",
   "conflict": "Someone else changed this. Reload and try again.",
-  "validation": "Check the highlighted fields."
+  "validation": "Check the highlighted fields.",
+  "boundaryTitle": "This page could not load",
+  "boundarySourceTitle": "{source} could not load",
+  "boundaryBody": "Something went wrong while loading this page. Nothing was changed. Retry in a moment; if it keeps happening, quote the error id below to your admin.",
+  "boundaryBodyData": "We could not read this data from the database. Nothing was changed. Retry in a moment; if it keeps happening, quote the error id below to your admin.",
+  "boundaryBodyGeneric": "This page hit an unexpected problem. Nothing was changed. Retry in a moment.",
+  "boundaryRetry": "Retry",
+  "boundaryId": "Error id",
+  "boundaryHome": "Back to home",
+  "notFoundTitle": "We could not find that page",
+  "notFoundBody": "The address may be mistyped or the page may have moved. Go back to your home screen and use the menu from there.",
+  "notFoundHome": "Back to home",
+  "fatalTitle": "Something went wrong on our side",
+  "fatalBody": "The app could not start this screen. Try again, and if it keeps happening tell your admin."
 }
