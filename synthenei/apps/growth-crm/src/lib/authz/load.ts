@@ -11,7 +11,7 @@ import { SYSTEM_ROLES } from "./catalog/system-roles";
 import { withBilling } from "../billing/runtime";
 import type { Principal, RecordRef } from "./types";
 
-/** Cached per request. Demo sessions: built from the fixture roles. Real sessions: `authz.my_grants(ws)` RPC. */
+/** Cached per request. Demo sessions: built from the fixture roles. Real sessions: `my_grants(ws)` RPC. */
 export const loadPrincipal = cache(async (ws?: string): Promise<Principal> => {
   const { session, active } = await requireActive();
   if (ws && ws !== active.ws.id) throw new AuthzError({ allow: false, reason: "out_of_scope", step: 1, permission: "workspace.access", maskedFields: [] });

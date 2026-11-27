@@ -19,6 +19,7 @@ import { FeatureCards, type Feature } from "./_components/features";
 import { WeightsEditor, type FactorRow } from "./_components/weights";
 import { GatewaySettings, type SettingsVM } from "./_components/gateway-settings";
 import { dbForRequest } from "@/lib/db/client";
+import { digestAnchorMs } from "@/lib/ai/digest-week";
 import { loadAiOverview } from "@/lib/ai/read";
 import { modelsOf } from "@/lib/ai/models";
 import { PROVIDER_IDS } from "@/lib/ai/types";
@@ -41,7 +42,8 @@ export default async function Copilot() {
   // Real workspaces: policy, caps, providers and the audit trail come from the AI gateway tables (T050). Demo keeps the showcase content.
   const real = !session.demo;
   const tAi = await getT("ai");
-  const ov = real ? await loadAiOverview(await dbForRequest(), active.ws.uuid, session.uid) : null;
+  // A gateway read failure (table missing, RLS) degrades to the empty overview: the page still renders, with the off-by-default policy.
+  const ov = real ? await loadAiOverview(await dbForRequest(), active.ws.uuid, session.uid).catch((e) => { console.error("[ai] overview unavailable", e instanceof Error ? `${e.name}: ${e.message}` : "error"); return null; }) : null;
   const canToggle = verdict("aiToggle", ctx).ok;
 
   // Lead scoring: factor table from stored score_factors (so the number is always explainable).
@@ -63,7 +65,8 @@ export default async function Copilot() {
 
   // Weekly campaign digest from aggregates only (no personal data).
   const end = days.reduce((m, d) => (d.date > m ? d.date : m), "");
-  const endMs = new Date(end + "T12:00:00+05:30").getTime();
+  // No campaign days yet (a fresh workspace): anchor the digest week on today, otherwise the date maths is NaN and toISOString() throws.
+  const endMs = digestAnchorMs(end, now);
   const inWeek = (date: string, w: number) => { const t = (endMs - new Date(date + "T12:00:00+05:30").getTime()) / DAY; return t >= w * 7 && t < (w + 1) * 7; };
   const wk = (w: number) => campaigns.map((c) => {
     const ds_ = days.filter((d) => d.campaignId === c.id && inWeek(d.date, w));

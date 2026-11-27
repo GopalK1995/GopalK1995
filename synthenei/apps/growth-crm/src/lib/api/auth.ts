@@ -77,8 +77,8 @@ function defaultMakeDb(jwt: string): Db {
   }) as unknown as Db;
 }
 async function defaultLoadGrants(db: Db, workspaceId: string): Promise<unknown> {
-  const { data, error } = await (db as unknown as { schema(s: string): { rpc(f: string, a: Record<string, unknown>): PromiseLike<{ data: unknown; error: unknown }> } })
-    .schema("authz").rpc("my_grants", { p_ws: workspaceId });
+  const { data, error } = await (db as unknown as { rpc(f: string, a: Record<string, unknown>): PromiseLike<{ data: unknown; error: unknown }> })
+    .rpc("my_grants", { p_ws: workspaceId }); // public wrapper: the authz schema is not exposed by PostgREST (406)
   if (error) throw new ApiError("error", "Something went wrong on our side.");
   return data;
 }

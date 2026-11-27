@@ -14,7 +14,7 @@ vi.mock("@/lib/auth/server", () => ({
   }),
 }));
 vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => (state.client === "none" ? null : { schema: () => ({ rpc: async () => state.rpc }) }),
+  createSupabaseServerClient: async () => (state.client === "none" ? null : { rpc: async () => state.rpc }),
 }));
 vi.mock("@/lib/billing/runtime", () => ({ withBilling: async (p: unknown) => p }));
 
