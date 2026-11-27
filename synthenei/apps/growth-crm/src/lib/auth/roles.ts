@@ -43,9 +43,9 @@ export function accessFor(role: Role, pathname: string): Access | null {
 }
 export const canEdit = (a: Access | null) => a === "F" || a === "E";
 
-/** Action permissions (spec 10.3), derived from the system-role grants: true when the role holds the key at scope all. */
+/** Action permissions (spec 10.3), derived from the system-role grants: true when the role holds the key at any scope (the seed gives own only where the legacy matrix said "E"). */
 export const CAN = Object.fromEntries(
-  (Object.keys(ACTION_PERMISSION) as LegacyAction[]).map((a) => [a, (r: Role) => systemGrants(r)[ACTION_PERMISSION[a]]?.scope === "all"]),
+  (Object.keys(ACTION_PERMISSION) as LegacyAction[]).map((a) => [a, (r: Role) => (systemGrants(r)[ACTION_PERMISSION[a]]?.scope ?? "none") !== "none"]),
 ) as Record<LegacyAction, (r: Role) => boolean>;
 /** Disabled during any support session regardless of role (spec 10.5). Literal tuple for typing; a unit test pins it to the catalogue's supportBlocked flags. */
 export const SUPPORT_BLOCKED = ["exportCsv", "branding", "connectIntegrations", "erase", "aiToggle", "createWorkspace", "manageUsers", "privacyRequests"] as const;
@@ -53,8 +53,7 @@ export type Action = keyof typeof CAN;
 /** The one permission check: evaluated by the authz engine on the role's system grants, support overlay included. */
 export function can(action: Action, ctx: { role: Role; support?: { mode: "read_only" | "read_write" } | null }): boolean {
   const perm = ACTION_PERMISSION[action], p = systemPrincipal({ uid: "legacy", workspaceId: "legacy", role: ctx.role, support: ctx.support ?? null, overlay: false });
-  // Legacy actions are unrestricted capabilities: an own-scope grant (page-level edit of own records) does not satisfy them.
-  return decide(p, perm).allow && p.grants[perm]?.scope === "all";
+  return decide(p, perm).allow;
 }
 /** Settings tabs per role (spec 10.2). */
 export const SETTINGS_TABS: Record<Role, string[]> = {

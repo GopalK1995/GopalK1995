@@ -9,6 +9,8 @@ export const PERMISSIONS: PermissionDef[] = [
   d("comments.write", "Write comments"),
   d("comments.moderate", "Moderate comments"),
   d("audit.read", "Read the audit log"),
+  d("audit.export", "Export the audit log", { supportBlocked: true }),
+  d("events.read", "Read events"),
   d("org.admin", "Administer the organisation and workspaces", { supportBlocked: true }),
   d("org.branding", "Change branding and fonts", { supportBlocked: true }),
   d("config.edit", "Edit tenant configuration"),

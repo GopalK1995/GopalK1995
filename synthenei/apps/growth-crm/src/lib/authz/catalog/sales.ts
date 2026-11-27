@@ -5,6 +5,7 @@ export const PERMISSIONS: PermissionDef[] = [
   d("leads.create", "Create leads"),
   d("leads.write", "Edit leads"),
   d("leads.assign", "Assign leads"),
+  d("leads.claim", "Claim unassigned leads in own territory"),
   d("leads.delete", "Delete leads", { supportBlocked: true }),
   d("leads.export", "Export leads", { supportBlocked: true }),
   d("leads.import", "Import leads"),
