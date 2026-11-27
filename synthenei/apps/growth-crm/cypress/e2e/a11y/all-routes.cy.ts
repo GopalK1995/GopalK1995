@@ -1,9 +1,12 @@
 // T059 · Accessibility pass. Runs axe-core against every route reachable from the shell NAV (owner persona sees all of them),
 // plus the always-allowed pages (/profile, /notifications) and the /forbidden denied state.
 //
-// Why axe-core directly and not cypress-axe: axe-core 4.14 is already a dependency; cypress-axe is not, and package.json is
-// integrator-owned (BUILD-PLAN §5.3). injectAxe()/checkA11y() below are a thin, equivalent wrapper over the installed engine,
-// so the spec needs no new package. The integrator may swap these two helpers for `import "cypress-axe"` if they add the dep.
+// Why axe-core directly and not cypress-axe: axe-core is a declared devDependency (exact 4.14.0, AUD-054); cypress-axe is not,
+// because adding it needs a lockfile regeneration (see docs/CI.md). injectAxe()/checkA11y() below are a thin, equivalent
+// wrapper over the installed engine. Swap them for `import "cypress-axe"` once the dependency is added.
+//
+// AUD-054: runs at WCAG 2.2 AA (wcag22aa adds target-size 2.5.8). The brand hue can be set with the A11Y_HUE environment
+// variable (CI runs two hues): it re-tints the app by setting --brand-h on <html>, the same variable the branding tab uses.
 //
 // Known shared blocker (docs/tasks/T002.md): cy.loginAs() drives the demo /login persona buttons; on a cold `next dev` the first
 // click can land before hydration. The command already retries. We also suppress the dev-mode hydration warning here so it cannot
@@ -12,11 +15,18 @@ Cypress.on("uncaught:exception", (err) => !/hydrat|did not match|#418|parentNode
 
 type AxeResult = { violations: Array<{ id: string; impact: string | null; help: string; nodes: Array<{ target: string[] }> }> };
 
+const HUE = String(Cypress.expose("A11Y_HUE") ?? "").trim();
+
+function applyHue(win: Window): void {
+  if (/^[0-9]{1,3}$/.test(HUE)) win.document.documentElement.style.setProperty("--brand-h", HUE);
+}
+
 function injectAxe(): void {
   cy.readFile("node_modules/axe-core/axe.min.js", { log: false }).then((src: string) => {
     cy.window({ log: false }).then((win) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (win as any).eval(src);
+      applyHue(win);
     });
   });
 }
@@ -25,7 +35,7 @@ function checkA11y(label: string): void {
   cy.window({ log: false }).then((win) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const axe = (win as any).axe;
-    const opts = { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] } };
+    const opts = { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } };
     return (axe.run(win.document, opts) as Promise<AxeResult>).then((res) => {
       if (res.violations.length) {
         const lines = res.violations.map((v) => `  [${v.impact ?? "n/a"}] ${v.id}: ${v.help} (${v.nodes.length} node(s)) e.g. ${v.nodes[0]?.target.join(" ")}`);

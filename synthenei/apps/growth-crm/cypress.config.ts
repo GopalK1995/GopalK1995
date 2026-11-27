@@ -10,6 +10,7 @@ export default defineConfig({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     PROD_SUPABASE_REF: process.env.PROD_SUPABASE_REF ?? "evybdanqxgkjoybrvzru",
     ALLOW_PROD: process.env.CYPRESS_ALLOW_PROD ?? "",
+    A11Y_HUE: process.env.A11Y_HUE ?? "",
   },
   e2e: {
     baseUrl,

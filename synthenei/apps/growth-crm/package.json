@@ -12,11 +12,14 @@
     "e2e": "node scripts/e2e-matrix.mjs",
     "lint": "eslint .",
     "test:unit": "vitest run",
+    "test:unit:ci": "vitest run --pool forks",
     "test:unit:cov": "vitest run --coverage",
     "cy:open": "cypress open",
     "cy:run:e2e": "cypress run --e2e",
     "cy:run:ct": "cypress run --component",
     "cy:smoke": "cypress run --e2e --spec cypress/e2e/smoke/**/*.cy.ts",
+    "ci:a11y": "start-server-and-test \"next start -p 3202\" http://localhost:3202/login \"cypress run --e2e --spec cypress/e2e/a11y/all-routes.cy.ts\"",
+    "hooks:install": "git config core.hooksPath .githooks",
     "ci:smoke": "start-server-and-test \"next start -p 3202\" http://localhost:3202/login cy:smoke"
   },
   "dependencies": {
@@ -76,6 +79,7 @@
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "^5.0.5",
+    "axe-core": "4.14.0",
     "cypress": "^16.2.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.27",
