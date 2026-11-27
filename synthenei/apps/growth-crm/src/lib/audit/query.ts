@@ -6,7 +6,7 @@ import { clampLimit, decodeCursor, encodeCursor, type Page } from "@/lib/db/page
 import { from, type Qb } from "@/lib/db/query";
 import { csvCell as csvGuardedCell, csvLine } from "@/lib/import/csv-guard";
 import { isSecretKey, maskPiiText, redactDetail, scrubSecretsText } from "./redact";
-import { AUDIT_SOURCES, type AuditFilters, type AuditView } from "./types";
+import { AUDIT_ACTOR_KINDS, AUDIT_SOURCES, HUMAN_ACTOR_KINDS, KIND_HUMAN, type AuditFilters, type AuditView } from "./types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/i;
@@ -30,6 +30,8 @@ export function cleanFilters(f: AuditFilters): AuditFilters {
   const [tbl, rid] = t(f.object).split(":");
   if (IDENT_RE.test(tbl ?? "")) out.object = rid && !unsafe(rid) && rid.length <= 64 ? `${tbl}:${rid}` : tbl;
   if ((AUDIT_SOURCES as readonly string[]).includes(t(f.source))) out.source = t(f.source);
+  if (t(f.kind) === KIND_HUMAN || (AUDIT_ACTOR_KINDS as readonly string[]).includes(t(f.kind))) out.kind = t(f.kind);
+  if (f.system === "1") out.system = "1";
   if (DATE_RE.test(t(f.from))) out.from = t(f.from);
   if (DATE_RE.test(t(f.to))) out.to = t(f.to);
   if (SLUG_RE.test(t(f.tenant))) out.tenant = t(f.tenant);
@@ -56,6 +58,8 @@ function applyFilters(q: Qb, scope: AuditScope, raw: AuditFilters): Qb {
     out = out.eq("table_name", tbl);
     if (rid) out = out.eq("row_id", rid);
   }
+  if (f.kind === KIND_HUMAN) out = out.in("actor_kind", [...HUMAN_ACTOR_KINDS]);
+  else if (f.kind) out = out.eq("actor_kind", f.kind);
   if (f.source) out = out.eq("source", f.source);
   // India time day boundaries
   if (f.from) out = out.gte("occurred_at", `${f.from}T00:00:00+05:30`);
@@ -145,8 +149,14 @@ export function auditCsv(rows: AuditView[]): string {
   return [csvLine(CSV_COLS.map(([h]) => h)), ...rows.map((r) => csvLine(CSV_COLS.map(([, f]) => f(r))))].join("\r\n") + "\r\n";
 }
 
+/** What the log shows by default: people only. An explicit kind wins; "Show system activity" lifts the restriction. Pure, so the panel and export agree. */
+export function withDefaultActorScope(f: AuditFilters): AuditFilters {
+  if (f.kind || f.system === "1") return f;
+  return { ...f, kind: KIND_HUMAN };
+}
+
 /** Reads search params into filters (strings only). */
 export function filtersFromParams(sp: Record<string, string | string[] | undefined>): AuditFilters {
   const g = (k: string) => { const v = sp[k]; return typeof v === "string" ? v : undefined; };
-  return cleanFilters({ actor: g("actor"), action: g("action"), object: g("object"), source: g("source"), from: g("from"), to: g("to"), tenant: g("tenant"), workspace: g("workspace") });
+  return cleanFilters({ actor: g("actor"), action: g("action"), object: g("object"), source: g("source"), kind: g("kind"), system: g("system") === "1" ? "1" : undefined, from: g("from"), to: g("to"), tenant: g("tenant"), workspace: g("workspace") });
 }

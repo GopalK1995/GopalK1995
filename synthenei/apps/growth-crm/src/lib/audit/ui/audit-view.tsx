@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState, ErrorState, PartialState, type PartialItem } from "@/components/ui/states";
-import { AUDIT_SOURCES, type AuditFilters, type AuditView } from "../types";
+import { AUDIT_ACTOR_KINDS, AUDIT_SOURCES, type AuditFilters, type AuditView } from "../types";
 import type { T } from "../strings";
 import { fmtIstDateTimeZ } from "@/lib/datetime";
 
@@ -31,6 +31,13 @@ function FilterForm({ t, basePath, filters, platform, fixed }: { t: T; basePath:
           {AUDIT_SOURCES.map((s) => <option key={s} value={s}>{t(`source_${s}`)}</option>)}
         </select>
       </label>
+      <label className={lbl}>{t("filterKind")}
+        <select name="kind" defaultValue={filters.kind ?? ""} className={field}>
+          <option value="">{t("kindDefault")}</option>
+          {AUDIT_ACTOR_KINDS.map((k) => <option key={k} value={k}>{t(`kind_${k}`)}</option>)}
+        </select>
+      </label>
+      <label className="flex h-8 items-center gap-1.5 text-13 text-ink-2"><input type="checkbox" name="system" value="1" defaultChecked={filters.system === "1"} />{t("showSystem")}</label>
       <label className={lbl}>{t("filterFrom")}<input type="date" name="from" defaultValue={filters.from ?? ""} className={field} /></label>
       <label className={lbl}>{t("filterTo")}<input type="date" name="to" defaultValue={filters.to ?? ""} className={field} /></label>
       {platform && <label className={lbl}>{t("filterTenant")}<input name="tenant" defaultValue={filters.tenant ?? ""} className={`${field} w-56 font-mono`} /></label>}
@@ -51,8 +58,8 @@ function query(filters: AuditFilters, cursor?: string, fixed?: Record<string, st
   return s ? `?${s}` : "";
 }
 
-export function AuditViewBody({ t, basePath, filters, screen, platform = false, piiMasked, cursor, fixed }: {
-  t: T; basePath: string; filters: AuditFilters; screen: AuditScreen; platform?: boolean; piiMasked: boolean; cursor?: string; fixed?: Record<string, string>;
+export function AuditViewBody({ t, basePath, filters, screen, platform = false, piiMasked, cursor, fixed, systemHidden = false }: {
+  systemHidden?: boolean; t: T; basePath: string; filters: AuditFilters; screen: AuditScreen; platform?: boolean; piiMasked: boolean; cursor?: string; fixed?: Record<string, string>;
 }) {
   if (screen.kind === "denied") return <div className="p-4 sm:p-5"><EmptyState title={t("deniedTitle")} body={screen.body} /></div>;
   if (screen.kind === "error") {
@@ -84,7 +91,7 @@ export function AuditViewBody({ t, basePath, filters, screen, platform = false, 
       ) : (
         <>
           <div className="flex items-center justify-between gap-3 px-4 py-2 text-12 text-ink-3 sm:px-5">
-            <span className="num">{t("rowsShown", { n: rows.length })}</span>
+            <span className="num">{t("rowsShown", { n: rows.length })}{systemHidden && <> · {t("systemHidden")} <Link href={`${basePath}${query({ ...filters, system: "1" }, undefined, fixed)}`} className="font-medium text-accent hover:underline">{t("showSystemLink")}</Link></>}</span>
             <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-bar bg-warn-soft ring-1 ring-warn/40" aria-hidden />{t("supportLegend")}</span>
           </div>
           <DataTable rows={rows} columns={cols} rowKey={(a) => a.id} minWidth={platform ? 1100 : 980} caption={t("title")} rowClassName={(a) => (a.support ? "bg-warn-soft/50 hover:bg-warn-soft" : "")} />

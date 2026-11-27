@@ -9,7 +9,7 @@ import { userById } from "@/lib/tenancy";
 import { supportEvents } from "@/lib/support-log";
 import { getLocale } from "@/i18n/server";
 import { PageHeader } from "@/components/ui/misc";
-import { maskAuditView, filtersFromParams, queryAudit } from "../query";
+import { maskAuditView, filtersFromParams, queryAudit, withDefaultActorScope } from "../query";
 import { makeT } from "../strings";
 import type { AuditView } from "../types";
 import { exportOrgAudit } from "../actions";
@@ -39,7 +39,8 @@ async function demoRows(wsId: string): Promise<AuditView[]> {
 export async function OrgAuditPanel({ sp, basePath = "/settings/audit", withHeader = true, fixed }: { sp: OrgAuditSearch; basePath?: string; withHeader?: boolean; fixed?: Record<string, string> }) {
   const t = makeT(await getLocale());
   const { session, active } = await requireActive();
-  const filters = filtersFromParams(sp);
+  const shown = filtersFromParams(sp); // what the form shows (the URL)
+  const filters = withDefaultActorScope(shown); // what is queried and exported: people only unless asked otherwise
   const cursor = typeof sp.cursor === "string" ? sp.cursor : undefined;
   const p = await loadPrincipal();
   const canRead = decide(p, "audit.read").allow;
@@ -52,7 +53,7 @@ export async function OrgAuditPanel({ sp, basePath = "/settings/audit", withHead
     const all = await demoRows(active.ws.id);
     const rows = all
       .filter((r) => (!filters.actor || r.actorLabel.toLowerCase().includes(filters.actor.toLowerCase())) && (!filters.action || r.action === filters.action) &&
-        (!filters.source || r.source === filters.source) && (!filters.object || r.objectTable.startsWith(filters.object)) &&
+        (!filters.source || r.source === filters.source) && (!filters.kind || (filters.kind === "human" ? ["user", "support", "platform_admin"].includes(r.actorKind) : r.actorKind === filters.kind)) && (!filters.object || r.objectTable.startsWith(filters.object)) &&
         (!filters.from || r.at.slice(0, 10) >= filters.from) && (!filters.to || r.at.slice(0, 10) <= filters.to))
       .map((r) => maskAuditView(r, piiRead));
     screen = { kind: "ok", rows, nextCursor: null };
@@ -78,8 +79,8 @@ export async function OrgAuditPanel({ sp, basePath = "/settings/audit", withHead
           <ExportButton action={exportOrgAudit} filters={filters} label={t("export")} workingLabel={t("exporting")} disabledReason={exportReason} />
         </div>
       )}
-      <AuditCard t={t} basePath={basePath} filters={filters} fixed={fixed}>
-        <AuditViewBody t={t} basePath={basePath} filters={filters} screen={screen} piiMasked={!piiRead} cursor={cursor} fixed={fixed} />
+      <AuditCard t={t} basePath={basePath} filters={shown} fixed={fixed}>
+        <AuditViewBody t={t} basePath={basePath} filters={shown} systemHidden={!filters.system && filters.kind === "human"} screen={screen} piiMasked={!piiRead} cursor={cursor} fixed={fixed} />
       </AuditCard>
     </>
   );

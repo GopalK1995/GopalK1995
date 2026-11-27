@@ -3,6 +3,12 @@ export const AUDIT_SOURCES = ["ui", "api", "connector", "job", "agent", "support
 export type AuditSource = (typeof AUDIT_SOURCES)[number];
 export const AUDIT_ACTOR_KINDS = ["user", "api_key", "system", "connector", "agent", "support", "platform_admin"] as const;
 export type AuditActorKind = (typeof AUDIT_ACTOR_KINDS)[number];
+/** People acting (directly or through a support session). The audit log opens on these. */
+export const HUMAN_ACTOR_KINDS = ["user", "support", "platform_admin"] as const;
+/** Machines: background jobs, integrations, API keys and agents. Hidden until "Show system activity" is on. */
+export const SYSTEM_ACTOR_KINDS = ["system", "connector", "agent", "api_key"] as const;
+/** Filter value meaning "all people", the default view. */
+export const KIND_HUMAN = "human";
 
 /** Same shape the DB constraint audit_log_action_check enforces (0014). */
 export const ACTION_RE = /^[a-z][a-z0-9_.:-]{0,63}$/;
@@ -70,6 +76,10 @@ export interface AuditFilters {
   /** table name, or "table:rowId" */
   object?: string;
   source?: string;
+  /** actor kind: "human" (default view), or one of AUDIT_ACTOR_KINDS */
+  kind?: string;
+  /** "1" = also show system activity (machines) */
+  system?: "1";
   /** YYYY-MM-DD, India time, inclusive */
   from?: string;
   to?: string;
