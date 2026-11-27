@@ -76,7 +76,7 @@ export function AuditViewBody({ t, basePath, filters, screen, platform = false, 
       </span>
     ) },
     { key: "actor", header: t("colActor"), mobile: "fact", cell: (a) => <span>{a.actorLabel}{a.actorKind !== "user" && <span className="ml-1.5 text-12 text-ink-3">{a.actorKind.replace("_", " ")}</span>}</span> },
-    { key: "summary", header: t("colSummary"), className: "max-w-[360px]", cell: (a) => <span className="block truncate text-ink-2" title={a.summary}>{a.summary}{a.reason ? <span className="text-ink-3">{` Â· ${a.reason}`}</span> : null}</span> },
+    { key: "summary", header: t("colSummary"), className: "max-w-[360px]", cell: (a) => <span className="block truncate text-ink-2" title={a.summary}>{a.summary}{a.reason ? <span className="text-ink-3">{` ÂÂ· ${a.reason}`}</span> : null}</span> },
     { key: "object", header: t("colObject"), cell: (a) => <span className="font-mono text-12 text-ink-3">{a.objectId ? `${a.objectTable}:${a.objectId.slice(0, 8)}` : a.objectTable}</span> },
     { key: "source", header: t("colSource"), cell: (a) => <Chip tone={a.support ? "warn" : "neutral"}>{sourceLabel(a.source)}</Chip> },
     ...(platform ? [{ key: "scope", header: t("colScope"), cell: (a: AuditView) => <span className="font-mono text-12 text-ink-3">{a.workspaceId ? a.workspaceId.slice(0, 8) : "platform"}</span> } as Column<AuditView>] : []),
@@ -91,7 +91,7 @@ export function AuditViewBody({ t, basePath, filters, screen, platform = false, 
       ) : (
         <>
           <div className="flex items-center justify-between gap-3 px-4 py-2 text-12 text-ink-3 sm:px-5">
-            <span className="num">{t("rowsShown", { n: rows.length })}{systemHidden && <> · {t("systemHidden")} <Link href={`${basePath}${query({ ...filters, system: "1" }, undefined, fixed)}`} className="font-medium text-accent hover:underline">{t("showSystemLink")}</Link></>}</span>
+            <span className="num">{t("rowsShown", { n: rows.length })}{systemHidden && <> Â· {t("systemHidden")} <Link href={`${basePath}${query({ ...filters, system: "1" }, undefined, fixed)}`} className="font-medium text-accent hover:underline">{t("showSystemLink")}</Link></>}</span>
             <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-bar bg-warn-soft ring-1 ring-warn/40" aria-hidden />{t("supportLegend")}</span>
           </div>
           <DataTable rows={rows} columns={cols} rowKey={(a) => a.id} minWidth={platform ? 1100 : 980} caption={t("title")} rowClassName={(a) => (a.support ? "bg-warn-soft/50 hover:bg-warn-soft" : "")} />
