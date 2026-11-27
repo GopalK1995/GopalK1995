@@ -2,6 +2,7 @@
 // Pure functions over arrays from the DataSource, so they work the same for mock and Supabase data.
 import type { Account, Activity, Campaign, CampaignDay, Channel, Deal, DealStage, Ga4Day, Lead, LeadStage, TeamMember } from "./types";
 import { median, ratio } from "../format";
+import { DEFAULT_SLA_HOURS, leadResponseBusinessMins, type SlaHours } from "../sla/business-hours";
 
 export const SLA_MINUTES = 120; // 2 business hours, 10:00–19:00 IST Mon–Sat (M14, spec section 4)
 export const CONSENT_RATE = 0.63; // share of GA4 users who accept analytics consent (mock assumption)
@@ -122,11 +123,13 @@ export const countBy = <T,>(xs: T[], key: (x: T) => string) => {
   return [...m.entries()].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n);
 };
 
-/** M14: median first response and share within SLA (unanswered leads past SLA count as breached). */
-export function slaStats(leads: Lead[], nowIso: string) {
+/** M14: median first response and share within SLA (unanswered leads past SLA count as breached).
+ *  The clock runs inside business hours (AUD-025): pass the workspace hours, or the documented default (10:00 to 19:00 IST, Mon to Sat) applies. */
+export function slaStats(leads: Lead[], nowIso: string, hours: SlaHours = DEFAULT_SLA_HOURS, slaMins: number = SLA_MINUTES) {
   const now = new Date(nowIso).getTime();
-  const mins = leads.filter((l) => l.firstResponseMins !== null).map((l) => l.firstResponseMins!);
-  const breached = leads.filter((l) => (l.firstResponseMins ?? (now - new Date(l.createdAt).getTime()) / 60e3) > SLA_MINUTES).length;
+  const biz = (l: Lead) => leadResponseBusinessMins(l.createdAt, l.firstResponseMins, now, hours);
+  const mins = leads.filter((l) => l.firstResponseMins !== null).map(biz);
+  const breached = leads.filter((l) => biz(l) > slaMins).length;
   return { median: median(mins), breached, within: ratio(leads.length - breached, leads.length), n: leads.length };
 }
 

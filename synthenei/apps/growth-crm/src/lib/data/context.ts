@@ -1,5 +1,6 @@
 // Per-request page context: session + active workspace + workspace-scoped data source + role scoping.
 // Reps see only their own records (spec 10); viewers get masked personal data.
+import { slaHoursFrom } from "@/lib/sla/business-hours";
 import { requireActive } from "../auth/server";
 import { can } from "../auth/roles";
 import { getEffectiveConfig } from "../config/resolve";
@@ -25,7 +26,10 @@ export async function pageCtx() {
     tasks: (xs: Task[]) => (own ? xs.filter((t) => t.ownerId === session.uid) : xs),
     conversations: (xs: Conversation[], leads: Lead[]) => (own ? xs.filter((c) => leads.find((l) => l.id === c.leadId)?.ownerId === session.uid) : xs),
   };
-  return { session, active, role, ds, cfg, stageOrder, now: ds.now(), scope, masked: role === "viewer", support: active.support };
+  // First-response SLA runs inside the configured business hours (AUD-025), not wall-clock.
+  const slaHours = slaHoursFrom(cfg.data.businessHours);
+  const slaMins = Math.round(cfg.data.slaHours * 60);
+  return { session, active, role, ds, cfg, stageOrder, slaHours, slaMins, now: ds.now(), scope, masked: role === "viewer", support: active.support };
 }
 /** Viewer role sees aggregates only: mask personal data (initials). */
 export const maskName = (name: string) => name.split(" ").map((p) => p[0] + ".").join(" ");

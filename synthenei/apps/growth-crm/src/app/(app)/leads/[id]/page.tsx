@@ -6,7 +6,8 @@ import { recordTopic } from "@/lib/realtime/topics";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Lock, Mail, MessageCircle, Phone } from "lucide-react";
 import { pageCtx, maskName } from "@/lib/data/context";
-import { CHANNEL_LABEL, SLA_MINUTES } from "@/lib/data/metrics";
+import { CHANNEL_LABEL } from "@/lib/data/metrics";
+import { describeSlaClock, leadResponseBusinessMins } from "@/lib/sla/business-hours";
 import { accessFor, ROLE_LABEL } from "@/lib/auth/roles";
 import { dayKey, fmtDate, fmtDateY, fmtTime, inr, minsToHuman, relTime } from "@/lib/format";
 import type { Activity, ActivityKind, Lead } from "@/lib/data/types";
@@ -39,7 +40,7 @@ const CAT: Record<ActivityKind, TimelineCat> = {
 const INBOUND = new Set<ActivityKind>(["whatsapp_in", "form_submit", "email_click"]);
 
 /** Rule-based next best action from a fixed list (spec 9): call, WhatsApp template, email, schedule demo, send proposal, nurture. */
-function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined, v: Vocab): Suggestion {
+function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined, v: Vocab, slaMissed = false): Suggestion {
   if (!isOpenLead(l)) return null;
   const n = v.ld.nextBest;
   const nowMs = new Date(now).getTime();
@@ -49,7 +50,7 @@ function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activi
   const intent = l.scoreFactors.find((f) => f.label === "Pricing page visit" || f.label === "Demo page 3+ visits");
   switch (l.stage) {
     case "new":
-      return { action: n.newCall, reason: l.firstResponseMins === null ? n.newNoTouch(relTime(l.createdAt, now), (nowMs - new Date(l.createdAt).getTime()) / 60e3 > SLA_MINUTES) : n.newTouched, due: "Today", factors: top };
+      return { action: n.newCall, reason: l.firstResponseMins === null ? n.newNoTouch(relTime(l.createdAt, now), slaMissed) : n.newTouched, due: "Today", factors: top };
     case "contacted":
       return consentWa
         ? { action: n.contactedWa, reason: `${quiet ? `Last touch ${quiet} day${quiet > 1 ? "s" : ""} ago` : "Touched today"}; WhatsApp consent is on record${intent ? " and they viewed pricing" : ""}.`, due: tomorrow, factors: top }
@@ -71,7 +72,7 @@ function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activi
 
 export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { ds, now, role, session, masked, active } = await pageCtx();
+  const { ds, now, role, session, masked, active, slaHours, slaMins } = await pageCtx();
   const v = vocabFor(active.tenant), ld = v.ld, hosp = v.id === "hospitality";
   const lead = await ds.lead(id);
   if (!lead) notFound();
@@ -160,7 +161,8 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const openTasks = tasks.filter((t) => t.leadId === lead.id && t.status === "open").sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const lastDemoDone = acts.filter((a) => a.kind === "demo_done").sort((a, b) => b.at.localeCompare(a.at))[0];
   const aiOn = ai.summaries || ai.nextBestAction; // Off by default per workspace; the Owner turns features on in /ai (spec 9).
-  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone, v);
+  const bizMins = leadResponseBusinessMins(lead.createdAt, lead.firstResponseMins, new Date(now).getTime(), slaHours);
+  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone, v, lead.firstResponseMins === null && bizMins > slaMins);
   const inbound = raw.filter((r) => r.inbound).sort((a, b) => b.at.localeCompare(a.at))[0];
   const summary = [
     ld.summaryA(lead.title, hosp ? sizeLabel : account?.size ?? "", account?.lawyers ?? "?", account?.district ?? lead.city, hosp ? v.leadStage[lead.stage] : v.leadStage[lead.stage].toLowerCase(), CHANNEL_LABEL[lead.channel], relTime(lead.createdAt, now)),
@@ -208,7 +210,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               <a href={`mailto:${lead.email}`} className="flex min-h-11 items-center gap-2 break-all text-ink hover:text-accent"><Mail className="size-4 shrink-0 text-ink-3" aria-hidden />{lead.email}</a>
               <p className="flex items-center gap-2 text-ink-2"><MessageCircle className="size-4 text-ink-3" aria-hidden />{lead.consent.whatsapp ? "WhatsApp opted in" : "No WhatsApp consent"}</p>
               <Dl className="pt-2" items={[
-                ["First response", lead.firstResponseMins === null ? <span className="text-danger">Not yet</span> : <span className={cn("num", lead.firstResponseMins > SLA_MINUTES && "text-danger")}>{minsToHuman(lead.firstResponseMins)}{lead.firstResponseMins > SLA_MINUTES ? " (SLA missed)" : ""}</span>],
+                ["First response", lead.firstResponseMins === null ? <span className="text-danger">Not yet</span> : <span className={cn("num", bizMins > slaMins && "text-danger")} title={`SLA clock: ${describeSlaClock(slaMins, slaHours)}`}>{minsToHuman(lead.firstResponseMins)}{bizMins > slaMins ? " (SLA missed)" : ` (${minsToHuman(bizMins)} in business hours)`}</span>],
                 ["Consent", `${fmtDate(lead.consent.at)}, notice ${lead.consent.noticeVersion}`],
               ]} />
             </CardBody>

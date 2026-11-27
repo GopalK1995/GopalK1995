@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { pageCtx, maskName } from "@/lib/data/context";
-import { CHANNEL_LABEL, LEAD_STAGES, SLA_MINUTES } from "@/lib/data/metrics";
+import { CHANNEL_LABEL, LEAD_STAGES } from "@/lib/data/metrics";
+import { describeSlaClock, leadResponseBusinessMins } from "@/lib/sla/business-hours";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
 import { dayKey, num, relTime } from "@/lib/format";
 import type { Channel, Lead, LeadStage } from "@/lib/data/types";
@@ -25,7 +26,7 @@ const PAGE = 40;
 type SP = { [custom: string]: string | undefined; view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const { ds, now, role, session, scope, masked, support, active, stageOrder } = await pageCtx();
+  const { ds, now, role, session, scope, masked, support, active, stageOrder, slaHours, slaMins } = await pageCtx();
   const vc = vocabFor(active.tenant), t = vc.ls;
   const sp = await searchParams;
   const [all, accounts, team, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.team(), ds.campaigns()]);
@@ -38,7 +39,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const customCols = cf ? cf.fields.slice(0, 3) : [];
   const acc = new Map(accounts.map((a) => [a.id, a]));
   const nowMs = new Date(now).getTime();
-  const slaBreached = (l: Lead) => (l.firstResponseMins ?? (nowMs - new Date(l.createdAt).getTime()) / 60e3) > SLA_MINUTES && (l.firstResponseMins !== null || l.stage === "new");
+  const slaBreached = (l: Lead) => leadResponseBusinessMins(l.createdAt, l.firstResponseMins, nowMs, slaHours) > slaMins && (l.firstResponseMins !== null || l.stage === "new");
 
   const view = (VIEWS.some((v) => v.key === sp.view) ? sp.view : defaultView(role)) as ViewKey;
   const inView = (l: Lead) =>
@@ -150,6 +151,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </Link>
         ))}
       </nav>
+      {view === "sla" && <p className="mb-3 text-[12px] text-ink-2">SLA clock: {describeSlaClock(slaMins, slaHours)}. Time outside these hours does not count.</p>}
 
       <Card>
         <div className="flex flex-col gap-3 p-3 sm:p-4">
