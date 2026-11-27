@@ -5,15 +5,15 @@ export const IST_ZONE = "Asia/Kolkata";
 export const IST_LABEL = "IST";
 /** IST is a fixed +05:30 offset all year: India has no daylight saving, so adding the offset by hand is exact. */
 export const IST_OFFSET_MS = 330 * 60_000;
-const LOCALE = "en-IN";
+import { intlTagFor, type FormatLocale } from "./format";
 
 type Instant = string | number | Date;
 const toDate = (v: Instant): Date => (v instanceof Date ? v : new Date(v));
 const valid = (d: Date) => !Number.isNaN(d.getTime());
 
-const dateFmt = (o: Intl.DateTimeFormatOptions) => (v: Instant): string => {
+const dateFmt = (o: Intl.DateTimeFormatOptions) => (v: Instant, locale: FormatLocale = "en"): string => {
   const d = toDate(v);
-  return valid(d) ? new Intl.DateTimeFormat(LOCALE, { ...o, timeZone: IST_ZONE }).format(d) : "";
+  return valid(d) ? new Intl.DateTimeFormat(intlTagFor(locale), { ...o, timeZone: IST_ZONE }).format(d) : "";
 };
 
 /** 26 Nov 2026 */
@@ -23,16 +23,17 @@ export const fmtIstDateLong = dateFmt({ day: "numeric", month: "long", year: "nu
 /** Nov 2026 */
 export const fmtIstMonth = dateFmt({ month: "short", year: "numeric" });
 /** 26 Nov 2026, 11:30 pm (no zone word; use fmtIstDateTimeZ where the zone matters) */
-export const fmtIstDateTime = (v: Instant): string => {
+export const fmtIstDateTime = (v: Instant, locale: FormatLocale = "en"): string => {
   const d = toDate(v);
   if (!valid(d)) return "";
-  const parts = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: IST_ZONE }).formatToParts(d);
+  if (locale === "ta") return new Intl.DateTimeFormat(intlTagFor(locale), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: IST_ZONE }).format(d);
+  const parts = new Intl.DateTimeFormat(intlTagFor(locale), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: IST_ZONE }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("day")} ${get("month")} ${get("year")}, ${get("hour")}:${get("minute")} ${get("dayPeriod").toLowerCase()}`;
 };
 /** 26 Nov 2026, 11:30 pm IST: the form for deadlines and records someone may act on. */
-export const fmtIstDateTimeZ = (v: Instant): string => {
-  const s = fmtIstDateTime(v);
+export const fmtIstDateTimeZ = (v: Instant, locale: FormatLocale = "en"): string => {
+  const s = fmtIstDateTime(v, locale);
   return s ? `${s} ${IST_LABEL}` : "";
 };
 

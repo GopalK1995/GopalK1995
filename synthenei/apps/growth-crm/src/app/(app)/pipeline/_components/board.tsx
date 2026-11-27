@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRightLeft, CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DealStage } from "@/lib/data/types";
 import { useSession, useVocab } from "@/components/shell/providers";
-import { fmtDate, inr, inrCompact, pct } from "@/lib/format";
+import { useFormatters } from "@/lib/use-formatters";
 import { Avatar } from "@/components/ui/avatar";
 import { DisabledReason } from "@/components/ui/disabled-reason";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export type DealCard = {
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function Board({ deals, stages, showEmpty = true, canMove, canMoveReason, masked, today, labels }: { deals: DealCard[]; stages: BoardStage[]; /** Empty state instead of empty columns (default pipeline only: a new pipeline shows its stages). */ showEmpty?: boolean; canMove: boolean; canMoveReason?: string | null; masked: boolean; today: string; labels: PipelineLabels }) {
+  const { inr, inrCompact, percent: pct, dateShort: fmtDate } = useFormatters();
   const router = useRouter();
   const DEAL_STAGES = useMemo(() => stages.map((x) => x.key), [stages]);
   const meta = useMemo(() => Object.fromEntries(stages.map((x) => [x.key, x])) as Record<string, BoardStage>, [stages]);

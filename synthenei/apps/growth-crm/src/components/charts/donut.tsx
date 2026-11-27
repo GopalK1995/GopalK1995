@@ -1,6 +1,6 @@
 "use client";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { FMT, type Fmt, ChartFrame, OTHER, SERIES, TooltipBox, useChartAnim } from "./kit";
+import { useFmt, type Fmt, ChartFrame, OTHER, SERIES, TooltipBox, useChartAnim } from "./kit";
 import { pct } from "@/lib/format";
 
 /** Share of a whole. Max 5 slices (callers fold the tail into "Other"). Legend doubles as the data table. */
@@ -8,7 +8,7 @@ export function Donut({ data, label, centerLabel, centerValue, format: fKey = "n
   data: { key: string; label: string; n: number; color?: string }[]; label: string; centerLabel: string; centerValue: string; format?: Fmt; size?: number;
 }) {
   useChartAnim();
-  const format = FMT[fKey];
+  const format = useFmt(fKey);
   const rows = data.slice(0, 5);
   const total = rows.reduce((a, r) => a + r.n, 0);
   /** Per-row colour wins (colour follows the entity); otherwise fixed slot order, Other = neutral. */

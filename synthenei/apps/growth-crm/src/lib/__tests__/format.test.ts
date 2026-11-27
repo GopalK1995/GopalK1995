@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NO_DATA, deltaOf, formatters, inr, inrCompact, isNum, median, minsToHuman, num, numCompact, pct, ratio, relTime, secsToHuman } from "@/lib/format";
+import { NO_DATA, deltaOf, fmtDate, fmtDateY, fmtFor, fmtMonthYear, fmtTime, formatters, inr, inrCompact, isNum, median, minsToHuman, num, numCompact, pct, ratio, relTime, secsToHuman } from "@/lib/format";
 import { FMT } from "@/components/charts/kit";
 
 const BAD: [string, number | null | undefined][] = [["NaN", NaN], ["undefined", undefined], ["null", null], ["Infinity", Infinity], ["-Infinity", -Infinity]];
@@ -54,4 +54,70 @@ describe("deltaOf", () => {
   it("a current value of exactly 0 is not reported as a 100% drop", () => { expect(deltaOf(0, 5)).toBeNaN(); });
   it("honours a minimum base", () => { expect(deltaOf(10, 3, 4)).toBeNaN(); expect(deltaOf(10, 5, 4)).toBe(1); });
   it("computes real changes", () => { expect(deltaOf(150, 100)).toBeCloseTo(0.5); expect(deltaOf(50, 100)).toBeCloseTo(-0.5); });
+});
+
+describe("AUD-125 money: sign, rounding at unit boundaries, Indian grouping", () => {
+  it("sign goes before the rupee symbol", () => {
+    expect(inr(-1234567)).toBe("-₹12,34,567");
+    expect(inrCompact(-250000)).toBe("-₹2.5L");
+    expect(inr(-0.4)).toBe("₹0");
+    expect(inrCompact(-0.2)).toBe("₹0");
+  });
+  it("rounds first, then picks the unit (no 100K / 100L)", () => {
+    expect(inrCompact(99999.6)).toBe("₹1L");
+    expect(inrCompact(99995)).toBe("₹1L");
+    expect(inrCompact(99949)).toBe("₹99.9K");
+    expect(inrCompact(9999999)).toBe("₹1Cr");
+    expect(inrCompact(9_995_000)).toBe("₹1Cr");
+    expect(inrCompact(9_949_999)).toBe("₹99.5L");
+    expect(inrCompact(999.6)).toBe("₹1K");
+    expect(inrCompact(999.4)).toBe("₹999");
+    expect(inrCompact(1000)).toBe("₹1K");
+    expect(inrCompact(100000)).toBe("₹1L");
+    expect(inrCompact(10000000)).toBe("₹1Cr");
+    expect(numCompact(99999.6)).toBe("1L");
+  });
+  it("huge values keep Indian grouping on the crore unit", () => {
+    expect(inrCompact(1e12)).toBe("₹1,00,000Cr");
+    expect(inr(1e12)).toBe("₹10,00,00,00,00,000");
+  });
+  it("0 and fractional rupees", () => {
+    expect(inr(0)).toBe("₹0"); expect(inrCompact(0)).toBe("₹0"); expect(inr(1234.5)).toBe("₹1,235"); expect(num(-1234567)).toBe("-12,34,567");
+  });
+  it("percent: sign, digits, no negative zero", () => {
+    expect(pct(-0.05, 1)).toBe("-5.0%"); expect(pct(-0.0001, 0)).toBe("0%"); expect(pct(1.5, 0)).toBe("150%"); expect(pct(NaN)).toBe(NO_DATA);
+  });
+});
+
+describe("AUD-125 Tamil locale", () => {
+  const ta = formatters("ta");
+  it("uses Indian grouping, rupee symbol and sign first", () => {
+    expect(ta.inr(1234567)).toBe("₹12,34,567"); expect(ta.inr(-1234567)).toBe("-₹12,34,567"); expect(ta.number(100000)).toBe("1,00,000");
+  });
+  it("compact units are Tamil words with the same rounding rule", () => {
+    expect(ta.inrCompact(420000)).toBe("₹4.2 லட்சம்"); expect(ta.inrCompact(13000000)).toBe("₹1.3 கோடி"); expect(ta.inrCompact(8400)).toBe("₹8.4 ஆயிரம்");
+    expect(ta.inrCompact(99999.6)).toBe("₹1 லட்சம்"); expect(ta.inrCompact(9999999)).toBe("₹1 கோடி");
+  });
+  it("missing readings still print the marker", () => { for (const v of [null, undefined, NaN, Infinity]) { expect(ta.inr(v)).toBe(NO_DATA); expect(ta.inrCompact(v)).toBe(NO_DATA); expect(ta.percent(v)).toBe(NO_DATA); } });
+  it("dates use Tamil month names in IST, English stays English", () => {
+    const iso = "2026-11-26T18:30:00Z"; // 27 Nov 2026, 00:00 IST
+    expect(fmtFor("en").date(iso)).toBe("27 Nov 2026");
+    expect(ta.date(iso)).toMatch(/27/); expect(ta.date(iso)).toMatch(/நவ/); expect(ta.date(iso)).not.toMatch(/Nov/);
+    expect(ta.monthYear(iso)).toMatch(/நவம்பர்/);
+    expect(fmtFor("en").monthYear("2026-11-01T12:00:00Z")).toBe("November 2026");
+  });
+  it("time: English is lowercase am/pm, Tamil follows ICU (IST wall clock)", () => {
+    expect(fmtTime("2026-11-26T09:30:00Z")).toBe("3:00 pm"); expect(fmtTime("2026-11-26T09:30:00Z", "ta")).toMatch(/3:00/);
+  });
+  it("relative time in Tamil comes from Intl, English keeps the short form", () => {
+    expect(relTime("2026-01-01T00:00:00Z", "2026-01-01T03:00:00Z", "en")).toBe("3h ago");
+    const t = relTime("2026-01-01T00:00:00Z", "2026-01-01T03:00:00Z", "ta"); expect(t).not.toMatch(/ago/); expect(t).toMatch(/3/);
+    expect(relTime("garbage", "2026-01-01T00:00:00Z", "ta")).toBe(NO_DATA);
+  });
+  it("invalid dates give the marker, never throw or 'Invalid Date'", () => {
+    expect(fmtDate("nope")).toBe(NO_DATA); expect(fmtDateY("nope", "ta")).toBe(NO_DATA); expect(fmtMonthYear("nope")).toBe(NO_DATA); expect(fmtFor("ta").dateTime("x")).toBe(NO_DATA);
+  });
+  it("collator sorts without depending on the runtime default locale", () => {
+    expect(["b", "a", "C"].sort(fmtFor("en").collator.compare)).toEqual(["a", "b", "C"]);
+  });
 });

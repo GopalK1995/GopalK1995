@@ -1,7 +1,8 @@
 import { pageCtx } from "@/lib/data/context";
 import { pipelineTotals } from "@/lib/data/metrics";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
-import { dayKey, fmtDate, inr, inrCompact, num } from "@/lib/format";
+import { dayKey } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { PageHeader } from "@/components/ui/misc";
 import { FilterBar } from "@/components/ui/filter-bar";
 import Link from "next/link";
@@ -32,6 +33,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const stages = pipe ? liveStages(pipe) : [];
   const stageMeta = new Map(stages.map((x) => [x.key, x]));
   const boardStages: BoardStage[] = stages.map((x) => ({ key: x.key, label: x.name.en, probability: x.probability, outcome: x.outcome }));
+  const { inrCompact, number: num, dateShort: fmtDate } = await getFormatters();
   const labels = pipelineLabels(await getLocale(), { deal: v.n.deal.one, deals: v.n.deal.many });
   // Deals are the page: a failure there goes to error.tsx. Names are secondary: a failed source degrades to a partial state.
   const [dealsR, accountsR, leadsR, teamR] = await Promise.allSettled([ds.deals(), ds.accounts(), ds.leads(), ds.team()]);
@@ -86,7 +88,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader eyebrow={role === "sales_rep" ? pl.eyebrowRep : canMove ? pl.eyebrowAll : pl.eyebrowRO(v.role[role], masked)}
         title={pl.title}
-        sub={pl.sub(num(t.openCount), inr(t.openValue), inrCompact(t.weighted), inrCompact(t.wonMonthValue), t.wonMonthCount)} />
+        sub={pl.sub(num(t.openCount), inrCompact(t.openValue), inrCompact(t.weighted), inrCompact(t.wonMonthValue), t.wonMonthCount)} />
       {pipelines.filter((p) => !p.archived).length > 1 && (
         <nav aria-label="Pipelines" className="mb-3 flex flex-wrap gap-1.5" data-testid="pipeline-switcher">
           {pipelines.filter((p) => !p.archived).map((p) => {

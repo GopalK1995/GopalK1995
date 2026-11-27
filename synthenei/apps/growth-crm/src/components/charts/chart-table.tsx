@@ -1,6 +1,8 @@
 "use client";
 import { useId, useState, type ReactNode } from "react";
-import { FMT, type Fmt } from "./kit";
+import { fmtFns, type Fmt } from "./kit";
+import type { FormatLocale } from "@/lib/format";
+import { useFormatLocale } from "@/lib/use-formatters";
 import { cn } from "@/lib/utils";
 
 export type TableColumn = { key: string; header: string; format?: Fmt; align?: "left" | "right" };
@@ -9,10 +11,10 @@ export interface ChartTableLabels { chart: string; table: string; toggle: string
 export const DEFAULT_CHART_TABLE_LABELS: ChartTableLabels = { chart: "Chart", table: "Table", toggle: "Show as", noData: "No data" };
 
 /** A missing value is never rendered as 0. Shared by the chart table and the tooltips of the dashboard charts. */
-export function cell(v: string | number | null | undefined, format: Fmt | undefined, noData: string): string {
+export function cell(v: string | number | null | undefined, format: Fmt | undefined, noData: string, locale: FormatLocale = "en"): string {
   if (v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v))) return noData;
   if (typeof v === "string") return v;
-  return format ? FMT[format](v) : String(v);
+  return format ? fmtFns(locale)[format](v) : String(v);
 }
 
 /**
@@ -25,6 +27,7 @@ export function ChartWithTable({ caption, columns, rows, children, labels = DEFA
 }) {
   const [view, setView] = useState<"chart" | "table">(defaultView);
   const id = useId();
+  const loc = useFormatLocale();
   const opts = [{ v: "chart" as const, l: labels.chart }, { v: "table" as const, l: labels.table }];
   return (
     <div className={className}>
@@ -50,7 +53,7 @@ export function ChartWithTable({ caption, columns, rows, children, labels = DEFA
                 {rows.map((r, ri) => (
                   <tr key={ri} className="h-9 border-b border-line last:border-0">
                     {columns.map((c, i) => {
-                      const text = cell(r[c.key], c.format, labels.noData);
+                      const text = cell(r[c.key], c.format, labels.noData, loc);
                       const missing = text === labels.noData && r[c.key] !== labels.noData;
                       return i === 0
                         ? <th key={c.key} scope="row" className="text-left font-normal text-ink-2">{text}</th>

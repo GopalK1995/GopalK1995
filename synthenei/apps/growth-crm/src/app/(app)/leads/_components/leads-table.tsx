@@ -110,7 +110,7 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, c
     { id: "score", header: "Score", sortable: true, align: "right", cell: (r) => <ScoreWithFactors score={r.score} factors={r.factors} /> },
     { id: "owner", header: "Owner", cell: (r) => (r.owner ? <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={r.owner} size={20} />{r.owner.split(" ")[0]}</span> : <Badge tone="warn">Unassigned</Badge>) },
     { id: "touch", header: "Last touch", sortable: true, hideOnStack: true, className: "text-[12px] text-ink-2 num", cell: (r) => r.lastTouch },
-    { id: "next", header: "Next step", hideOnStack: true, cell: (r) => <span className={cn("text-[12px] num", r.nextOverdue ? "font-medium text-danger" : "text-ink-2")}>{r.next ? `${fmtDate(r.next)}, ${fmtTime(r.next)}` : "—"}</span> },
+    { id: "next", header: "Next step", hideOnStack: true, cell: (r) => <span className={cn("text-[12px] num", r.nextOverdue ? "font-medium text-danger" : "text-ink-2")}>{r.next ? `${fmtDate(r.next, locale)}, ${fmtTime(r.next, locale)}` : "—"}</span> },
     { id: "sla", header: <><span className="sr-only">SLA and consent</span><span aria-hidden>SLA · consent</span></>, label: "SLA and consent", cell: (r) => (
       <span className="flex items-center gap-1.5">
         {r.sla ? <Badge tone="danger">SLA</Badge> : <span className="w-[30px]" aria-hidden />}

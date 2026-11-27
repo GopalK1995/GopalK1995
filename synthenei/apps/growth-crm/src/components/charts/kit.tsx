@@ -55,9 +55,17 @@ export function ChartFrame({ label, height, children, className }: { label: stri
   return <figure role="img" aria-label={label} className={cn("w-full min-w-0 [overflow-x:clip]", className)} style={{ height }}>{children}</figure>;
 }
 
-import { inr, inrCompact, num, numCompact, pct } from "@/lib/format";
+import { fmtFor, type FormatLocale } from "@/lib/format";
+import { useFormatLocale } from "@/lib/use-formatters";
 /** Format keys (functions cannot cross the server/client boundary, so charts take a key). */
 export type Fmt = "num" | "numCompact" | "inr" | "inrCompact" | "pct" | "pct0" | "score";
-export const FMT: Record<Fmt, (n: number) => string> = {
-  num, numCompact, inr, inrCompact, pct: (n) => pct(n, 1), pct0: (n) => pct(n, 0), score: (n) => (Number.isFinite(n) && n !== null ? `${Math.round(n)}` : "No data"),
+const SCORE = (n: number) => (Number.isFinite(n) && n !== null ? `${Math.round(n)}` : "No data");
+/** Formatter set for a locale. */
+export const fmtFns = (locale: FormatLocale = "en"): Record<Fmt, (n: number) => string> => {
+  const f = fmtFor(locale);
+  return { num: f.number, numCompact: f.numberCompact, inr: f.inr, inrCompact: f.inrCompact, pct: (n) => f.percent(n, 1), pct0: (n) => f.percent(n, 0), score: SCORE };
 };
+/** English set (tests, non-React callers). Components use useFmt(). */
+export const FMT: Record<Fmt, (n: number) => string> = fmtFns("en");
+/** The formatter for a format key, in the active locale. */
+export function useFmt(key: Fmt): (n: number) => string { return fmtFns(useFormatLocale())[key]; }

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { pageCtx } from "@/lib/data/context";
 import { CHANNEL_LABEL } from "@/lib/data/metrics";
-import { dayKey, fmtDate, fmtDateTime, inr, inrCompact, num, numCompact, pct, ratio } from "@/lib/format";
+import { dayKey, ratio } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, StatusChip } from "@/components/ui/badge";
 import { Kpi } from "@/components/ui/kpi";
@@ -26,10 +27,11 @@ import { pageTitle } from "@/i18n/server";
 export const generateMetadata = pageTitle("campaigns");
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
 const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const;
-const money = (n: number) => inr(n);
 
 export default async function Campaigns() {
   const ctx = await pageCtx();
+  const { inr, inrCompact, number: num, numberCompact: numCompact, percent: pct, dateShort: fmtDate, dateTime: fmtDateTime } = await getFormatters();
+  const money = inr;
   const { ds, now, active } = ctx;
   const v = vocabFor(active.tenant), m = v.mk, hosp = v.id === "hospitality";
   const CHANNELS = campaignChannels(hosp);
@@ -115,7 +117,7 @@ export default async function Campaigns() {
 
       <Stagger className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <StaggerItem className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-12 lg:grid-cols-5 max-sm:[&_svg[preserveAspectRatio]]:hidden max-sm:[&>div]:p-3 max-sm:[&_.text-\[26px\]]:text-[20px]">
-          <Kpi label="Spend · 30 days" metric="M8" value={k.cur.spend} format="inrCompact" spark={k.spendW} foot={<>{Number.isFinite(k.d.spend) ? `${k.d.spend >= 0 ? "+" : "−"}${Math.abs(k.d.spend * 100).toFixed(1)}% vs prior 30d` : "no prior period"} · {inrCompact(tot.spend)} in 90d</>} />
+          <Kpi label="Spend · 30 days" metric="M8" value={k.cur.spend} format="inrCompact" spark={k.spendW} foot={<>{Number.isFinite(k.d.spend) ? `${k.d.spend >= 0 ? "+" : "−"}${pct(Math.abs(k.d.spend), 1)} vs prior 30d` : "no prior period"} · {inrCompact(tot.spend)} in 90d</>} />
           <Kpi label={m.kLeads} metric="M9" value={k.cur.leads} spark={k.leadsW} delta={k.d.leads} deltaLabel="" foot={<>vs prior 30d · {tot.leads} in 90d · campaign-attributed, of {leads90.length} leads in total (IST)</>} />
           <Kpi label={m.kCpl} metric="M9" value={k.cur.cpl} format="inr" spark={k.cplW} delta={k.d.cpl} deltaLabel="" goodWhen="down" foot={<>vs prior 30d · first touch</>} />
           <Kpi label={m.kDemos} metric="M10" value={k.cur.demos} spark={k.demosW} delta={k.d.demos} deltaLabel="" foot={<>{m.kDemosFoot}</>} />

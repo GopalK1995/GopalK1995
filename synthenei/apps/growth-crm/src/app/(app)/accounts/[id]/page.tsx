@@ -6,7 +6,8 @@ import { recordTopic } from "@/lib/realtime/topics";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, CalendarCheck2, FileText, Mail, MessageCircle, NotebookPen, Phone, Repeat2, Video, Globe, MapPin } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
-import { dayKey, fmtDate, fmtDateY, fmtTime, inr, inrCompact, num, relTime } from "@/lib/format";
+import { dayKey } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { Card, CardBody, CardHeader, NavyPanel } from "@/components/ui/card";
 import { Badge, StatusChip } from "@/components/ui/badge";
 import { Dl, Empty, PageHeader, ScoreChip, Table, td, tdNum, th, thNum } from "@/components/ui/misc";
@@ -44,6 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function AccountDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { inr, inrCompact, number: num, relTime, dateShort: fmtDate, date: fmtDateY, time: fmtTime } = await getFormatters();
   const { ds, now, role, support, session, scope, masked, active } = await pageCtx();
   const v = vocabFor(active.tenant), ac = v.ac, d_ = ac.d, hosp = v.id === "hospitality", STATUS_LABEL = ac.status, DECISION = ac.decision;
   const acc = await ds.account(id);

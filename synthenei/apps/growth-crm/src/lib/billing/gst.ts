@@ -18,6 +18,7 @@ export const placeOfSupply = (gstin: string | null | undefined, stateCode: strin
 
 /** Indian digit grouping, two decimals: 1234567 paise -> "12,345.67". */
 export function fmtInr(paise: number): string {
+  if (!Number.isFinite(paise)) return "No data";
   const neg = paise < 0, a = Math.abs(paise), r = String(Math.floor(a / 100)), p = String(a % 100).padStart(2, "0");
   const last3 = r.slice(-3), rest = r.slice(0, -3);
   const grouped = rest ? `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${last3}` : last3;

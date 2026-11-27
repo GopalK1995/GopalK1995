@@ -3,7 +3,8 @@ import { pageCtx, maskName } from "@/lib/data/context";
 import { CHANNEL_LABEL, LEAD_STAGES } from "@/lib/data/metrics";
 import { describeSlaClock, leadResponseBusinessMins } from "@/lib/sla/business-hours";
 import { can, ROLE_LABEL } from "@/lib/auth/roles";
-import { dayKey, num, relTime } from "@/lib/format";
+import { dayKey } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import type { Channel, Lead, LeadStage } from "@/lib/data/types";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/misc";
@@ -28,6 +29,7 @@ type SP = { [custom: string]: string | undefined; view?: string; q?: string; sta
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const { ds, now, role, session, scope, masked, support, active, stageOrder, slaHours, slaMins } = await pageCtx();
   const vc = vocabFor(active.tenant), t = vc.ls;
+  const { number: num, relTime } = await getFormatters();
   const sp = await searchParams;
   const [all, accounts, team, campaigns] = await Promise.all([ds.leads(), ds.accounts(), ds.team(), ds.campaigns()]);
   const visible = scope.leads(all);

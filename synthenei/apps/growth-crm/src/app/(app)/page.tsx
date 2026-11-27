@@ -11,7 +11,7 @@ import { pageCtx } from "@/lib/data/context";
 import { channelMix, isDemo } from "@/lib/data/metrics";
 import type { Account, Campaign, CampaignDay, Deal, Lead, Task, TeamMember } from "@/lib/data/types";
 import { TILE_CATALOGUE } from "@/lib/config/types";
-import { fmtDate, fmtWeekday, inr, num, pct } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { vocabFor } from "@/lib/vertical";
 import { PageHeader } from "@/components/ui/misc";
 import { StatusChip } from "@/components/ui/badge";
@@ -31,7 +31,8 @@ const h2 = "text-[15px] font-bold tracking-[-0.015em] text-ink";
 const sub = "mt-0.5 text-[12px] leading-4 text-ink-3";
 
 export default async function Home() {
-  const [t, ctx, principal] = await Promise.all([getT("dashboard"), pageCtx(), loadPrincipal()]);
+  const [t, ctx, principal, f] = await Promise.all([getT("dashboard"), pageCtx(), loadPrincipal(), getFormatters()]);
+  const { inr, number: num, percent: pct, dateShort: fmtDate, weekday: fmtWeekday } = f;
   const { ds, now, masked, active, cfg, scope, session } = ctx;
   const failed: string[] = [];
   const optional = async <X,>(source: string, fn: () => Promise<X>, fallback: X): Promise<X> => { try { return await fn(); } catch { failed.push(source); return fallback; } };
@@ -67,7 +68,7 @@ export default async function Home() {
   const ledger = tiles(ids, { leads, deals, days, stages, now, slaHours, converted, rooms }).map((x) => ({ ...x, label: tileLabel(x.id), deltaLabel: t("vsPrev") }));
   const pvo = social ? paidVsOrganic({ campaigns, days, leads, social, now }) : null;
 
-  const month = new Date(ruler.month + "-01T12:00:00Z").toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+  const month = f.monthYear(ruler.month + "-01T12:00:00Z");
   const tableLabels = { chart: t("chart"), table: t("table"), toggle: t("showAs"), noData: t("noData") };
   const canSettings = can(principal, "settings.read");
   const l90 = leadsInWindow(leads, now, { days: 90 }); // all leads, last 90 IST days (AUD-091)

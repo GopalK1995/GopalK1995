@@ -1,6 +1,6 @@
 "use client";
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FMT, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
+import { useFmt, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
 import { fmtDate } from "@/lib/format";
 
 export type LineSeries = { key: string; label: string; color: string; dashed?: boolean; area?: boolean; bar?: boolean };
@@ -9,7 +9,7 @@ export function LineTrend({ data, series, height = 240, label, yFormat: yKey = "
   data: Record<string, number | string | null>[]; series: LineSeries[]; height?: number; label: string; yFormat?: Fmt; xKey?: string; legend?: boolean; endLabel?: boolean;
 }) {
   const anim = useChartAnim();
-  const yFormat = FMT[yKey];
+  const yFormat = useFmt(yKey);
   const tickEvery = Math.max(1, Math.ceil(data.length / 6));
   return (
     <div>

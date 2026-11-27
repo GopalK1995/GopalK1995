@@ -1,6 +1,6 @@
 "use client";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FMT, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
+import { useFmt, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
 
 export type ColSeries = { key: string; label: string; color: string };
 /** Vertical columns for time buckets; stacked when more than one series (2px surface gap between segments). */
@@ -8,7 +8,7 @@ export function Columns({ data, series, xKey, label, height = 220, format: fKey 
   data: Record<string, number | string>[]; series: ColSeries[]; xKey: string; label: string; height?: number; format?: Fmt; totalLabel?: boolean;
 }) {
   const anim = useChartAnim();
-  const format = FMT[fKey];
+  const format = useFmt(fKey);
   const top = series[series.length - 1].key;
   const rows = data.map((r) => ({ ...r, __total: series.reduce((a, s) => a + Number(r[s.key] ?? 0), 0) }));
   return (

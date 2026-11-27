@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { pageCtx } from "@/lib/data/context";
-import { inrCompact, num, pct, ratio, relTime } from "@/lib/format";
+import { ratio } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/components/ui/kpi";
@@ -27,6 +28,7 @@ type Row = Account & { focus: string[]; sites: number; openValue: number; openCo
 
 export default async function Accounts({ searchParams }: { searchParams: Promise<SP> }) {
   const { ds, now, role, support, session, scope, masked, active } = await pageCtx();
+  const { inrCompact, number: num, percent: pct, relTime, collator } = await getFormatters();
   const v = vocabFor(active.tenant), ac = v.ac, hosp = v.id === "hospitality", STATUS_LABEL = ac.status;
   const sp = await searchParams;
   const [accounts, allDeals, team, allLeads] = await Promise.all([ds.accounts(), ds.deals(), ds.team(), ds.leads()]);
@@ -48,7 +50,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
     open: (a, b) => b.openValue - a.openValue || b.lastActivityAt.localeCompare(a.lastActivityAt),
     recent: (a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt),
     lawyers: (a, b) => b.lawyers - a.lawyers,
-    name: (a, b) => a.name.localeCompare(b.name),
+    name: (a, b) => collator.compare(a.name, b.name),
   };
   filtered.sort(sorters[sp.sort ?? "open"] ?? sorters.open);
 

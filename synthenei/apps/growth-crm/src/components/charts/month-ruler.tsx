@@ -1,6 +1,7 @@
 "use client";
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FMT, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
+import { useFormatLocale } from "@/lib/use-formatters";
+import { useFmt, type Fmt, ChartFrame, Legend, TooltipBox, axisProps, useChartAnim } from "./kit";
 import { cell } from "./chart-table";
 
 export interface RulerPoint { day: number; actual: number | null; pace: number | null; forecast: number | null }
@@ -15,7 +16,8 @@ export function MonthRuler({ data, today, label, labels, format = "inrCompact", 
   data: RulerPoint[]; today: number; label: string; labels: RulerLabels; format?: Fmt; height?: number;
 }) {
   const anim = useChartAnim();
-  const f = FMT[format];
+  const f = useFmt(format);
+  const loc = useFormatLocale();
   const series = [
     { key: "actual" as const, name: labels.actual, color: "var(--chart-1)", dash: undefined },
     { key: "forecast" as const, name: labels.forecast, color: "var(--chart-2)", dash: "5 4" },
@@ -34,7 +36,7 @@ export function MonthRuler({ data, today, label, labels, format = "inrCompact", 
             <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const row = payload[0].payload as RulerPoint;
-              return <TooltipBox title={`${labels.day} ${row.day}`} rows={series.map((s) => ({ name: s.name, color: s.color, dash: !!s.dash, value: cell(row[s.key], format, labels.noData) }))} />;
+              return <TooltipBox title={`${labels.day} ${row.day}`} rows={series.map((s) => ({ name: s.name, color: s.color, dash: !!s.dash, value: cell(row[s.key], format, labels.noData, loc) }))} />;
             }} />
             {series.map((s) => (
               <Line key={s.key} dataKey={s.key} name={s.name} type="stepAfter" stroke={s.color} strokeWidth={s.key === "actual" ? 2 : 1.5} strokeDasharray={s.dash}

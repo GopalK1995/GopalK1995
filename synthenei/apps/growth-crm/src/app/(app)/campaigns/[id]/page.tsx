@@ -6,7 +6,8 @@ import { PresenceFaces } from "@/components/realtime";
 import { recordTopic } from "@/lib/realtime/topics";
 import { maskName, pageCtx } from "@/lib/data/context";
 import { CHANNEL_LABEL, campaignStats, isDemo } from "@/lib/data/metrics";
-import { fmtDate, fmtDateY, inr, inrCompact, num, numCompact, pct, ratio } from "@/lib/format";
+import { ratio } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, StatusChip } from "@/components/ui/badge";
 import { Kpi } from "@/components/ui/kpi";
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 function topicFor(ws: string, type: string, id: string): string | null { try { return recordTopic(ws, type, id); } catch { return null; } }
 
 /** Compact horizontal bars in HTML for small categorical breakdowns (sorted, counts printed). */
-function BarList({ title, rows, total }: { title: string; rows: { label: string; n: number }[]; total: number }) {
+function BarList({ title, rows, total, pct }: { title: string; rows: { label: string; n: number }[]; total: number; pct: (x: number, d?: number) => string }) {
   const max = Math.max(1, ...rows.map((r) => r.n));
   return (
     <figure aria-label={`${title}: ${rows.map((r) => `${r.label} ${r.n}`).join(", ")}`}>
@@ -62,6 +63,7 @@ function BarList({ title, rows, total }: { title: string; rows: { label: string;
 export default async function CampaignDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await pageCtx();
+  const { inr, inrCompact, number: num, numberFixed, numberCompact: numCompact, percent: pct, date: fmtDateY } = await getFormatters();
   const { ds, now, masked, active } = ctx;
   const v = vocabFor(active.tenant), d_ = v.cd, hosp = v.id === "hospitality";
   const c: CampaignView | null = await loadCampaign(ctx, id);
@@ -181,7 +183,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
           <Kpi label="Spend" metric="M8" value={s.spend} format="inr" spark={spendW} foot={<>{c.channel === "email" ? "Mailchimp tool cost" : `${inr(ratio(s.spend, myDays.length))} per day average`}</>} />
           <Kpi label={d_.kLeads} metric="M9" value={s.leads} spark={leadsW} foot={<>{d_.cplFoot(s.spend ? inr(s.cpl) : "₹0 (no paid spend)", s.platformLeads)}</>} />
           <Kpi label={d_.kDemos} metric="M10" value={s.demos} foot={<>{d_.kDemosFoot(Number.isFinite(s.costPerDemo) && s.spend ? inr(s.costPerDemo) : null, pct(s.leadToDemo, 0))}</>} />
-          <Kpi label="Won value" metric="M43" value={s.revenue} format="inrCompact" foot={<>{d_.kWonFoot(s.won, s.spend ? (s.revenue / s.spend).toFixed(1) : null)}</>} />
+          <Kpi label="Won value" metric="M43" value={s.revenue} format="inrCompact" foot={<>{d_.kWonFoot(s.won, s.spend ? numberFixed(s.revenue / s.spend, 1) : null)}</>} />
         </StaggerItem>
         <StaggerItem className="lg:col-span-12">
           <Card>
@@ -228,9 +230,9 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
           <Card className="h-full">
             <CardHeader title={d_.who} sub={d_.whoSub(linked.length)} />
             <CardBody className="grid gap-5 sm:grid-cols-2">
-              <BarList title={d_.role} rows={byRole} total={linked.length} />
-              <BarList title={d_.district} rows={byDistrict} total={linked.length} />
-              <BarList title={d_.size} rows={bySize} total={linked.length} />
+              <BarList title={d_.role} rows={byRole} total={linked.length} pct={pct} />
+              <BarList title={d_.district} rows={byDistrict} total={linked.length} pct={pct} />
+              <BarList title={d_.size} rows={bySize} total={linked.length} pct={pct} />
               <div className="text-[12px] leading-5 text-ink-2">
                 <div className="mb-2 font-medium">Targeted audience</div>
                 <p>{c.audience}</p>

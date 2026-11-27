@@ -1,10 +1,10 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { FMT, type Fmt } from "./kit";
+import { useFmt, type Fmt } from "./kit";
 
 /** Bullet bar: achieved vs target with a pace tick (expected by today). */
 export function TargetBar({ value, target, pace, label, format, className, tone = "light" }: { value: number; target: number; pace: number; label: string; format: Fmt; className?: string; tone?: "light" | "navy" }) {
-  const f = FMT[format];
+  const f = useFmt(format);
   const attain = Number.isFinite(value) && Number.isFinite(target) && target > 0 ? value / target : NaN;
   const hasTarget = Number.isFinite(attain);
   const w = hasTarget ? Math.min(1, Math.max(0, attain)) * 100 : 0, p = (Number.isFinite(pace) ? Math.min(1, Math.max(0, pace)) : 0) * 100;

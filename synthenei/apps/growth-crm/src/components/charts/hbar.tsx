@@ -1,6 +1,6 @@
 "use client";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FMT, type Fmt, ChartFrame, TooltipBox, axisProps, useChartAnim } from "./kit";
+import { useFmt, type Fmt, ChartFrame, TooltipBox, axisProps, useChartAnim } from "./kit";
 
 export type HBarRow = { label: string; value: number; color?: string; note?: string };
 /** Horizontal bar for comparisons. Value at the tip; highlight one bar with the accent, the rest recede. */
@@ -8,7 +8,7 @@ export function HBar({ data, label, format: fKey = "num", height, highlight, col
   data: HBarRow[]; label: string; format?: Fmt; height?: number; highlight?: string | "all"; color?: string; muted?: string; labelWidth?: number; valueLabel?: string;
 }) {
   const anim = useChartAnim();
-  const format = FMT[fKey];
+  const format = useFmt(fKey);
   const h = height ?? Math.max(120, data.length * 34 + 16);
   return (
     <ChartFrame label={label} height={h}>

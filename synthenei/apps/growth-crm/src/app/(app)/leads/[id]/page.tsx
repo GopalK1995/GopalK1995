@@ -9,7 +9,8 @@ import { pageCtx, maskName } from "@/lib/data/context";
 import { CHANNEL_LABEL } from "@/lib/data/metrics";
 import { describeSlaClock, leadResponseBusinessMins } from "@/lib/sla/business-hours";
 import { accessFor, ROLE_LABEL } from "@/lib/auth/roles";
-import { dayKey, fmtDate, fmtDateY, fmtTime, inr, minsToHuman, relTime } from "@/lib/format";
+import { dayKey, minsToHuman } from "@/lib/format";
+import { getFormatters } from "@/i18n/formatters";
 import type { Activity, ActivityKind, Lead } from "@/lib/data/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activi
 
 export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { inr, relTime, dateShort: fmtDate, date: fmtDateY, time: fmtTime } = await getFormatters();
   const { ds, now, role, session, masked, active, slaHours, slaMins } = await pageCtx();
   const v = vocabFor(active.tenant), ld = v.ld, hosp = v.id === "hospitality";
   const lead = await ds.lead(id);
