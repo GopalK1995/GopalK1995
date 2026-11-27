@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { messagesFor, mergeMessages } from "../layering";
-import { resolveLocale } from "../config";
+import { intlTag, parseAcceptLanguage, resolveLocale } from "../config";
 import { BASE } from "../registry";
 import { formatters } from "@/lib/format";
 import review from "../../../messages/ta/_review.json";
@@ -34,13 +34,30 @@ describe("messagesFor layering precedence", () => {
 });
 
 describe("locale resolution", () => {
-  it("profile, then cookie, then en", () => {
-    expect(resolveLocale("ta", "en", true)).toBe("ta");
-    expect(resolveLocale(null, "ta", true)).toBe("ta");
-    expect(resolveLocale("fr", undefined, true)).toBe("en");
+  it("cookie, then profile, then Accept-Language, then en", () => {
+    expect(resolveLocale("en", "ta", "ta", true)).toBe("en");
+    expect(resolveLocale("ta", "en", "en", true)).toBe("ta");
+    expect(resolveLocale(null, "ta", "en", true)).toBe("ta");
+    expect(resolveLocale(null, null, "ta-IN,ta;q=0.9,en;q=0.8", true)).toBe("ta");
+    expect(resolveLocale(null, null, "fr-FR", true)).toBe("en");
+    expect(resolveLocale("fr", "de", undefined, true)).toBe("en");
+    expect(resolveLocale()).toBe("en");
   });
-  it("Tamil stays off while the review gate is closed", () => {
-    expect(resolveLocale("ta", "ta", false)).toBe("en");
+  it("Tamil stays off while the review gate is closed, and does not fall through to another source", () => {
+    expect(resolveLocale("ta", "ta", "ta", false)).toBe("en");
+    expect(resolveLocale("ta", "en", null, false)).toBe("en");
+  });
+  it("parseAcceptLanguage honours q-values, region tags and unsupported languages", () => {
+    expect(parseAcceptLanguage("en-GB;q=0.5, ta-IN;q=0.9")).toBe("ta");
+    expect(parseAcceptLanguage("EN-in,ta;q=0.2")).toBe("en");
+    expect(parseAcceptLanguage("ta;q=0")).toBeNull();
+    expect(parseAcceptLanguage("hi, fr;q=0.8")).toBeNull();
+    expect(parseAcceptLanguage("")).toBeNull();
+    expect(parseAcceptLanguage(null)).toBeNull();
+  });
+  it("html lang tags are en-IN and ta-IN", () => {
+    expect(intlTag("en")).toBe("en-IN");
+    expect(intlTag("ta")).toBe("ta-IN");
   });
 });
 

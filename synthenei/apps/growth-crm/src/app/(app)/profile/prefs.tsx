@@ -4,6 +4,7 @@ import { useVocab } from "@/components/shell/providers";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { LanguageSelect } from "@/components/shell/language-switcher";
 
 const field = fieldCls;
 export function Prefs({ name, email }: { name: string; email: string }) {
@@ -15,7 +16,7 @@ export function Prefs({ name, email }: { name: string; email: string }) {
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Full name</span><input className={field} defaultValue={name} /></label>
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Email</span><input className={field + " bg-paper-2 text-ink-3"} defaultValue={email} readOnly /></label>
         <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Mobile (for WhatsApp alerts)</span><input className={field} defaultValue="+91 98xxx xx214" /></label>
-        <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Language</span><select className={field} defaultValue="en"><option value="en">English</option><option value="ta">தமிழ் (Tamil)</option></select></label>
+        <LanguageSelect />
       </div>
       <fieldset className="rounded-md border border-line p-3">
         <legend className="px-1 text-[12px] font-medium text-ink-2">Notify me</legend>
