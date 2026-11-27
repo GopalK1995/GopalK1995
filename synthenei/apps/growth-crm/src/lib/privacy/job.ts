@@ -4,6 +4,8 @@
 import "server-only";
 import { registerHandler, type JobHandler } from "@/lib/jobs/registry";
 import { runRetention, supabaseRetentionPort, type RunMode } from "./retention";
+import { sweepDue } from "./alerts";
+import { supabaseAlertPort } from "./alerts-supabase";
 
 export const RETENTION_KIND = "privacy.retention";
 export interface RetentionPayload { mode?: RunMode; tenant_id?: string | null }
@@ -41,3 +43,21 @@ export const purgeHandler: JobHandler<PurgePayload> = async (p, ctx) => {
   return "done";
 };
 registerHandler("maintenance", PURGE_KIND, purgeHandler);
+
+// ---------- response-clock sweep (AUD-064, PRIV-021) ----------
+// Daily. Alerts the workspace owners once at due-5d and once when a request is overdue, then drops spent tokens. Reads open requests and
+// writes events and notifications only; a request that fails is counted and the others still run. Counts only are logged.
+export const DSR_DUE_KIND = "privacy.dsr_due";
+export const dsrDueHandler: JobHandler<Record<string, never>> = async (_p, ctx) => {
+  const db = ctx.db as never;
+  const r = await sweepDue(supabaseAlertPort(db), Date.now());
+  ctx.log.info("privacy.dsr_due", { scanned: r.scanned, due_soon: r.dueSoon, overdue: r.overdue, skipped: r.skipped, failed: r.failed });
+  if (r.failed) ctx.log.warn("privacy.dsr_due: some requests could not be alerted", { n: r.failed });
+  // Housekeeping is best effort: the function only exists after migration 0032.
+  try {
+    const p = await (ctx.db as unknown as { rpc(fn: string, a: Record<string, unknown>): PromiseLike<{ error: { code?: string } | null }> }).rpc("privacy_tokens_purge", {});
+    if (p.error && p.error.code !== "42883" && p.error.code !== "PGRST202") ctx.log.warn("privacy_tokens_purge did not run", { code: p.error.code ?? null });
+  } catch { /* ignore */ }
+  return "done";   // the next daily run tries again; alerts are idempotent per (type, request)
+};
+registerHandler("maintenance", DSR_DUE_KIND, dsrDueHandler);

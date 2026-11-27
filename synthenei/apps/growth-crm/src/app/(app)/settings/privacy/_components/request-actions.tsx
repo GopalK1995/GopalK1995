@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form";
+import { fmtIstDateTimeZ } from "@/lib/datetime";
 import type { ActionResult } from "@/lib/actions/result";
 import type { ErasureReport } from "@/lib/privacy/erasure";
 import { CONSENT_PURPOSES, type RequestKind, type RequestStatus } from "@/lib/privacy/types";
 import { EraseButton, ErasureReportList } from "../../_components/privacy-controls";
-import { addRequestNote, captureConsentAction, linkRequestLead, setRequestStatus } from "../actions";
+import { addRequestNote, captureConsentAction, createExportDelivery, linkRequestLead, setRequestStatus } from "../actions";
 
 type S = Record<string, string>;
 function useAct() {
@@ -22,6 +23,33 @@ function useAct() {
 }
 const Msg = ({ m }: { m: { ok: boolean; text: string } | null }) => (m ? <p role="status" className={`text-13 ${m.ok ? "text-ink-2" : "text-danger"}`}>{m.text}</p> : null);
 const panel = "grid gap-2 rounded-card border border-line bg-surface p-4";
+
+/** One-time delivery link for an access bundle. The link is shown once here; the owner sends it through a channel they trust. */
+function DeliveryPanel({ s, id, leadId, demo, closed }: { s: S; id: string; leadId: string | null; demo: boolean; closed: boolean }) {
+  const { pending, msg, run } = useAct();
+  const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const make = () => run(async () => { const r = await createExportDelivery(id); if (r.ok && r.data) setLink(r.data); return r; });
+  const disabledReason = demo ? s["result.demo"] : !leadId ? s["detail.delivery.needLead"] : undefined;
+  return (
+    <section className={panel} aria-labelledby="dlv-h" data-testid="export-delivery">
+      <h2 id="dlv-h" className="text-15 font-semibold text-ink">{s["detail.delivery.title"]}</h2>
+      <p className="text-13 text-ink-2">{s["detail.delivery.body"]}</p>
+      <div><Button size="sm" onClick={make} disabled={pending || !!disabledReason || closed} disabledReason={disabledReason}>{s["detail.delivery.create"]}</Button></div>
+      <Msg m={msg} />
+      {link && (
+        <div className="grid gap-1" data-testid="delivery-link">
+          <label htmlFor="dlv-url" className="text-13 font-medium text-ink">{s["detail.delivery.link"]}</label>
+          <div className="flex gap-2">
+            <Input id="dlv-url" readOnly value={link.url} onFocus={(e) => e.currentTarget.select()} />
+            <Button size="sm" onClick={() => { void navigator.clipboard?.writeText(link.url).then(() => setCopied(true), () => undefined); }}>{copied ? s["detail.delivery.copied"] : s["detail.delivery.copy"]}</Button>
+          </div>
+          <p className="text-13 text-ink-3">{s["detail.delivery.expires"].replace("{when}", fmtIstDateTimeZ(link.expiresAt))}</p>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export function RequestActions(p: { s: S; id: string; kind: RequestKind; status: RequestStatus; leadId: string | null; subject: string; canErase: boolean; demo: boolean }) {
   const { s } = p, closed = p.status === "completed" || p.status === "rejected";
@@ -38,6 +66,9 @@ export function RequestActions(p: { s: S; id: string; kind: RequestKind; status:
               : <Button size="sm" disabled disabledReason={p.demo ? s["result.demo"] : s["detail.access.needLead"]}><Download />{s["detail.access.download"]}</Button>}
           </div>
         </section>
+      )}
+      {p.kind === "access" && (
+        <DeliveryPanel s={s} id={p.id} leadId={p.leadId} demo={p.demo} closed={closed} />
       )}
       {p.kind === "correction" && <section className={panel}><h2 className="text-15 font-semibold text-ink">{s["detail.correction.title"]}</h2><p className="text-13 text-ink-2">{s["detail.correction.body"]}</p></section>}
       {p.kind === "withdrawal" && <section className={panel}><h2 className="text-15 font-semibold text-ink">{s["detail.withdrawal.title"]}</h2><p className="text-13 text-ink-2">{s["detail.withdrawal.body"]}</p></section>}

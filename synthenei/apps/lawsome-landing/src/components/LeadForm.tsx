@@ -5,6 +5,9 @@ import { submitLead } from "@/lib/submitLead";
 
 const ROLES = ["Managing partner / owner", "Senior advocate / practice head", "Associate / lawyer", "Legal operations / admin", "Other"];
 type Errors = Partial<Record<"name" | "email" | "firm" | "role" | "phone" | "consent", string>>;
+const PRIVACY_LINK = <a href="/privacy" style={{ textDecoration: "underline" }}>privacy notice</a>;
+// Where a person withdraws: the workspace's public privacy page in the CRM (it verifies the email and applies the withdrawal at once).
+const WITHDRAW_URL = process.env.NEXT_PUBLIC_PRIVACY_REQUEST_URL || "/privacy";
 
 export function LeadForm() {
   const [errors, setErrors] = useState<Errors>({});
@@ -16,13 +19,13 @@ export function LeadForm() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const str = (k: string) => String(f.get(k) ?? "");
-    const body = { name: str("name"), email: str("email"), firm: str("firm"), role: str("role"), phone: str("phone"), website: str("website"), consent: f.get("consent") === "on", utm: captureUtm() };
+    const body = { name: str("name"), email: str("email"), firm: str("firm"), role: str("role"), phone: str("phone"), website: str("website"), consent_followup: f.get("consent_followup") === "on", consent_marketing: f.get("consent_marketing") === "on", utm: captureUtm() };
     const local: Errors = {};
     if (String(body.name ?? "").trim().length < 2) local.name = "Please enter your name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(body.email ?? "").trim())) local.email = "Please enter a valid work email.";
     if (String(body.firm ?? "").trim().length < 2) local.firm = "Please enter your law firm.";
     if (!body.role) local.role = "Please select your role.";
-    if (!body.consent) local.consent = "Consent is required so we can contact you.";
+    if (!body.consent_followup) local.consent = "Please tick the first box so we can contact you about the demo.";
     setErrors(local);
     if (Object.keys(local).length) return;
     setState("sending");
@@ -56,9 +59,13 @@ export function LeadForm() {
         <label>Phone (optional)<input name="phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} />{errors.phone && <span className="err">{errors.phone}</span>}</label>
       </div>
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden style={{ position: "absolute", left: "-9999px", height: 0, width: 0, opacity: 0 }} />
-      <label className="consent"><input type="checkbox" name="consent" />
-        <span>I agree that LAWSOME may contact me about a demo and process my details as described in the <a href="/privacy" style={{ textDecoration: "underline" }}>privacy notice</a>. I can withdraw consent at any time.</span></label>
+      {/* Two separate consents, neither pre-ticked. The first is needed to answer this request; the second is optional and never bundled with it. */}
+      <label className="consent"><input type="checkbox" name="consent_followup" defaultChecked={false} aria-invalid={!!errors.consent} />
+        <span>I agree that LAWSOME may contact me to arrange this demo and process the details above for that purpose, as described in the {PRIVACY_LINK}.</span></label>
       {errors.consent && <span className="err">{errors.consent}</span>}
+      <label className="consent"><input type="checkbox" name="consent_marketing" defaultChecked={false} />
+        <span>(Optional) I also agree to receive LAWSOME product news and offers by email.</span></label>
+      <p className="hint" style={{ fontSize: "0.85em", color: "var(--c-ink-2)" }}>You can withdraw either consent at any time, as easily as you gave it: use <a href={WITHDRAW_URL} style={{ textDecoration: "underline" }}>the withdrawal form</a> (it takes one email confirmation) or the unsubscribe link in any email.</p>
       <button className="btn btn-primary" disabled={state === "sending"}>{state === "sending" ? "Sending…" : "See LAWSOME in Action"}</button>
       {state === "fail" && <span className="err" role="alert">Something went wrong. Please try again, or email us directly.</span>}
     </form>

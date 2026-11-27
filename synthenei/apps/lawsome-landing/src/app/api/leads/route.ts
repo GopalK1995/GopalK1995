@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FORM_ID, clientIp, ipHash, uaClass } from "@/lib/evidence";
 
 const ROLES = ["Managing partner / owner", "Senior advocate / practice head", "Associate / lawyer", "Legal operations / admin", "Other"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -24,29 +25,35 @@ function cleanUtm(v: unknown): Record<string, string> {
  * The RPC validates again, throttles, writes leads + consent_log + lead_events, and returns only the lead id.
  * No table is readable with this key. The service-role key is an optional server-only fallback.
  */
-async function submitToSupabase(lead: { name: string; email: string; organisation: string; role: string; phone: string; utm: Record<string, string> }, path: string) {
+type Evidence = { formId: string; ipHash: string | null; uaClass: string };
+type SbLead = { name: string; email: string; organisation: string; role: string; phone: string; utm: Record<string, string>; followup: boolean; marketing: boolean };
+async function submitToSupabase(lead: SbLead, path: string, ev: Evidence) {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
   if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`; // legacy JWT keys; sb_publishable_ keys use apikey only
-  const r = await fetch(`${url}/rest/v1/rpc/submit_lead`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      p_workspace: process.env.NEXT_PUBLIC_LEAD_WORKSPACE || process.env.LEAD_WORKSPACE || "lawsome-tn",
-      p_full_name: lead.name,
-      p_email: lead.email,
-      p_phone: lead.phone || null,
-      p_firm_name: lead.organisation,
-      p_role_title: lead.role,
-      p_consent_followup: true,
-      p_notice_version: process.env.PRIVACY_NOTICE_VERSION || "v1",
-      p_utm: lead.utm,
-      p_landing_path: path,
-    }),
-    cache: "no-store",
-  }).catch(() => null);
+  const base = {
+    p_workspace: process.env.NEXT_PUBLIC_LEAD_WORKSPACE || process.env.LEAD_WORKSPACE || "lawsome-tn",
+    p_full_name: lead.name,
+    p_email: lead.email,
+    p_phone: lead.phone || null,
+    p_firm_name: lead.organisation,
+    p_role_title: lead.role,
+    // Two separate boxes, neither pre-ticked: contact about the demo (needed to answer the request) and marketing (optional, off by default).
+    p_consent_followup: lead.followup,
+    p_consent_marketing: lead.marketing,
+    p_notice_version: process.env.PRIVACY_NOTICE_VERSION || "v1",
+    p_utm: lead.utm,
+    p_landing_path: path,
+  };
+  const call = (body: Record<string, unknown>) => fetch(`${url}/rest/v1/rpc/submit_lead`, { method: "POST", headers, body: JSON.stringify(body), cache: "no-store" }).catch(() => null);
+  // Evidence parameters exist once migration 0032 is applied. Until then PostgREST answers PGRST202 and the same call goes without them.
+  let r = await call({ ...base, p_form_id: ev.formId, p_ip_hash: ev.ipHash, p_ua_class: ev.uaClass });
+  if (r && r.status === 404) {
+    const peek = (await r.clone().json().catch(() => ({}))) as { code?: string };
+    if (peek.code === "PGRST202") r = await call(base);
+  }
   if (!r) return { ok: false, status: 503 };
   if (r.ok) return { ok: true, status: 200, id: ((await r.json().catch(() => null)) as string | null) ?? undefined };
   const err = (await r.json().catch(() => ({}))) as { code?: string };
@@ -61,7 +68,9 @@ export async function POST(req: Request) {
 
   const lead = {
     name: s(b.name, 120), email: s(b.email, 160).toLowerCase(), organisation: s(b.firm, 160),
-    role: s(b.role, 80), phone: s(b.phone, 30), consent: b.consent === true,
+    role: s(b.role, 80), phone: s(b.phone, 30),
+    // consent_followup is the current field; the old single `consent` flag still means "contact me about the demo" and nothing more.
+    followup: b.consent_followup === true || b.consent === true, marketing: b.consent_marketing === true,
     utm: cleanUtm(b.utm), source: "lawsome-landing",
   };
   const errors: Record<string, string> = {};
@@ -70,7 +79,7 @@ export async function POST(req: Request) {
   if (lead.organisation.length < 2) errors.firm = "Please enter your law firm.";
   if (!ROLES.includes(lead.role)) errors.role = "Please select your role.";
   if (lead.phone && !/^[+\d][\d\s-]{7,18}$/.test(lead.phone)) errors.phone = "Please enter a valid phone number.";
-  if (!lead.consent) errors.consent = "Consent is required so we can contact you.";
+  if (!lead.followup) errors.consent = "Please tick the box that lets us contact you about the demo, or leave the form.";
   if (Object.keys(errors).length) return NextResponse.json({ errors }, { status: 422 });
 
   const record = { ...lead, personal_email: free.test(lead.email), created_at: new Date().toISOString() };
@@ -78,7 +87,8 @@ export async function POST(req: Request) {
   try { path = new URL(req.headers.get("referer") || "/", "http://x").pathname.slice(0, 300); } catch { /* keep "/" */ }
 
   let stored = false;
-  const sb = await submitToSupabase(lead, path);
+  const evidence: Evidence = { formId: FORM_ID, ipHash: ipHash(clientIp(req.headers), process.env.LEAD_EVIDENCE_SECRET || ""), uaClass: uaClass(req.headers.get("user-agent")) };
+  const sb = await submitToSupabase(lead, path, evidence);
   if (sb) {
     stored = sb.ok;
     if (sb.status === 429) return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });

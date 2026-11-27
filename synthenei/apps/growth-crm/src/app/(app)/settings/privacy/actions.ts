@@ -72,6 +72,32 @@ export async function linkRequestLead(input: { id: string; leadId: string }): Pr
   });
 }
 
+/**
+ * Access delivery (AUD-064, PRIV-023): a one-time, 24 hour link the owner hands to the data principal. The principal must type the address
+ * they used for the request, the file downloads once, and every step is audited under the owner's name. A newer link cancels an older one.
+ */
+export async function createExportDelivery(requestId: string): Promise<ActionResult<{ url: string; expiresAt: string }>> {
+  return runAction<{ url: string; expiresAt: string }>(async () => {
+    const id = ref.parse(requestId), c = await fulfilCtx(), { t } = await getPrT();
+    if (c.demo || !c.db) return okResult<{ url: string; expiresAt: string }>(t("result.demo"));
+    uuid.parse(id);
+    const { dsrDeps } = await import("@/lib/privacy/runtime");
+    const { issueExportDelivery } = await import("@/lib/privacy/dsr");
+    const base = (process.env.APP_BASE_URL ?? "").trim().replace(/\/+$/, "");
+    const deps = { ...dsrDeps(), audit: async (e: { action: string; requestId: string | null; summary: string; detail?: Record<string, unknown> }) => {
+      try { await audit(act(c), { action: e.action, summary: e.summary, object: { table: "privacy_requests", id: e.requestId ?? id }, detail: e.detail }); return true; } catch { return false; }
+    } };
+    const r = await issueExportDelivery(deps, { wsUuid: c.ws, requestId: id, createdBy: c.uid });
+    if (r.status === "not_found") return failResult("not_found", t("result.notFound"));
+    if (r.status === "not_access") return failResult("invalid", t("result.deliveryNotAccess"));
+    if (r.status === "no_lead") return failResult("invalid", t("detail.delivery.needLead"));
+    if (r.status === "closed") return failResult("conflict", t("result.deliveryClosed"));
+    if (r.status !== "ok" || !base) return failResult("error", t("result.deliveryUnavailable"));
+    revalidatePath(`/settings/privacy/${id}`);
+    return okResult(t("result.deliveryIssued"), { data: { url: `${base}${r.path}`, expiresAt: r.expiresAt } });
+  });
+}
+
 /** Erasure. Owner only (erase_lead enforces it again in the database), never in a support session. Returns the step report. */
 export async function completeErasure(requestId: string): Promise<ActionResult<ErasureReport>> {
   return runAction<ErasureReport>(async () => {
@@ -106,7 +132,11 @@ export async function captureConsentAction(input: z.input<typeof consentSchema>)
     const v = consentSchema.parse(input), c = await fulfilCtx(), { t } = await getPrT();
     if (c.demo || !c.db) return demoDone();
     uuid.parse(v.leadId);
-    await captureConsent(c.db, c.ws, c.uid, { leadId: v.leadId, purpose: v.purpose, action: v.action, via: v.via, noticeVersion: v.noticeVersion ?? "v1", note: v.note });
+    // The row cites the text of the notice the workspace publishes now (version + hash). If it cannot be resolved the label is all we keep.
+    const { serviceDb } = await import("@/lib/db/service");
+    const { currentNotice } = await import("@/lib/privacy/notice-registry");
+    const notice = await currentNotice(serviceDb(), c.ws);
+    await captureConsent(c.db, c.ws, c.uid, { leadId: v.leadId, purpose: v.purpose, action: v.action, via: v.via, noticeVersion: v.noticeVersion ?? notice?.version ?? "v1", note: v.note, evidence: { noticeSha256: v.noticeVersion ? null : (notice?.sha256 ?? null) } });
     await audit(act(c), { action: "privacy.consent_captured", summary: `Consent ${v.action} recorded by a team member`, object: { table: "leads", id: v.leadId }, detail: { purpose: v.purpose, via: v.via } });
     revalidatePath("/settings/privacy");
     return okResult(t("result.saved"));

@@ -3,6 +3,7 @@ import { PendingButton } from "@/components/ui/submit-button";
 import Link from "next/link";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { VERIFY_TTL_MS, previewConfirm } from "@/lib/privacy/intake";
+import { statusPath } from "@/lib/privacy/dsr";
 import { getPrT } from "@/lib/privacy/strings-server";
 import { confirmVerification } from "../../../actions";
 import { fmtIstDateLong, IST_LABEL } from "@/lib/datetime";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const fmtDue = (iso: string) => (fmtIstDateLong(iso) ? `${fmtIstDateLong(iso)} ${IST_LABEL}` : iso);
 
-export default async function VerifyPage({ params, searchParams }: { params: Promise<{ ws: string; token: string }>; searchParams: Promise<{ r?: string; due?: string; k?: string; w?: string }> }) {
+export default async function VerifyPage({ params, searchParams }: { params: Promise<{ ws: string; token: string }>; searchParams: Promise<{ r?: string; due?: string; k?: string; w?: string; st?: string }> }) {
   const { ws: slug, token: raw } = await params, q = await searchParams;
   const { t } = await getPrT();
   const token = decodeURIComponent(raw);
@@ -34,12 +35,16 @@ export default async function VerifyPage({ params, searchParams }: { params: Pro
   const p = await previewConfirm(deps, token);
   if (p.status === "expired") return shell(t("verify.expiredTitle"), t("verify.expiredBody", { hours }));
   if (p.status === "unavailable") return shell(t("verify.invalidTitle"), t("verify.unavailable"));
-  if (p.status !== "ready") return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
+  if (p.status !== "ready" && p.status !== "used") return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
   if (p.slug !== slug) return shell(t("verify.invalidTitle"), t("verify.invalidBody"));
 
   const due = q.due ? fmtDue(q.due) : "";
-  if (q.r === "created") return shell(t("verify.createdTitle"), `${t("verify.createdBody", { org: p.orgName, due })}${q.w === "1" ? ` ${t("verify.withdrawnBody")}` : ""}`);
-  if (q.r === "duplicate") return shell(t("verify.duplicateTitle"), t("verify.duplicateBody", { org: p.orgName, due }));
+  // After the press the link is spent (single use), so the result states below are shown for a spent link too. They carry no personal data.
+  const statusLink = q.st && /^p1\.s\.[A-Za-z0-9_-]{32}\.[A-Za-z0-9_-]{22}$/.test(q.st)
+    ? <p className="text-13 text-ink-2" data-testid="verify-status-link"><Link href={statusPath(slug, q.st)} className="font-medium text-accent underline">{t("verify.statusLink")}</Link> {t("verify.statusLinkNote")}</p> : null;
+  if (q.r === "created") return shell(t("verify.createdTitle"), `${t("verify.createdBody", { org: p.orgName, due })}${q.w === "1" ? ` ${t("verify.withdrawnBody")}` : ""}`, statusLink);
+  if (q.r === "duplicate") return shell(t("verify.duplicateTitle"), t("verify.duplicateBody", { org: p.orgName, due }), statusLink);
+  if (p.status === "used" || q.r === "used") return shell(t("verify.usedTitle"), t("verify.usedBody"));
   if (q.r === "rate_limited") return shell(t("verify.invalidTitle"), t("verify.rateLimited"));
   if (q.r === "unavailable") return shell(t("verify.invalidTitle"), t("verify.unavailable"));
 

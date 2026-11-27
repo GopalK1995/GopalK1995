@@ -7,16 +7,28 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { platformEmailSender } from "@/lib/connectors/email/platform";
 import { EMAIL_ENV } from "@/lib/connectors/email/constants";
 import type { IntakeDeps } from "./intake";
+import { alertRequestReceived } from "./alerts";
+import { supabaseAlertPort } from "./alerts-supabase";
+import type { DsrDeps } from "./dsr";
+import { supabaseAuditWriter, supabaseDsrStore } from "./dsr-supabase";
+import { noticeSnapshot } from "./evidence";
 import { supabaseIntakeStore } from "./store-supabase";
 import { makePrT, type PrT } from "./strings";
+import { supabaseTokenPort } from "./tokens-supabase";
 
 export const PRIVACY_ENV = { verifySecret: "PRIVACY_VERIFY_SECRET" } as const;
 
 export function intakeDeps(t: PrT = makePrT("en")): IntakeDeps {
   const env = process.env;
   const sender = platformEmailSender(env);
+  const svc = serviceDb();
+  const warn = (m: string) => console.warn(`[privacy] ${m}`);
   return {
-    store: supabaseIntakeStore(serviceDb(), (m) => console.warn(`[privacy] ${m}`)),
+    store: supabaseIntakeStore(svc, warn),
+    tokens: supabaseTokenPort(svc),
+    alert: (r) => alertRequestReceived(supabaseAlertPort(svc), r).then(() => undefined),
+    audit: supabaseAuditWriter(svc, warn),
+    noticeSnapshot: (ws) => noticeSnapshot(ws, makePrT("en")),
     secret: (env[PRIVACY_ENV.verifySecret] ?? "").trim(), baseUrl: (env[EMAIL_ENV.appBaseUrl] ?? "").trim(), now: () => Date.now(),
     rate: async (key, limit, windowMs) => (await rateLimit("privacy", key, { limit, windowMs })).ok,
     // With no platform sender configured the form must say "unavailable", not pretend a link was mailed.
@@ -25,5 +37,16 @@ export function intakeDeps(t: PrT = makePrT("en")): IntakeDeps {
       subject: t("mail.subject", { org, kind: t(`kind.${kind}`) }),
       text: t("mail.body", { org, kind: t(`kind.${kind}`).toLowerCase(), link, hours }),
     }),
+  };
+}
+
+/** Ports for the requester-facing status and export pages (AUD-064). Same secret as the verification link. */
+export function dsrDeps(): DsrDeps {
+  const svc = serviceDb();
+  const warn = (m: string) => console.warn(`[privacy] ${m}`);
+  return {
+    store: supabaseDsrStore(svc, warn), tokens: supabaseTokenPort(svc), secret: (process.env[PRIVACY_ENV.verifySecret] ?? "").trim(), now: () => Date.now(),
+    rate: async (key, limit, windowMs) => (await rateLimit("privacy", key, { limit, windowMs })).ok,
+    audit: supabaseAuditWriter(svc, warn),
   };
 }

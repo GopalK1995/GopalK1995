@@ -33,7 +33,9 @@ export async function confirmVerification(slug: string, token: string): Promise<
   if (!supabaseConfigured()) redirect(`${base}?r=unavailable`);
   const { intakeDeps } = await import("@/lib/privacy/runtime");
   let out: Awaited<ReturnType<typeof confirmRequest>>;
-  try { out = await confirmRequest(intakeDeps(), t, clientKey(await headers())); } catch { redirect(`${base}?r=unavailable`); }
-  if (out.status === "created" || out.status === "duplicate") redirect(`${base}?r=${out.status}&due=${encodeURIComponent(out.dueAt.slice(0, 10))}&k=${out.kind}${out.status === "created" && out.kind === "withdrawal" ? "&w=1" : ""}`);
+  const h = await headers();
+  try { out = await confirmRequest(intakeDeps(), t, clientKey(h), h.get("user-agent")); } catch { redirect(`${base}?r=unavailable`); }
+  // st = a read-only status link for this request (bounded views, expires). It is shown once on the result page.
+  if (out.status === "created" || out.status === "duplicate") redirect(`${base}?r=${out.status}&due=${encodeURIComponent(out.dueAt.slice(0, 10))}&k=${out.kind}${out.status === "created" && out.kind === "withdrawal" ? "&w=1" : ""}${out.statusToken ? `&st=${encodeURIComponent(out.statusToken)}` : ""}`);
   redirect(`${base}?r=${out.status}`);
 }

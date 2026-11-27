@@ -8,7 +8,7 @@ export default function Privacy() {
       <p style={{ background: "var(--c-warn-bg)", padding: 12, borderRadius: 10, marginBottom: 20 }}><b>DRAFT — requires legal review before launch</b> (DPDP Act 2023 and applicable rules).</p>
       <p><b>What we collect.</b> The details you submit in the demo form (name, work email, law firm, role, optional phone) and, only if you accept analytics, anonymous page-usage events and campaign (UTM) parameters.</p>
       <p style={{ marginTop: 12 }}><b>Why.</b> To respond to your demo request and understand which campaigns work. We do not use this form to collect case or client data.</p>
-      <p style={{ marginTop: 12 }}><b>Your choices.</b> You can decline analytics, and withdraw consent or request deletion at any time by contacting [privacy contact email — to be added].</p>
+      <p style={{ marginTop: 12 }}><b>Your choices.</b> You can decline analytics, and withdraw consent or request deletion at any time{process.env.NEXT_PUBLIC_PRIVACY_REQUEST_URL ? <> using <a href={process.env.NEXT_PUBLIC_PRIVACY_REQUEST_URL} style={{ textDecoration: "underline" }}>the privacy request form</a></> : null}, or by contacting [privacy contact email — to be added]. The demo form asks for two separate consents (to contact you about the demo, and, optionally, to send product news); neither box is ticked in advance.</p>
       <p style={{ marginTop: 12 }}><b>Retention and sharing.</b> [To be defined by the LAWSOME team.]</p>
     </main>
   );

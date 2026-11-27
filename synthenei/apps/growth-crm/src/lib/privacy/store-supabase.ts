@@ -5,6 +5,8 @@ import "server-only";
 import type { Db } from "@/lib/db/client";
 import { from } from "@/lib/db/query";
 import { consentRowsForSubject } from "./consent-lookup";
+import { insertConsentRows, registerNotice } from "./consent-write";
+import { evidenceColumns } from "./evidence";
 import type { IntakeStore } from "./intake";
 import { LEAD_CONSENT_FLAG, type ConsentPurpose, type NoticeConfig, type PublicWorkspace } from "./types";
 import { normaliseEmail } from "./subject";
@@ -79,11 +81,17 @@ export function supabaseIntakeStore(db: Db, warn: (m: string) => void = () => un
       for (const r of (prev.data as R[] | null) ?? []) if (!latest.has(String(r.purpose))) latest.set(String(r.purpose), String(r.action));
       const todo = i.purposes.filter((p) => latest.get(p) !== "withdrawn");
       const targets: (string | null)[] = i.leadIds.length ? i.leadIds : [null];
+      // Evidence (AUD-063): the notice text is registered first so the hash on the row points at something. Anything that cannot be
+      // recorded (table or columns not there yet) is left out; the withdrawal itself always goes through.
+      const ev = i.evidence;
+      let noticeSha: string | null = null;
+      if (ev?.notice && todo.length && (await registerNotice(db, i.tenantUuid, ev.notice)) === "ok") noticeSha = ev.notice.sha256;
+      const evidence = ev ? evidenceColumns({ noticeSha256: noticeSha, formId: ev.formId, ipHash: ev.ipHash, uaClass: ev.uaClass }) : {};
       const rows = todo.flatMap((p) => targets.map((leadId) => ({
         tenant_id: i.tenantUuid, workspace_id: i.wsUuid, lead_id: leadId, subject_ref: i.subjectRef, purpose: p, action: "withdrawn",
-        notice_version: i.noticeVersion.slice(0, 40), captured_via: "request", note: "Withdrawn by the data principal after email verification",
+        notice_version: i.noticeVersion.slice(0, 40), captured_via: "request", note: "Withdrawn by the data principal after email verification", ...evidence,
       })));
-      if (rows.length) { const ins = await q("consent_log").insert(rows); if (ins.error) throw failed("consent insert"); }
+      if (rows.length) { const ins = await insertConsentRows(db, rows); if (ins.error) throw failed("consent insert"); }
       const flags: R = {};
       for (const p of i.purposes as ConsentPurpose[]) { const f = LEAD_CONSENT_FLAG[p]; if (f) flags[f] = false; }
       if (i.leadIds.length && Object.keys(flags).length) {

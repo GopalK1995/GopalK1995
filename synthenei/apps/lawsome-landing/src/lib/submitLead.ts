@@ -4,7 +4,7 @@
 // anon/publishable key — the RPC is SECURITY DEFINER, validates, throttles and returns only the lead id.
 // Same payload mapping as src/app/api/leads/route.ts.
 
-export type LeadInput = { name: string; email: string; firm: string; role: string; phone: string; website: string; consent: boolean; utm: Record<string, string> };
+export type LeadInput = { name: string; email: string; firm: string; role: string; phone: string; website: string; consent_followup: boolean; consent_marketing: boolean; utm: Record<string, string> };
 export type LeadResult = { ok: true } | { ok: false; status: number; errors?: Record<string, string> };
 
 const STATIC = process.env.NEXT_PUBLIC_STATIC_EXPORT === "1";
@@ -12,7 +12,7 @@ const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_c
 
 async function viaRpc(b: LeadInput): Promise<LeadResult> {
   if (b.website.trim()) return { ok: true }; // honeypot
-  if (b.consent !== true) return { ok: false, status: 422, errors: { consent: "Consent is required so we can contact you." } };
+  if (b.consent_followup !== true) return { ok: false, status: 422, errors: { consent: "Please tick the box that lets us contact you about the demo, or leave the form." } };
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
   if (!url || !key) { console.info("[leads:demo-mode] no Supabase env in this static build; request not stored"); return { ok: true }; }
@@ -20,21 +20,23 @@ async function viaRpc(b: LeadInput): Promise<LeadResult> {
   for (const k of UTM_KEYS) if (typeof b.utm[k] === "string" && b.utm[k]) utm[k] = b.utm[k].slice(0, 120);
   const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
   if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`; // legacy JWT anon keys
-  const r = await fetch(`${url}/rest/v1/rpc/submit_lead`, {
-    method: "POST", headers,
-    body: JSON.stringify({
-      p_workspace: process.env.NEXT_PUBLIC_LEAD_WORKSPACE || "lawsome-tn",
-      p_full_name: b.name.trim().slice(0, 120),
-      p_email: b.email.trim().toLowerCase().slice(0, 160),
-      p_phone: b.phone.trim().slice(0, 30) || null,
-      p_firm_name: b.firm.trim().slice(0, 160),
-      p_role_title: b.role.slice(0, 80),
-      p_consent_followup: b.consent === true,
-      p_notice_version: process.env.NEXT_PUBLIC_PRIVACY_NOTICE_VERSION || "v1",
-      p_utm: utm,
-      p_landing_path: window.location.pathname.slice(0, 300),
-    }),
-  });
+  const base = {
+    p_workspace: process.env.NEXT_PUBLIC_LEAD_WORKSPACE || "lawsome-tn",
+    p_full_name: b.name.trim().slice(0, 120),
+    p_email: b.email.trim().toLowerCase().slice(0, 160),
+    p_phone: b.phone.trim().slice(0, 30) || null,
+    p_firm_name: b.firm.trim().slice(0, 160),
+    p_role_title: b.role.slice(0, 80),
+    p_consent_followup: b.consent_followup === true,
+    p_consent_marketing: b.consent_marketing === true,
+    p_notice_version: process.env.NEXT_PUBLIC_PRIVACY_NOTICE_VERSION || "v1",
+    p_utm: utm,
+    p_landing_path: window.location.pathname.slice(0, 300),
+  };
+  const call = (body: Record<string, unknown>) => fetch(`${url}/rest/v1/rpc/submit_lead`, { method: "POST", headers, body: JSON.stringify(body) });
+  // A static page has no server to see the client address, so it records the form id only. PGRST202 = migration 0032 not applied: retry without it.
+  let r = await call({ ...base, p_form_id: "lawsome-landing/demo-form@v2" });
+  if (r.status === 404 && ((await r.clone().json().catch(() => ({}))) as { code?: string }).code === "PGRST202") r = await call(base);
   if (r.ok) return { ok: true };
   const err = (await r.json().catch(() => ({}))) as { code?: string };
   return { ok: false, status: err.code === "54000" ? 429 : err.code === "22023" ? 422 : 502 };

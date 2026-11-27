@@ -29,3 +29,16 @@ const NEXT: Record<RequestStatus, RequestStatus[]> = {
   received: ["in_progress", "completed", "rejected"], in_progress: ["completed", "rejected"], completed: [], rejected: [],
 };
 export const canMove = (from: RequestStatus, to: RequestStatus): boolean => NEXT[from].includes(to);
+
+/**
+ * The response clock of one request. dueAt is fixed at intake by the DB trigger (received + tenants.privacy_response_days); this only
+ * reads it. "Whole days left" uses the same rule as daysLeft; percent is how much of the window has gone, clamped to 0..100.
+ */
+export interface SlaClock { totalDays: number; elapsedDays: number; daysLeft: number; percent: number; state: DueState }
+export function slaClock(status: RequestStatus, receivedAt: string, dueAt: string, now: number, soonDays = 5): SlaClock {
+  const r = new Date(receivedAt).getTime(), d = new Date(dueAt).getTime();
+  const total = Math.max(1, Math.round((d - r) / DAY));
+  const left = daysLeft(dueAt, now);
+  const elapsed = Math.min(total, Math.max(0, Math.floor((now - r) / DAY)));
+  return { totalDays: total, elapsedDays: elapsed, daysLeft: left, percent: Math.min(100, Math.max(0, Math.round(((now - r) / Math.max(1, d - r)) * 100))), state: dueState(status, dueAt, now, soonDays) };
+}

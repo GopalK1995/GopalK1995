@@ -5,6 +5,10 @@
 //      privacy_requests row written, one per matching lead (or one with no lead), carrying only the hash of the address.
 // Withdrawal is applied on confirmation: consent_log rows, lead consent flags and the email suppression list. Pure over ports.
 import { openIntake, sealIntake } from "./token";
+import { tokenHash, type TokenPort } from "./tokens";
+import { issueStatusToken, type AuditEntry } from "./dsr";
+import { ipHash, uaClass, type NoticeSnapshot, type UaClass } from "./evidence";
+import type { OpenRequest } from "./alerts";
 import { isEmail, normaliseEmail, subjectRefOf } from "./subject";
 import { isPurpose, isRequestKind, type ConsentPurpose, type PublicWorkspace, type RequestKind } from "./types";
 
@@ -23,7 +27,11 @@ export interface IntakeStore {
   findOpen(wsUuid: string, subjectRef: string, kind: RequestKind, leadId: string | null): Promise<{ id: string; dueAt: string } | null>;
   insertRequest(r: { wsUuid: string; subjectRef: string; leadId: string | null; kind: RequestKind; notes: string | null; status: "received" | "completed"; autoNote?: string }): Promise<{ id: string; dueAt: string }>;
   /** Consent rows (append-only), lead flags and the suppression entry for a withdrawal. Idempotent. */
-  withdraw(i: { wsUuid: string; tenantUuid: string; email: string; subjectRef: string; leadIds: string[]; purposes: ConsentPurpose[]; noticeVersion: string }): Promise<{ consentRows: number }>;
+  withdraw(i: {
+    wsUuid: string; tenantUuid: string; email: string; subjectRef: string; leadIds: string[]; purposes: ConsentPurpose[]; noticeVersion: string;
+    /** What the row can prove later (AUD-063): the notice text, the form, an HMAC of the address, a coarse user-agent class. All optional. */
+    evidence?: { notice: NoticeSnapshot | null; formId: string; ipHash: string | null; uaClass: UaClass | null };
+  }): Promise<{ consentRows: number }>;
 }
 export interface Mail { to: string; subject: string; text: string; dedupe: string }
 export interface IntakeDeps {
@@ -33,6 +41,14 @@ export interface IntakeDeps {
   send: (m: Mail) => Promise<"sent" | "queued" | "failed">;
   /** Wording for the mail, supplied by the caller (i18n lives in the page layer). */
   mailText: (ctx: { org: string; kind: RequestKind; link: string; hours: number }) => { subject: string; text: string };
+  /** Single-use ledger (AUD-064). Absent, or answering "unsupported" before migration 0032, the link keeps its old behaviour (replayable for 24 h). */
+  tokens?: TokenPort;
+  /** Best-effort alert to the privacy owner for a new request. A failure never reaches the requester. */
+  alert?: (r: OpenRequest) => Promise<void>;
+  /** Best-effort audit row (ids, kinds, counts: never a personal value). */
+  audit?: (e: AuditEntry) => Promise<boolean>;
+  /** Canonical text and hash of the workspace's notice, cited by the consent rows a withdrawal writes. */
+  noticeSnapshot?: (ws: PublicWorkspace) => NoticeSnapshot;
 }
 
 export type RequestResult =
@@ -66,22 +82,29 @@ export async function requestVerification(d: IntakeDeps, i: RequestInput): Promi
   return out === "failed" ? { status: "unavailable" } : { status: "sent" };
 }
 
-export type ConfirmPreview = { status: "ready"; kind: RequestKind; orgName: string; slug: string } | { status: "invalid" | "expired" | "unavailable" };
+export type ConfirmPreview = { status: "ready" | "used"; kind: RequestKind; orgName: string; slug: string } | { status: "invalid" | "expired" | "unavailable" };
 /** Read-only look at a token (what the confirmation page shows). Never writes. */
-export async function previewConfirm(d: Pick<IntakeDeps, "store" | "secret" | "now">, token: string): Promise<ConfirmPreview> {
+export async function previewConfirm(d: Pick<IntakeDeps, "store" | "secret" | "now" | "tokens">, token: string): Promise<ConfirmPreview> {
   if (!d.secret) return { status: "unavailable" };
   const o = openIntake(token, d.secret, d.now());
   if (!o.ok) return { status: o.reason === "expired" ? "expired" : "invalid" };
   const ws = await d.store.workspaceById(o.value.w);
-  return ws && isRequestKind(o.value.k) ? { status: "ready", kind: o.value.k, orgName: ws.orgName, slug: ws.wsSlug } : { status: "invalid" };
+  if (!ws || !isRequestKind(o.value.k)) return { status: "invalid" };
+  let spent = false;
+  if (d.tokens) {
+    try { spent = (await d.tokens.peek({ hash: tokenHash(token), purpose: "verify", wsUuid: ws.wsUuid })).state === "used"; } catch { /* no ledger: the page still opens */ }
+  }
+  return { status: spent ? "used" : "ready", kind: o.value.k, orgName: ws.orgName, slug: ws.wsSlug };
 }
 
 export type ConfirmResult =
-  | { status: "created"; kind: RequestKind; dueAt: string; refs: string[]; withdrawn?: number }
-  | { status: "duplicate"; kind: RequestKind; dueAt: string; refs: string[] }
-  | { status: "invalid" | "expired" | "unavailable" | "rate_limited" };
+  | { status: "created"; kind: RequestKind; dueAt: string; refs: string[]; withdrawn?: number; statusToken?: string }
+  | { status: "duplicate"; kind: RequestKind; dueAt: string; refs: string[]; statusToken?: string }
+  | { status: "invalid" | "expired" | "unavailable" | "rate_limited" | "used" };
 
-export async function confirmRequest(d: IntakeDeps, token: string, ip: string): Promise<ConfirmResult> {
+const quietly = async (f: () => Promise<unknown> | undefined): Promise<void> => { try { await f(); } catch { /* best effort */ } };
+
+export async function confirmRequest(d: IntakeDeps, token: string, ip: string, userAgent?: string | null): Promise<ConfirmResult> {
   if (!d.secret) return { status: "unavailable" };
   if (!(await d.rate(`privacy-confirm:ip:${ip}`, INTAKE_LIMITS.confirmIp.limit, INTAKE_LIMITS.confirmIp.windowMs))) return { status: "rate_limited" };
   const o = openIntake(token, d.secret, d.now());
@@ -91,12 +114,23 @@ export async function confirmRequest(d: IntakeDeps, token: string, ip: string): 
   const kind = o.value.k;
   const ws = await d.store.workspaceById(w);
   if (!ws) return { status: "invalid" };
+  // Single use (PRIV-054): the first confirmation spends the link, a replay is refused. Before migration 0032 the ledger answers
+  // "unsupported" and the old behaviour (open requests are de-duplicated, withdrawals are idempotent) is all there is.
+  if (d.tokens) {
+    let u: Awaited<ReturnType<TokenPort["use"]>>;
+    try { u = await d.tokens.use({ hash: tokenHash(token), purpose: "verify", wsUuid: ws.wsUuid, expiresAt: new Date(o.value.exp).toISOString(), register: true }); } catch { return { status: "unavailable" }; }
+    if (!u.ok && u.reason !== "unsupported") {
+      const reason = u.reason;
+      await quietly(() => d.audit?.({ action: "privacy.token_replayed", wsUuid: ws.wsUuid, requestId: null, summary: "A spent verification link was opened again", detail: { purpose: "verify", reason } }));
+      return { status: reason === "expired" ? "expired" : reason === "used" ? "used" : "invalid" };
+    }
+  }
   const subjectRef = subjectRefOf(email);
   const leadIds = await d.store.leadsByEmail(ws.wsUuid, email);
   const targets: (string | null)[] = leadIds.length ? leadIds : [null];
   const notes = details ? `Requester note: ${details}`.slice(0, 4000) : null;
 
-  const refs: string[] = []; let dueAt = ""; let fresh = 0;
+  const refs: string[] = []; let dueAt = ""; let fresh = 0; const created: OpenRequest[] = [];
   for (const leadId of targets) {
     const open = await d.store.findOpen(ws.wsUuid, subjectRef, kind, leadId);
     if (open) { refs.push(open.id); dueAt = dueAt || open.dueAt; continue; }
@@ -105,11 +139,24 @@ export async function confirmRequest(d: IntakeDeps, token: string, ip: string): 
       autoNote: kind === "withdrawal" ? "Withdrawal applied automatically when the requester verified their address." : undefined,
     });
     refs.push(row.id); dueAt = dueAt || row.dueAt; fresh++;
+    created.push({ id: row.id, wsUuid: ws.wsUuid, tenantUuid: ws.tenantUuid, kind, status: kind === "withdrawal" ? "completed" : "received", dueAt: row.dueAt });
   }
   let withdrawn: number | undefined;
   if (kind === "withdrawal") {
     const purposes = p.filter(isPurpose);
-    withdrawn = (await d.store.withdraw({ wsUuid: ws.wsUuid, tenantUuid: ws.tenantUuid, email, subjectRef, leadIds, purposes, noticeVersion: ws.notice.noticeVersion ?? "v1" })).consentRows;
+    const notice = d.noticeSnapshot ? d.noticeSnapshot(ws) : null;
+    withdrawn = (await d.store.withdraw({
+      wsUuid: ws.wsUuid, tenantUuid: ws.tenantUuid, email, subjectRef, leadIds, purposes, noticeVersion: notice?.version ?? ws.notice.noticeVersion ?? "v1",
+      evidence: { notice, formId: "privacy-request-form", ipHash: ipHash(ip, d.secret), uaClass: uaClass(userAgent) },
+    })).consentRows;
+    await quietly(() => d.audit?.({ action: "privacy.withdrawal_applied", wsUuid: ws.wsUuid, requestId: refs[0] ?? null, summary: "Consent withdrawn by the data principal", detail: { purposes, consentRows: withdrawn } }));
   }
-  return fresh > 0 ? { status: "created", kind, dueAt, refs, withdrawn } : { status: "duplicate", kind, dueAt, refs };
+  // The owner hears about every NEW request (not a duplicate). Withdrawals are already complete, so they are logged but not alerted.
+  for (const r of created) {
+    await quietly(() => d.audit?.({ action: "privacy.request_received", wsUuid: ws.wsUuid, requestId: r.id, summary: "Privacy request confirmed by the requester", detail: { kind, status: r.status, dueAt: r.dueAt } }));
+    if (kind !== "withdrawal") await quietly(() => d.alert?.(r));
+  }
+  let statusToken: string | undefined;
+  if (d.tokens && refs[0]) statusToken = (await issueStatusToken({ tokens: d.tokens, secret: d.secret, now: d.now, audit: d.audit ?? (async () => false) }, { wsUuid: ws.wsUuid, tenantUuid: ws.tenantUuid, requestId: refs[0] })) ?? undefined;
+  return fresh > 0 ? { status: "created", kind, dueAt, refs, withdrawn, statusToken } : { status: "duplicate", kind, dueAt, refs, statusToken };
 }
