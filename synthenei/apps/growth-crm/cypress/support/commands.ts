@@ -12,9 +12,13 @@ declare global {
       loginAs(persona: Persona): Chainable<void>;
       /** Staging: sign in a seeded Supabase user. Refuses to run against the production project. */
       loginReal(user: RealUser): Chainable<void>;
+      /** Wait until React has hydrated the current page (<body data-hydrated="true">, set by HydrationMarker). Replaces hard waits. */
+      hydrated(): Chainable<JQuery<HTMLElement>>;
     }
   }
 }
+
+Cypress.Commands.add("hydrated", () => cy.get("body[data-hydrated='true']", { timeout: 30000 }));
 
 Cypress.Commands.add("loginAs", (persona: Persona) => {
   cy.session(["demo", persona], () => {
@@ -24,13 +28,9 @@ Cypress.Commands.add("loginAs", (persona: Persona) => {
       cy.get("form button").last().click();
     } else {
       cy.visit("/login");
-      // A click that lands before the page hydrates is a no-op on a cold dev server; click again while we are still on /login.
-      const pick = (tries: number): void => {
-        cy.get(`button[data-persona="${persona}"]`).click();
-        cy.wait(3000);
-        cy.location("pathname").then((path) => { if (tries > 0 && /\/login$/.test(path)) pick(tries - 1); });
-      };
-      pick(3);
+      // Handlers are attached only after hydration; a click before that is a silent no-op, so gate on the marker.
+      cy.hydrated();
+      cy.get(`button[data-persona="${persona}"]`).click();
     }
     cy.location("pathname", { timeout: 60000 }).should("not.match", /\/login$/);
   });

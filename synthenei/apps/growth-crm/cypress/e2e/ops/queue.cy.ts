@@ -10,12 +10,12 @@ describe("ops queue console", () => {
     const deadline = Date.now() + 20_000;
     const poll = (): void => {
       cy.reload();
+      cy.hydrated();
       cy.get("[data-testid=ops-runs]").then(($t) => {
         const done = /event\.fanout\s*succeeded/.test($t.text());
         if (done || Date.now() > deadline) {
           expect(done, "event.fanout run succeeded").to.eq(true);
         } else {
-          cy.wait(2000);
           poll();
         }
       });

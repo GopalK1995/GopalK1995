@@ -7,6 +7,7 @@ import { tenantOf } from "@/lib/tenancy";
 import { getLocale } from "@/i18n/server";
 import { intlTag } from "@/i18n/config";
 import { notoSansTamil } from "@/i18n/fonts";
+import { HydrationMarker } from "@/components/shell/hydration-marker";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,7 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         {ta && <style>{TAMIL_CSS}</style>}
       </head>
-      <body>{children}</body>
+      <body>{children}<HydrationMarker /></body>
     </html>
   );
 }

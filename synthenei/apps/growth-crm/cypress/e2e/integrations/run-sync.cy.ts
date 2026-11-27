@@ -13,9 +13,10 @@ describe("integrations: run sync", () => {
     const deadline = Date.now() + 60000;
     const poll = (): void => {
       cy.reload();
+      cy.hydrated();
       cy.get("body").then(($b) => {
         const done = $b.find("[data-run-status=partial], [data-run-status=success]").length > 0;
-        if (done || Date.now() > deadline) { expect(done, "a finished run is listed").to.eq(true); } else { cy.wait(3000); poll(); }
+        if (done || Date.now() > deadline) { expect(done, "a finished run is listed").to.eq(true); } else { poll(); }
       });
     };
     poll();

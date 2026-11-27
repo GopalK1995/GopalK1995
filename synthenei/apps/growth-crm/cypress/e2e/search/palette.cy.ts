@@ -1,6 +1,6 @@
 // T056 (written by the author, NOT run). Command palette in demo mode (APP_ENV=demo).
 // Opens with Ctrl+K, searches records, runs permitted actions, navigates with the keyboard, hides what the role may not do.
-const openPalette = () => { cy.get("body").type("{ctrl}k"); cy.get("[role=dialog]").should("be.visible"); cy.get("[role=dialog] input[role=combobox]").should("be.focused"); };
+const openPalette = () => { cy.hydrated(); cy.get("body").type("{ctrl}k"); cy.get("[role=dialog]").should("be.visible"); cy.get("[role=dialog] input[role=combobox]").should("be.focused"); };
 
 describe("command palette", () => {
   it("opens with Ctrl+K, closes with Escape and returns focus to the page", () => {

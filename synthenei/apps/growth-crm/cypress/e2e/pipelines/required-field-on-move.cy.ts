@@ -21,7 +21,7 @@ describe("pipelines: required field on move", () => {
         const attempt = (i: number): void => {
           if (i >= names.length || refused) return;
           moveVia(names[i], String(stageName));
-          cy.wait(800);
+          cy.get("[role=menuitem]").should("not.exist");
           cy.get("body").then(($b) => {
             if (/Cannot move to .*Next step/i.test($b.text())) { refused = true; return; }
             attempt(i + 1);

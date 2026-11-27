@@ -31,10 +31,7 @@ describe("isolation: support session is confined to one workspace", () => {
   it("an open session does not extend to a workspace of another tenant", () => {
     cy.loginAs("super");
     cy.visit("/admin/support");
-    // The root layout's pre-existing dev-mode hydration mismatch (see cypress/support/e2e.ts) regenerates this whole
-    // tree once on first paint, which briefly detaches/remounts form controls; a `.should()` retry can still race it
-    // (the node it checked is not the node `.type()` acts on next). Settle before interacting at all.
-    cy.wait(2000);
+    cy.hydrated();
     cy.get("textarea[name=reason]", { timeout: 15000 }).should("not.be.disabled").type("Ticket T058: isolation confinement check for the Tamil Nadu workspace");
     cy.contains("button", "Start session and open workspace").click();
     cy.location("pathname", { timeout: 60000 }).should("eq", "/");
@@ -52,11 +49,7 @@ describe("isolation: support session is confined to one workspace", () => {
     // /admin?support=ended (src/lib/auth/actions.ts) -- a route this dev server may not have compiled yet, so give
     // it the same long timeout as the other post-redirect assertions above.
     cy.visit("/admin/support");
-    // Same dev-mode hydration remount as the start interaction above: the whole tree is regenerated once on first
-    // paint, detaching/remounting the form around "End now". Clicking before that settles lands on a node being torn
-    // down, so the endSupport server action never fires (the only POST is Next's dev error overlay) and the session
-    // cookie is never cleared. Settle first, exactly as the start interaction does.
-    cy.wait(2000);
+    cy.hydrated();
     cy.contains("button", "End now").should("be.visible").click();
     cy.contains("Support session ended", { timeout: 60000 }).should("be.visible");
   });
