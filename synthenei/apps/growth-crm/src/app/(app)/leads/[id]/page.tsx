@@ -9,7 +9,7 @@ import { pageCtx, maskName } from "@/lib/data/context";
 import { CHANNEL_LABEL } from "@/lib/data/metrics";
 import { describeSlaClock, leadResponseBusinessMins } from "@/lib/sla/business-hours";
 import { accessFor, ROLE_LABEL } from "@/lib/auth/roles";
-import { dayKey, minsToHuman } from "@/lib/format";
+import { dayKey, fmtFor, minsToHuman, type Formatters } from "@/lib/format";
 import { getFormatters } from "@/i18n/formatters";
 import type { Activity, ActivityKind, Lead } from "@/lib/data/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -41,7 +41,8 @@ const CAT: Record<ActivityKind, TimelineCat> = {
 const INBOUND = new Set<ActivityKind>(["whatsapp_in", "form_submit", "email_click"]);
 
 /** Rule-based next best action from a fixed list (spec 9): call, WhatsApp template, email, schedule demo, send proposal, nurture. */
-function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined, v: Vocab, slaMissed = false): Suggestion {
+function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activity | undefined, v: Vocab, slaMissed = false, f: Formatters = fmtFor("en")): Suggestion {
+  const { dateShort: fmtDate, relTime } = f;
   if (!isOpenLead(l)) return null;
   const n = v.ld.nextBest;
   const nowMs = new Date(now).getTime();
@@ -73,7 +74,8 @@ function nextBest(l: Lead, now: string, consentWa: boolean, lastDemoDone: Activi
 
 export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { inr, relTime, dateShort: fmtDate, date: fmtDateY, time: fmtTime } = await getFormatters();
+  const fmtAll = await getFormatters();
+  const { inr, relTime, dateShort: fmtDate, date: fmtDateY, time: fmtTime } = fmtAll;
   const { ds, now, role, session, masked, active, slaHours, slaMins } = await pageCtx();
   const v = vocabFor(active.tenant), ld = v.ld, hosp = v.id === "hospitality";
   const lead = await ds.lead(id);
@@ -164,7 +166,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const lastDemoDone = acts.filter((a) => a.kind === "demo_done").sort((a, b) => b.at.localeCompare(a.at))[0];
   const aiOn = ai.summaries || ai.nextBestAction; // Off by default per workspace; the Owner turns features on in /ai (spec 9).
   const bizMins = leadResponseBusinessMins(lead.createdAt, lead.firstResponseMins, new Date(now).getTime(), slaHours);
-  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone, v, lead.firstResponseMins === null && bizMins > slaMins);
+  const suggestion = nextBest(lead, now, lead.consent.whatsapp, lastDemoDone, v, lead.firstResponseMins === null && bizMins > slaMins, fmtAll);
   const inbound = raw.filter((r) => r.inbound).sort((a, b) => b.at.localeCompare(a.at))[0];
   const summary = [
     ld.summaryA(lead.title, hosp ? sizeLabel : account?.size ?? "", account?.lawyers ?? "?", account?.district ?? lead.city, hosp ? v.leadStage[lead.stage] : v.leadStage[lead.stage].toLowerCase(), CHANNEL_LABEL[lead.channel], relTime(lead.createdAt, now)),
