@@ -86,6 +86,7 @@
   "colDuplicates": "Duplicates",
   "colProblems": "Problems",
   "colReport": "Problem report",
+  "histCaption": "Import history",
   "noReport": "None",
   "status": { "uploaded": "Uploaded", "mapped": "Queued", "validating": "Checking", "running": "Importing", "done": "Done", "failed": "Failed", "cancelled": "Cancelled" },
   "exportTitle": "Export a list",

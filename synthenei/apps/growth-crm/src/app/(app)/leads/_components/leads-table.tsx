@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowDown, Download, Mail, MessageCircle, Phone, UserRoundCheck, X } from "lucide-react";
+import { Download, Mail, MessageCircle, Phone, UserRoundCheck, X } from "lucide-react";
 import type { Channel, LeadStage, ScoreFactor } from "@/lib/data/types";
 import { fmtDate, fmtTime } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Gate } from "@/components/ui/gate";
 import { usePerm } from "./perm";
 import { Tip } from "@/components/ui/tooltip";
-import { ScoreChip, Empty, th, thNum, td, tdNum } from "@/components/ui/misc";
+import { ScoreChip, Empty } from "@/components/ui/misc";
+import { DataGrid, type DataGridColumn } from "@/components/ui/data-grid";
 import { ChannelMark, LeadStageBadge } from "@/components/ui/domain";
 import { Badge } from "@/components/ui/badge";
 import { toastResult } from "@/components/ui/toast";
@@ -71,9 +72,6 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, c
   const assignP = usePerm("assignLeads");
   const sp = useSearchParams(), path = usePathname();
   const selectable = !masked && (perms.assign || perms.exportCsv);
-  const pageIds = rows.map((r) => r.id);
-  const allOnPage = pageIds.length > 0 && pageIds.every((id) => sel.has(id));
-  const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const sortHref = (k: string) => { const n = new URLSearchParams(sp.toString()); n.set("sort", k); n.delete("page"); return `${path}?${n}`; };
 
   const doAssign = () => start(async () => {
@@ -89,11 +87,41 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, c
 
   if (!rows.length) return <div className="px-4 pb-4"><Empty title={empty.t}>{empty.h}</Empty></div>;
 
-  const SortTh = ({ k, children, right }: { k: string; children: React.ReactNode; right?: boolean }) => (
-    <th scope="col" className={right ? thNum : th} aria-sort={sort === k ? "descending" : "none"}>
-      <Link href={sortHref(k)} scroll={false} className={cn("inline-flex items-center gap-1 hover:text-ink", sort === k && "text-ink")}>{children}{sort === k && <ArrowDown className="size-3" aria-hidden />}</Link>
-    </th>
-  );
+  const columns: DataGridColumn<LeadRow>[] = [
+    { id: "lead", header: t.colLead, label: t.colLead, rowHeader: true, alwaysVisible: true, className: "max-w-[176px]", cell: (r) => (
+      <>
+        <Link href={`/leads/${r.id}`} className="block truncate font-medium text-ink hover:text-accent">{r.name}</Link>
+        <span className="block truncate text-[12px] text-ink-3">{r.title}</span>
+      </>
+    ) },
+    { id: "firm", header: t.colFirm, label: t.colFirm, className: "max-w-[176px]", cell: (r) => (
+      <>
+        {r.firmId && !masked ? <Link href={`/accounts/${r.firmId}`} className="block truncate hover:text-accent">{r.firm}</Link> : <span className="block truncate">{r.firm}</span>}
+        <span className="block truncate text-[12px] text-ink-3">{r.district}{r.city !== r.district ? ` · ${r.city}` : ""}</span>
+      </>
+    ) },
+    { id: "source", header: "Source", hideOnStack: true, className: "max-w-[160px]", cell: (r) => (
+      <span className="flex items-center gap-1.5" title={r.utm ? `UTM: ${r.utm}` : "No UTM tags"}>
+        <ChannelMark channel={r.channel} />
+        {r.campaign ? <Link href={`/campaigns/${r.campaign.id}`} className="truncate text-[12px] text-ink-2 hover:text-accent">{r.campaign.name}</Link> : <span className="truncate text-[12px] text-ink-3">{r.utm || "untagged"}</span>}
+      </span>
+    ) },
+    { id: "stage", header: "Stage", cell: (r) => <LeadStageBadge stage={r.stage} /> },
+    { id: "score", header: "Score", sortable: true, align: "right", cell: (r) => <ScoreWithFactors score={r.score} factors={r.factors} /> },
+    { id: "owner", header: "Owner", cell: (r) => (r.owner ? <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={r.owner} size={20} />{r.owner.split(" ")[0]}</span> : <Badge tone="warn">Unassigned</Badge>) },
+    { id: "touch", header: "Last touch", sortable: true, hideOnStack: true, className: "text-[12px] text-ink-2 num", cell: (r) => r.lastTouch },
+    { id: "next", header: "Next step", hideOnStack: true, cell: (r) => <span className={cn("text-[12px] num", r.nextOverdue ? "font-medium text-danger" : "text-ink-2")}>{r.next ? `${fmtDate(r.next)}, ${fmtTime(r.next)}` : "—"}</span> },
+    { id: "sla", header: <><span className="sr-only">SLA and consent</span><span aria-hidden>SLA · consent</span></>, label: "SLA and consent", cell: (r) => (
+      <span className="flex items-center gap-1.5">
+        {r.sla ? <Badge tone="danger">SLA</Badge> : <span className="w-[30px]" aria-hidden />}
+        <span title={r.consent.wa ? "WhatsApp consent" : "No WhatsApp consent"} className={r.consent.wa ? "text-success" : "text-ink-3/50"}><MessageCircle className="size-3.5" aria-hidden /><span className="sr-only">{r.consent.wa ? "WhatsApp consent given" : "No WhatsApp consent"}</span></span>
+        <span title={r.consent.email ? "Marketing email consent" : "No marketing email consent"} className={r.consent.email ? "text-success" : "text-ink-3/50"}><Mail className="size-3.5" aria-hidden /><span className="sr-only">{r.consent.email ? "Email consent given" : "No email consent"}</span></span>
+      </span>
+    ) },
+    ...customCols.map((c): DataGridColumn<LeadRow> => ({ id: `custom.${c.key}`, header: pickLabel(c.label, locale), label: pickLabel(c.label, locale), hideOnStack: true, className: "max-w-[160px] text-[12px]", cell: (r) => <FieldValue def={c} value={(r.custom ?? {})[c.key]} locale={locale} /> })),
+    // Phone shortcut for the stacked (small screen) layout only; on desktop the number is on the lead page.
+    ...(perms.work && !masked ? [{ id: "call", header: <span className="sr-only">Call</span>, label: "Call", className: "md:hidden", cell: (r: LeadRow) => (r.phone ? <a href={`tel:${r.phone.replace(/\s/g, "")}`} className="inline-flex h-11 items-center gap-1.5 rounded-sm border border-line-strong bg-surface px-3 text-[13px] font-medium text-ink"><Phone className="size-4" aria-hidden />Call</a> : null) } satisfies DataGridColumn<LeadRow>] : []),
+  ];
 
   return (
     <>
@@ -114,81 +142,9 @@ export function LeadsTable({ rows, owners, perms, masked, sort, allIds, empty, c
         </div>
       )}
 
-      {/* Desktop and tablet */}
-      <div className="scrollbar-thin relative hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse" style={{ minWidth: 1060 + customCols.length * 140 }} aria-label={t.tableAria} aria-rowcount={allIds.length}>
-          <thead>
-            <tr className="border-y border-line bg-paper/60">
-              {selectable && (
-                <th scope="col" className="w-10 px-3">
-                  <input type="checkbox" aria-label={t.selectAll} checked={allOnPage}
-                    onChange={() => setSel((s) => { const n = new Set(s); pageIds.forEach((id) => (allOnPage ? n.delete(id) : n.add(id))); return n; })} className="size-4 accent-[var(--accent)]" />
-                </th>
-              )}
-              <th scope="col" className={th}>{t.colLead}</th>
-              <th scope="col" className={th}>{t.colFirm}</th>
-              <th scope="col" className={th}>Source</th>
-              <th scope="col" className={th}>Stage</th>
-              <SortTh k="score" right>Score</SortTh>
-              <th scope="col" className={th}>Owner</th>
-              <SortTh k="touch">Last touch</SortTh>
-              <th scope="col" className={th}>Next step</th>
-              <th scope="col" className={th}><span className="sr-only">SLA and consent</span><span aria-hidden>SLA · consent</span></th>
-              {customCols.map((c) => <th key={c.key} scope="col" className={th}>{pickLabel(c.label, locale)}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className={cn("border-b border-line last:border-0 hover:bg-paper/60", sel.has(r.id) && "bg-accent-soft/40")}>
-                {selectable && <td className="w-10 px-3"><input type="checkbox" aria-label={`Select ${r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} className="size-4 accent-[var(--accent)]" /></td>}
-                <td className={cn(td, "max-w-[176px]")}>
-                  <Link href={`/leads/${r.id}`} className="block truncate font-medium text-ink hover:text-accent">{r.name}</Link>
-                  <span className="block truncate text-[12px] text-ink-3">{r.title}</span>
-                </td>
-                <td className={cn(td, "max-w-[176px]")}>
-                  {r.firmId && !masked ? <Link href={`/accounts/${r.firmId}`} className="block truncate hover:text-accent">{r.firm}</Link> : <span className="block truncate">{r.firm}</span>}
-                  <span className="block truncate text-[12px] text-ink-3">{r.district}{r.city !== r.district ? ` · ${r.city}` : ""}</span>
-                </td>
-                <td className={cn(td, "max-w-[160px]")}>
-                  <span className="flex items-center gap-1.5" title={r.utm ? `UTM: ${r.utm}` : "No UTM tags"}>
-                    <ChannelMark channel={r.channel} />
-                    {r.campaign ? <Link href={`/campaigns/${r.campaign.id}`} className="truncate text-[12px] text-ink-2 hover:text-accent">{r.campaign.name}</Link> : <span className="truncate text-[12px] text-ink-3">{r.utm || "untagged"}</span>}
-                  </span>
-                </td>
-                <td className={td}><LeadStageBadge stage={r.stage} /></td>
-                <td className={tdNum}><ScoreWithFactors score={r.score} factors={r.factors} /></td>
-                <td className={td}>{r.owner ? <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2"><Avatar name={r.owner} size={20} />{r.owner.split(" ")[0]}</span> : <Badge tone="warn">Unassigned</Badge>}</td>
-                <td className={cn(td, "text-[12px] text-ink-2 num")}>{r.lastTouch}</td>
-                <td className={cn(td, "text-[12px] num", r.nextOverdue ? "font-medium text-danger" : "text-ink-2")}>{r.next ? `${fmtDate(r.next)}, ${fmtTime(r.next)}` : "—"}</td>
-                <td className={td}>
-                  <span className="flex items-center gap-1.5">
-                    {r.sla ? <Badge tone="danger">SLA</Badge> : <span className="w-[30px]" aria-hidden />}
-                    <span title={r.consent.wa ? "WhatsApp consent" : "No WhatsApp consent"} className={r.consent.wa ? "text-success" : "text-ink-3/50"}><MessageCircle className="size-3.5" aria-hidden /><span className="sr-only">{r.consent.wa ? "WhatsApp consent given" : "No WhatsApp consent"}</span></span>
-                    <span title={r.consent.email ? "Marketing email consent" : "No marketing email consent"} className={r.consent.email ? "text-success" : "text-ink-3/50"}><Mail className="size-3.5" aria-hidden /><span className="sr-only">{r.consent.email ? "Email consent given" : "No email consent"}</span></span>
-                  </span>
-                </td>
-                {customCols.map((c) => <td key={c.key} className={cn(td, "max-w-[160px] text-[12px]")}><FieldValue def={c} value={(r.custom ?? {})[c.key]} locale={locale} /></td>)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile: title, two facts, one primary action */}
-      <ul className="divide-y divide-line border-t border-line md:hidden" aria-label={t.tableAria}>
-        {rows.map((r) => (
-          <li key={r.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <Link href={`/leads/${r.id}`} className="block truncate text-[14px] font-medium text-ink">{r.name}</Link>
-              <div className="mt-0.5 truncate text-[12px] text-ink-3">{r.firm} · {r.district}</div>
-              <div className="mt-1 flex items-center gap-2"><ScoreChip score={r.score} /><LeadStageBadge stage={r.stage} />{r.sla && <Badge tone="danger">SLA</Badge>}</div>
-            </div>
-            {perms.work && r.phone && !masked
-              ? <a href={`tel:${r.phone.replace(/\s/g, "")}`} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-sm border border-line-strong bg-surface px-3 text-[13px] font-medium text-ink"><Phone className="size-4" aria-hidden />Call</a>
-              : <Link href={`/leads/${r.id}`} className="inline-flex h-11 shrink-0 items-center rounded-sm border border-line-strong bg-surface px-3 text-[13px] font-medium text-ink">Open</Link>}
-          </li>
-        ))}
-      </ul>
+      <DataGrid rows={rows} columns={columns} rowId={(r) => r.id} rowLabel={(r) => r.name} caption={t.tableAria} responsive="stack" minWidth={1060 + customCols.length * 140}
+        selectable={selectable} selected={sel} onSelectedChange={setSel} hideSelectionText
+        sort={sort === "score" || sort === "touch" ? { id: sort, dir: "desc" } : null} sortHref={(id) => sortHref(id)} />
 
       {/* Bulk bar */}
       {sel.size > 0 && (
