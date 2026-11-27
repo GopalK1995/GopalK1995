@@ -1,9 +1,13 @@
 import { createRequire } from "node:module";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildSecurityHeaders } from "./src/lib/security/headers.mjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // AUD-038: trace from this app folder, not from whichever parent holds another lockfile (avoids the inferred-workspace-root warning and a bloated bundle).
+  outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
   devIndicators: false,
   // Parallel dev servers: NEXT_DIST_DIR=.next-<agent> npx next dev -p <port>
   distDir: process.env.NEXT_DIST_DIR || ".next",

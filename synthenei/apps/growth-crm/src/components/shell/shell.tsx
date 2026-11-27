@@ -43,7 +43,7 @@ function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onN
             {g.items.map((it) => {
               const active = isActive(it.href, path);
               const link = (
-                <Link href={it.href} onClick={onNavigate} aria-current={active ? "page" : undefined}
+                <Link href={it.href} prefetch={it.perm || it.permOnly ? false : undefined} onClick={onNavigate} aria-current={active ? "page" : undefined}
                   className={cn("relative flex h-9 items-center gap-3 rounded-sm px-3 text-[13px] font-medium focus-ring-inset transition-colors duration-150",
                     active ? "text-navy-ink" : "text-navy-ink-2 hover:bg-navy-800/70 hover:text-navy-ink", collapsed && "justify-center px-0")}>
                   {active && (

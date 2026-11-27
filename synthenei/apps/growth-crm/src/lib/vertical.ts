@@ -602,10 +602,8 @@ const HOSPITALITY: Vocab = {
 const TEMPLATES: Record<Vertical, Vocab> = { legal: LEGAL, hospitality: HOSPITALITY };
 
 // ---------------------------------------------------------------- preset data (JSON-mergeable, no functions/JSX)
-export type ModuleKey = "inbox" | "ai" | "integrations" | "audience" | "analytics" | "tasks" | "accounts" | "campaigns" | "data-health";
-export const MODULE_KEYS: ModuleKey[] = ["inbox", "ai", "integrations", "audience", "analytics", "tasks", "accounts", "campaigns", "data-health"];
-/** Route prefix -> module. A disabled module hides its nav entry and 403s its route (middleware). */
-export const MODULE_ROUTE: Record<string, ModuleKey> = { "/inbox": "inbox", "/ai": "ai", "/integrations": "integrations", "/audience": "audience", "/analytics": "analytics", "/tasks": "tasks", "/accounts": "accounts", "/campaigns": "campaigns", "/data-health": "data-health" };
+import { MODULE_KEYS, MODULE_ROUTE, moduleForPath, type ModuleKey } from "./vertical-routes";
+export { MODULE_KEYS, MODULE_ROUTE, moduleForPath, type ModuleKey };
 /** Font allow-list (key -> CSS stack) lives with the tenant config. */
 export { FONT_STACKS } from "./config/fonts";
 import { makeRewriter, rewriteDeep } from "./config/rewrite";
@@ -685,7 +683,6 @@ export const stageLabel = (t: TenantLike, kind: "lead" | "deal", key: string) =>
 export const taxonomy = (t: TenantLike) => { const c = effectiveConfig(t); return { partySize: c.partySize, lostReasons: c.lost, plans: c.plans, channelFamily: c.channelFamily }; };
 export const isModuleEnabled = (t: TenantLike, module: ModuleKey) => effectiveConfig(t).modules[module] !== false;
 /** Module a pathname belongs to (undefined = not gated). */
-export const moduleForPath = (pathname: string): ModuleKey | undefined => { const k = Object.keys(MODULE_ROUTE).find((r) => pathname === r || pathname.startsWith(r + "/")); return k ? MODULE_ROUTE[k] : undefined; };
 export const isFeatureEnabled = (t: TenantLike, f: keyof TenantConfigPreset["features"]) => effectiveConfig(t).features[f] === true;
 export const kpiTiles = (t: TenantLike) => effectiveConfig(t).kpiTiles;
 export const fontsFor = (t: TenantLike) => effectiveConfig(t).fonts;

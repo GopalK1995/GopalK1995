@@ -4,7 +4,7 @@ const ADMIN_IDLE_MS = 30 * 60e3;
 import { HOME_FOR, ROLE_LABEL, accessFor, isKnownPath } from "./lib/auth/roles";
 import { resolveHint } from "./lib/auth/context";
 import { WS_MAX_AGE, cookieOpts } from "./lib/auth/cookies";
-import { moduleForPath } from "./lib/vertical";
+import { moduleForPath } from "./lib/vertical-routes";
 import { cfgCookieName, decodeCfgCookie } from "./lib/config/cookie-codec";
 import { resolveEffective } from "./lib/config/resolve-pure";
 
