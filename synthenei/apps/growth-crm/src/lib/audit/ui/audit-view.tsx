@@ -76,7 +76,7 @@ export function AuditViewBody({ t, basePath, filters, screen, platform = false, 
       </span>
     ) },
     { key: "actor", header: t("colActor"), mobile: "fact", cell: (a) => <span>{a.actorLabel}{a.actorKind !== "user" && <span className="ml-1.5 text-12 text-ink-3">{a.actorKind.replace("_", " ")}</span>}</span> },
-    { key: "summary", header: t("colSummary"), className: "max-w-[360px]", cell: (a) => <span className="block truncate text-ink-2" title={a.summary}>{a.summary}{a.reason ? <span className="text-ink-3">{` �· ${a.reason}`}</span> : null}</span> },
+    { key: "summary", header: t("colSummary"), className: "max-w-[360px]", cell: (a) => <span className="block truncate text-ink-2" title={a.summary}>{a.summary}{a.reason ? <span className="text-ink-3">{` · ${a.reason}`}</span> : null}</span> },
     { key: "object", header: t("colObject"), cell: (a) => <span className="font-mono text-12 text-ink-3">{a.objectId ? `${a.objectTable}:${a.objectId.slice(0, 8)}` : a.objectTable}</span> },
     { key: "source", header: t("colSource"), cell: (a) => <Chip tone={a.support ? "warn" : "neutral"}>{sourceLabel(a.source)}</Chip> },
     ...(platform ? [{ key: "scope", header: t("colScope"), cell: (a: AuditView) => <span className="font-mono text-12 text-ink-3">{a.workspaceId ? a.workspaceId.slice(0, 8) : "platform"}</span> } as Column<AuditView>] : []),
