@@ -2,7 +2,7 @@
 // <CustomFields/> client half: read-only display with an Edit mode. Props carry only what the viewer may see (masked
 // fields are absent, see lib/metadata/runtime.ts). Saves send only the changed keys plus the record version the page
 // rendered; a stale version comes back as a conflict and the panel offers Reload instead of overwriting.
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,14 @@ export function CustomFieldsPanel(p: CustomFieldsPanelProps) {
   const [banner, setBanner] = useState<{ kind: "conflict" | "error"; text: string; sub?: string } | null>(null);
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  // Focus the first invalid field only once the transition has committed and inputs are enabled again
+  // (a disabled input cannot take focus, and a rAF fired inside the transition can run before that commit).
+  useEffect(() => {
+    if (!focusKey || pending) return;
+    root.current?.querySelector<HTMLElement>(`[data-field="${focusKey}"] input, [data-field="${focusKey}"] textarea, [data-field="${focusKey}"] button`)?.focus();
+    setFocusKey(null);
+  }, [focusKey, pending]);
   const t = (k: string, v: Record<string, string | number> = {}) => ft(k, { noun: p.noun, ...v }, p.locale);
   const editable = p.fields.some((f) => f.edit);
   const optsFor = (f: ClientField): Option[] | undefined => (f.type === "user" ? p.lookups?.user : f.lookupObject ? p.lookups?.[f.lookupObject] : undefined);
@@ -63,7 +71,7 @@ export function CustomFieldsPanel(p: CustomFieldsPanelProps) {
       setIssues(map);
       setBanner({ kind: "error", text: res.message, sub: res.sub });
       const first = p.fields.find((f) => map[f.key]);
-      if (first) requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-field="${first.key}"] input, [data-field="${first.key}"] textarea, [data-field="${first.key}"] button`)?.focus());
+      if (first) setFocusKey(first.key);
     });
   };
 
