@@ -4,14 +4,13 @@
 import { validateConditions } from "@/lib/authz/conditions";
 import { PERMISSION_BY_KEY } from "@/lib/authz/catalog";
 import type { Grant, Scope } from "@/lib/authz/types";
+import { MANAGER_SCOPE, type BaseRole } from "@/lib/authz/role-hierarchy";
+export { MANAGER_SCOPE, type BaseRole };
 
 const RANK: Record<Scope, number> = { none: 0, own: 1, team: 2, all: 3 };
 export const SCOPES: Scope[] = ["none", "own", "team", "all"];
 export const scopeRank = (s: Scope): number => RANK[s] ?? 0;
 const OBJ_PERM = /^obj:[a-z][a-z0-9_]{0,40}\.(read|write|delete)$/;
-
-export type BaseRole = "owner" | "sales_manager" | "sales_rep" | "marketing" | "data" | "viewer";
-export const MANAGER_SCOPE: BaseRole[] = ["sales_rep", "viewer"];
 
 export interface GrantInput { permission: string; scope: Scope; conditions?: unknown; fieldMask?: string[] }
 export type ViolationCode =

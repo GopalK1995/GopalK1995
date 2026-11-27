@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/data/types";
 import { sa } from "../roles/_lib/strings";
 import { scopeName } from "@/lib/workspace-label";
+import { MANAGER_SCOPE } from "@/lib/authz/role-hierarchy";
 import { changeMemberRole, inviteMember, reactivateMember, setMemberTerritory, suspendMember } from "./actions";
 
 export type MemberRow = {
@@ -27,7 +28,6 @@ export type MemberRow = {
 /** assignable is computed on the server with the same guards the actions run; the client only renders it. */
 export type RoleOption = { id: string; name: string; baseRole: Role; custom: boolean; assignable: boolean };
 const STATUS = { active: { tone: "success", key: "statusActive" }, invited: { tone: "outline", key: "statusInvited" }, deactivated: { tone: "neutral", key: "statusDeactivated" } } as const;
-const MANAGER_SCOPE: Role[] = ["sales_rep", "viewer"];
 const selectCls = "h-8 rounded-chip border border-field-line bg-surface pl-2 pr-7 text-12 text-ink focus-ring focus:border-ring disabled:opacity-50";
 const inputCls = "h-9 rounded-chip border border-field-line bg-surface px-2.5 text-13 text-ink focus-ring focus:border-ring";
 const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
