@@ -62,6 +62,7 @@ const ALLOW: { file: string; needle: string; reason: string }[] = [
   { file: "src/components/ui/dropdown.tsx", needle: "M.Item", reason: "menu item, focus shown by data-[highlighted]" },
   { file: "src/components/shell/switcher.tsx", needle: "data-[highlighted]", reason: "workspace menu items, focus shown by data-[highlighted]" },
   { file: "src/components/shell/shell.tsx", needle: "D.Content", reason: "mobile nav drawer container, programmatic focus only" },
+  { file: "src/components/command/shortcut-help.tsx", needle: "D.Content", reason: "shortcut help dialog container, programmatic focus only" },
   { file: "src/components/shell/shell.tsx", needle: "id=\"main-content\"", reason: "skip-link target, tabIndex -1, not in the tab order" },
 ];
 
