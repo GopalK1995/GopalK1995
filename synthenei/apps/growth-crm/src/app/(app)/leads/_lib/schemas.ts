@@ -1,5 +1,6 @@
 // Input schemas for every lead write (zod). Pure: shared by server actions and unit tests.
 import { z } from "zod";
+import { emailText, phoneText } from "@/lib/validation/shared";
 import { CALL_OUTCOMES } from "./sales";
 
 export const LEAD_STATUSES = ["new", "contacted", "qualified", "nurturing", "disqualified", "converted"] as const;
@@ -8,8 +9,8 @@ export const DISQUALIFY_REASONS = ["student", "not_a_firm", "outside_tn", "dupli
 const text = (max: number) => z.string().trim().max(max);
 const uuid = z.string().uuid();
 export const version = z.number().int().min(1);
-const phone = text(20).refine((p) => p === "" || /^(\+?91)?[6-9]\d{9}$/.test(p.replace(/[\s-]/g, "")), "Enter a 10 digit Indian mobile number");
-const email = text(200).refine((e) => e === "" || /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(e), "Enter a valid email address");
+const phone = phoneText();
+const email = emailText();
 
 export const createLeadSchema = z.object({
   fullName: text(120).min(1, "Name is required"),

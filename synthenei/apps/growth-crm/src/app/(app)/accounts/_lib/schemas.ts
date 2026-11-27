@@ -1,11 +1,12 @@
 // Input schemas for account and contact writes (zod). Pure: shared by server actions, UI and unit tests.
 import { z } from "zod";
+import { emailText, headcount, phoneText } from "@/lib/validation/shared";
 
 const text = (max: number) => z.string().trim().max(max);
 const uuid = z.string().uuid();
 export const version = z.number().int().min(1);
-const phone = text(20).refine((p) => p === "" || /^(\+?91)?[6-9]\d{9}$/.test(p.replace(/[\s-]/g, "")), "Enter a 10 digit Indian mobile number");
-const email = text(200).refine((e) => e === "" || /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(e), "Enter a valid email address");
+const phone = phoneText();
+const email = emailText();
 
 export const ACCOUNT_STATUSES = ["prospect", "trial", "customer", "churned"] as const;
 
@@ -14,7 +15,7 @@ export const createAccountSchema = z.object({
   city: text(80).optional().default(""),
   district: text(80).optional().default(""),
   website: text(200).optional().default(""),
-  lawyersCount: z.number().int().min(0).max(100000).nullable().optional(),
+  lawyersCount: headcount().nullable().optional(),
   ownerId: uuid.nullable().optional(),
 });
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
@@ -25,7 +26,7 @@ export const updateAccountSchema = z.object({
     name: text(160).min(1, "Name is required"),
     city: text(80), district: text(80), website: text(200),
     customerStatus: z.enum(ACCOUNT_STATUSES),
-    lawyersCount: z.number().int().min(0).max(100000).nullable(),
+    lawyersCount: headcount().nullable(),
   }).partial().refine((p) => Object.keys(p).length > 0, "Nothing to change"),
 });
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
