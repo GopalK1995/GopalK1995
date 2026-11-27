@@ -1,4 +1,4 @@
-// Role editor feed: the obj:<key>.* permissions of the workspace's custom objects, so a new object shows up in Roles & access
+// Role editor feed: the obj:<key>.* permissions of the workspace's custom objects, so a new object shows up in Access
 // without a code change. Real sessions read object_types (RLS: tenant members); demo shows the example object. Failure -> [].
 import "server-only";
 import { requireActive } from "@/lib/auth/server";

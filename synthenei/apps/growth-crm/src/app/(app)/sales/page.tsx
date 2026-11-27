@@ -99,7 +99,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · ${rep.title}`} title={role === "sales_rep" ? `Good morning, ${rep.name.split(" ")[0]}` : `${rep.name}'s day`}
+      <PageHeader eyebrow={`${fmtWeekday(now)}, ${fmtDate(now)} · ${role === "sales_rep" ? rep.title : `Showing ${rep.name}'s day`}`} title={`Good morning, ${(role === "sales_rep" ? rep.name : session.name || rep.name).split(" ")[0]}`}
         sub={m.sub(touch.length, overdue.length, demos.filter((t) => (hosp ? t.dueAt.slice(0, 10) : dayKey(t.dueAt)) >= today).length)}
         actions={role !== "sales_rep" ? <RepSwitcher reps={reps.map((r) => ({ id: r.id, name: r.name }))} value={repId} /> : undefined} />
 
@@ -215,7 +215,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
             <CardBody className="space-y-5">
               <TargetBar label={m.won} value={wonM} target={rep.monthlyTarget} pace={pace} format="inrCompact" />
               <TargetBar label={m.done} value={demosDoneM} target={DEMOS_DONE_TARGET} pace={pace} format="num" />
-              <p className="text-[11px] text-ink-3">Targets set by your manager in Settings → Pipeline. Team median attainment shown on the Command Center.</p>
+              <p className="text-[11px] text-ink-3">Targets set by your manager in Settings → Pipeline. Team median attainment shown on Home.</p>
             </CardBody>
           </Card>
         </StaggerItem>

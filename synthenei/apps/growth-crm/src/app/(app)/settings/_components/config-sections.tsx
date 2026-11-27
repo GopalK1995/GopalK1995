@@ -212,7 +212,7 @@ export function DashboardSection() {
   const issues = validateEffective({ ...base, dashboard: d }).filter((i) => i.path.startsWith("dashboard")).map((i) => i.message);
   if (new Set(d.kpiTiles).size !== d.kpiTiles.length) issues.push("Each headline tile can appear once.");
   return (
-    <SectionLayout title="Dashboard" sub="The four headline tiles and the charts on the Command Center" note={ed ? undefined : <Note>{lockedWhy(a)}</Note>}
+    <SectionLayout title="Dashboard" sub="The four headline tiles and the charts on Home" note={ed ? undefined : <Note>{lockedWhy(a)}</Note>}
       preview={<div className="flex flex-col gap-3"><div className="grid grid-cols-2 gap-2">{d.kpiTiles.map((id, i) => <div key={i} className="rounded-sm border border-line px-3 py-2"><div className="truncate text-[11px] text-ink-3">{tileLabel(id)}</div><div className="mt-1 text-[18px] font-semibold text-ink num">{["₹4.2L", "38", "21%", "₹1,950"][i]}</div></div>)}</div>
         <div className="text-[12px] text-ink-2">{CHART_CATALOGUE.filter((c) => d.charts.includes(c.id)).map((c) => c.label).join(" · ") || "No charts"}</div></div>}>
       <fieldset disabled={!ed} className="flex flex-col gap-5 disabled:opacity-100">

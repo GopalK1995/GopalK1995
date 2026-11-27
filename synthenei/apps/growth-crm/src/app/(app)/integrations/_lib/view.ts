@@ -81,6 +81,8 @@ const toMapRow = (f: FieldMapSpec, custom: boolean): MapRowView => ({
   transform: f.transform ?? null, transformArg: f.transformArg ? JSON.stringify(f.transformArg) : "", sample: f.sample ?? "", custom,
 });
 
+/** A mapping row with no field and no column is a placeholder, not a mapping: never shown as an empty-looking row. */
+const notBlank = (f: FieldMapSpec) => !!(f.externalField?.trim() || f.localColumn?.trim());
 export type DetailResult = { status: "error" } | { status: "not_found" } | { status: "ok"; view: DetailView; failed: string[] };
 
 export async function loadDetail(ws: string, id: string): Promise<DetailResult> {
@@ -105,7 +107,7 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
     let tenantMap: FieldMapSpec[] = [];
     if (row.connectionId) { try { tenantMap = await store.getFieldMap(row.connectionId); } catch { failed.push("map"); } }
     const custom = new Set(tenantMap.map((f) => `${f.externalObject}\u0000${f.externalField}`));
-    map = effectiveMap(def.defaultFieldMap, tenantMap).map((f) => toMapRow(f, custom.has(`${f.externalObject}\u0000${f.externalField}`)));
+    map = effectiveMap(def.defaultFieldMap, tenantMap).filter(notBlank).map((f) => toMapRow(f, custom.has(`${f.externalObject}\u0000${f.externalField}`)));
   } else if (spec) {
     map = spec.fieldMap.map((f) => ({ externalObject: "", externalField: f.source, localTable: f.target.split(".")[0] ?? "", localColumn: f.target.split(".").slice(1).join(".") || f.target, direction: "in", transform: null, transformArg: "", sample: f.note ?? "", custom: false }));
   }
@@ -154,16 +156,19 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
     metaConnect = { connected: false, needsReconnect: false, connectionId: row.connectionId, pageName: null, igUsername: null, accounts: 0, posts: 0, lastOkRows: null };
   }
   // Instagram and Facebook: the flow list and steps come from what the connector really does, not from the showcase sample text.
-  const flows = id === META_ID
+  // A live connection shows only what the connector really does: the showcase flows, template names and setup steps are sample text.
+  const live = row.mode === "live" && !!row.connectionId;
+  const MOCK_ONLY = /ecourts_intro_ta|demo_reminder_en|demo_invite_ta|offline conversion/i;
+  const flows = live && id !== META_ID ? [] : id === META_ID
     ? [{ object: "metaFlow.leads", dir: "in" as const }, { object: "metaFlow.dms", dir: "in" as const }, { object: "metaFlow.insights", dir: "in" as const }, { object: "metaFlow.social", dir: "in" as const }, { object: "metaFlow.replies", dir: "out" as const }]
-    : [...(spec?.inbound ?? []).map((object) => ({ object, dir: "in" as const })), ...(spec?.outbound ?? []).map((object) => ({ object, dir: "out" as const }))];
+    : [...(spec?.inbound ?? []).map((object) => ({ object, dir: "in" as const })), ...(spec?.outbound ?? []).map((object) => ({ object, dir: "out" as const }))].filter((f) => !MOCK_ONLY.test(f.object));
   return {
     status: "ok", failed,
     view: {
       row, auth: def?.auth ?? cat.authKind, authKind: (def?.auth ?? cat.authKind) as DetailView["authKind"],
       fields: (def?.credentialFields ?? []).map((f) => ({ key: f.key, label: f.label, secret: f.secret })),
       sandboxSupported: def?.sandbox.supported ?? cat.sandboxSupported, sandboxHowTo: def?.sandbox.howTo ?? null,
-      steps: id === META_ID ? [] : spec?.steps ?? [], flows, runs, map, editable: !!def && !!row.connectionId, accountLabel: null,
+      steps: id === META_ID || live ? [] : (spec?.steps ?? []).filter((x) => !MOCK_ONLY.test(x)), flows, runs, map, editable: !!def && !!row.connectionId, accountLabel: null,
       oauthReady: !!def?.oauth && envConfigured(def, vendorEnv()), metaHealth, metaConnect,
     },
   };

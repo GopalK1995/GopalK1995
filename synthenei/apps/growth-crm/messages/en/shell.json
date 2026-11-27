@@ -50,6 +50,8 @@
   "nav": {
     "group": {
       "overview": "Overview",
+      "today": "Today",
+      "data": "Data",
       "sell": "Sell",
       "market": "Market",
       "assist": "Assist",
@@ -60,11 +62,12 @@
       "showcase": "Showcase"
     },
     "item": {
-      "commandCenter": "Command Center",
+      "home": "Home",
+      "contacts": "Contacts",
       "myDay": "My day",
       "notifications": "Notifications",
       "leads": "Leads",
-      "import": "Import",
+      "import": "Import and export",
       "pipeline": "Pipeline",
       "lawFirms": "Law firms",
       "inbox": "Inbox",
@@ -78,7 +81,7 @@
       "dataHealth": "Data health",
       "settings": "Settings",
       "notificationSettings": "Notification settings",
-      "rolesAccess": "Roles & access",
+      "access": "Access",
       "auditLog": "Audit log",
       "billing": "Billing",
       "apiKeys": "API keys",

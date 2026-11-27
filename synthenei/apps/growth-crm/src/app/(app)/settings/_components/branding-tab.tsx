@@ -159,7 +159,7 @@ function BrandPreview({ hue, name, product }: { hue: number; name: string; produ
           <div className="min-w-0"><div className="truncate text-[12px] font-semibold text-navy-ink">{name}</div><div className="truncate text-[11px] text-navy-ink-2">{product}</div></div>
         </div>
         <div className="flex flex-col gap-1">
-          {["Command Center", "Leads", "Pipeline"].map((l, i) => (
+          {["Home", "Leads", "Pipeline"].map((l, i) => (
             <div key={l} className={cn("relative flex h-7 items-center truncate rounded-[4px] px-2.5 text-[11px]", i === 1 ? "bg-navy-800 text-navy-ink" : "text-navy-ink-2")}>
               {i === 1 && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent-on-navy" />}{l}
             </div>

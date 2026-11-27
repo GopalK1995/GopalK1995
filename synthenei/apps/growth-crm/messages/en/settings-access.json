@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Users, roles and teams",
+  "pageTitle": "Access",
   "pageSub": "People, the roles they hold, and the teams that decide whose records they see. Applies to this workspace.",
   "tabMembers": "Members",
   "tabRoles": "Roles",
@@ -69,7 +69,7 @@
   "teamMemberSaved": "Team membership saved",
   "teamMemberRemoved": "Removed from the team",
   "teamOwnParent": "A team cannot be its own parent.",
-  "membersTitle": "Members of {tenant} · {ws}",
+  "membersTitle": "Members of {scope}",
   "membersSub": "{n} people. A role applies to this workspace only.",
   "colName": "Name",
   "colRole": "Role here",

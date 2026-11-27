@@ -46,7 +46,7 @@ export function allStats(campaigns: Campaign[], days: CampaignDay[], leads: Lead
 }
 
 /** KPI series for the last 30 days vs the prior 30, plus 12 weekly buckets for sparklines.
- *  Same windows and definitions as the Command Center: spend by campaign-day (IST), leads by created time,
+ *  Same windows and definitions as Home: spend by campaign-day (IST), leads by created time,
  *  demos by the date the demo was BOOKED (demo_booked activity) for campaign-sourced leads (M10/M11). */
 export function kpiSeries(days: CampaignDay[], leads: Lead[], acts: Activity[], nowIso: string, bookingDeals?: Deal[]) {
   const nowMs = new Date(nowIso).getTime();

@@ -21,9 +21,11 @@ import { ConfigTab } from "./_components/config-tab";
 import { EraseButton, PrivacyHubLink } from "./_components/privacy-controls";
 import { stageList } from "@/lib/config/types";
 import { pageTitle } from "@/i18n/server";
+import { scopeName } from "@/lib/workspace-label";
+import { settingsLinksFor } from "@/components/shell/nav";
 
 export const generateMetadata = pageTitle("settings");
-const LABEL: Record<string, string> = { users: "Users & roles", branding: "White-label branding", config: "Configuration", pipeline: "Pipeline stages", privacy: "Consent & privacy", audit: "Audit log" };
+const LABEL: Record<string, string> = { users: "Access", branding: "White-label branding", config: "Configuration", pipeline: "Pipeline stages", privacy: "Consent & privacy", audit: "Audit log" };
 const PURPOSE: Record<string, string> = { demo_followup: "Demo follow-up", marketing_email: "Marketing email", whatsapp: "WhatsApp" };
 const KIND: Record<string, string> = { erasure: "Erasure", withdrawal: "Withdrawal", access: "Access" };
 const REQ_STATUS = { open: { tone: "warn", label: "Open" }, in_progress: { tone: "accent", label: "In progress" }, done: { tone: "success", label: "Done" } } as const;
@@ -39,14 +41,20 @@ export default async function Settings({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageHeader eyebrow={`${active.tenant.name} · ${active.ws.name}`} title="Settings"
+      <PageHeader eyebrow={scopeName(active.tenant.name, active.ws.name)} title="Settings"
         sub="Workspace settings apply to this workspace only. Branding applies to the whole tenant." />
+      <nav aria-label="All settings" className="mb-5 rounded-control border border-line bg-surface p-4">
+        <h2 className="mb-2 text-[13px] font-semibold text-ink">All settings</h2>
+        <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+          {settingsLinksFor(role, active.tenant).map((l) => <li key={l.href}><Link href={l.href} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] text-ink-2 hover:bg-paper-2 hover:text-ink focus-ring"><l.icon className="size-4 text-ink-3" aria-hidden />{l.label}</Link></li>)}
+        </ul>
+      </nav>
       {!allowed.length ? <Empty title="No settings for your role in this workspace." /> : (
         <>
           <TabBar tabs={allowed.map((v) => ({ value: v, label: LABEL[v] ?? v }))} current={tab} />
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="focus-ring">
             {tab === "users" && (session.demo ? <UsersTab wsName={active.ws.name} tenantName={active.tenant.name} rows={members(active.ws.id, now)} /> : (
-              <Card><CardBody><p className="text-[13px] text-ink-2">Members, roles and teams now live in <Link href="/settings/roles" className="font-medium text-accent underline">Roles &amp; access</Link>.</p></CardBody></Card>
+              <Card><CardBody><p className="text-[13px] text-ink-2">Members, roles and teams now live in <Link href="/settings/roles" className="font-medium text-accent underline">Access</Link>.</p></CardBody></Card>
             ))}
             {tab === "branding" && (
               <BrandingTab tenantName={active.tenant.name} workspaceCount={tenantWs.length} defaultHue={active.tenant.hue}

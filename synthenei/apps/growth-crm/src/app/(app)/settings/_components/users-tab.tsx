@@ -16,6 +16,7 @@ import { ROLES, ROLE_LABEL, can } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/data/types";
 import { sa } from "../roles/_lib/strings";
+import { scopeName } from "@/lib/workspace-label";
 import { changeMemberRole, inviteMember, reactivateMember, setMemberTerritory, suspendMember } from "./actions";
 
 export type MemberRow = {
@@ -87,7 +88,7 @@ export function UsersTab({ rows, wsName, tenantName, roleOptions, activeOwners, 
 
   return (
     <Card>
-      <CardHeader title={sa("membersTitle", { tenant: tenantName, ws: wsName })} sub={sa("membersSub", { n: rows.length })}
+      <CardHeader title={sa("membersTitle", { scope: scopeName(tenantName, wsName) })} sub={sa("membersSub", { n: rows.length })}
         action={
           <span className="flex items-center gap-2">
             {showRolesLink && <Link href="/settings/roles" className="text-12 font-medium text-accent hover:underline">{sa("linkRolesTeams")}</Link>}
@@ -100,7 +101,7 @@ export function UsersTab({ rows, wsName, tenantName, roleOptions, activeOwners, 
         <>
           <div className="scrollbar-thin hidden overflow-x-auto md:block">
             <table className="w-full border-collapse" style={{ minWidth: 900 }}>
-              <caption className="sr-only">{sa("membersTitle", { tenant: tenantName, ws: wsName })}</caption>
+              <caption className="sr-only">{sa("membersTitle", { scope: scopeName(tenantName, wsName) })}</caption>
               <thead><tr className="border-y border-line bg-paper/60">
                 <th scope="col" className={th}>{sa("colName")}</th><th scope="col" className={th}>{sa("colRole")}</th><th scope="col" className={th}>{sa("colTerritory")}</th>
                 <th scope="col" className={th}>{sa("colStatus")}</th><th scope="col" className={th}>{sa("colLastSeen")}</th><th scope="col" className={th}><span className="sr-only">{sa("colActions")}</span></th>

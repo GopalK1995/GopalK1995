@@ -53,7 +53,7 @@ describe("CommandPalette", () => {
     expect(await screen.findByText("New lead")).toBeInTheDocument();
     expect(screen.getByText("Log call")).toBeInTheDocument();
     expect(screen.queryByText("New task")).toBeNull();
-    expect(screen.queryByText("Roles & access")).toBeNull(); // owner holds members.manage, but only the first pages are listed while empty
+    expect(screen.queryByText("Access")).toBeNull(); // owner holds members.manage, but only the first pages are listed while empty
   });
 
   it("searches after typing, shows records and navigates on Enter, saving a recent item", async () => {

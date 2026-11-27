@@ -268,7 +268,7 @@ const LEGAL = {
   },
   tk: {
     kind: { call: "Call", whatsapp: "WhatsApp", email: "Email", demo: "Demo", follow_up: "Follow-up", proposal: "Proposal" } as Record<string, string>,
-    title: "Tasks and demo calendar", sub: "Follow-ups and demos in IST. Overdue first; court hours (10:30–17:00) are the hardest time to reach partners.",
+    title: "Tasks and calendar", sub: "Follow-ups and meetings in IST. Overdue first; court hours (10:30–17:00) are the hardest time to reach partners.",
     emptyMkt: `No tasks assigned to you. Tasks you create here (for example "Re-import Coimbatore Bar list") stay visible only to you and your Owner.`, emptyDefault: "No open tasks. Logging a call with a next-step date creates one.",
     noLead: "No lead", newDesc: "Times in IST. Tasks with a lead show on that lead's page.", titlePh: "e.g. Call partner after court: confirm Saturday demo", leadOpt: "Lead (optional)",
     leadNotFound: "Lead not found in this workspace.", ownLeads: "You can add tasks only to your own leads.",

@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import * as D from "@radix-ui/react-dialog";
-import { ChevronDown, Database, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, UserRound, X } from "lucide-react";
+import { ChevronDown, Database, BellRing, Ellipsis, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Repeat, Search, ShieldAlert, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isActive, mobileNavFor, navBadge, navFor, navGroup, navLabel } from "./nav";
 import { LanguageMenuItems } from "./language-switcher";
@@ -30,7 +30,7 @@ const COLLAPSE_KEY = "gcrm-nav-collapsed";
 
 function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onNavigate?: () => void; layoutKey: string }) {
   const path = usePathname();
-  const { role, tenant, objects } = useSession();
+  const { role, tenant, objects, demo } = useSession();
   const v = useVocab();
   const reduce = useReducedMotion();
   const t = useTranslations("shell");
@@ -53,7 +53,7 @@ function NavList({ collapsed, onNavigate, layoutKey }: { collapsed: boolean; onN
                   )}
                   <it.icon className={cn("relative size-4 shrink-0", active && "text-accent-on-navy")} aria-hidden />
                   {!collapsed && <span className="relative truncate">{navLabel(v, it, t)}</span>}
-                  {!collapsed && it.badge && <span className="relative ml-auto rounded-[3px] border border-navy-line px-1 text-[10px] font-normal text-navy-ink-3">{navBadge(it.badge, t)}</span>}
+                  {!collapsed && demo && it.badge && <span className="relative ml-auto rounded-[3px] border border-navy-line px-1 text-[10px] font-normal text-navy-ink-3">{navBadge(it.badge, t)}</span>}
                 </Link>
               );
               return <li key={it.href}>{collapsed ? <Tip content={navLabel(v, it, t)} side="right">{link}</Tip> : link}</li>;
@@ -115,6 +115,7 @@ function UserMenu() {
         <div className="px-2 pb-2 text-[12px]"><div className="font-medium text-ink">{s.name}</div><div className="text-ink-3">{s.email} · {v.role[s.role]}</div></div>
         <MenuSep />
         <MenuItem onSelect={() => router.push("/profile")}><UserRound />{t("profile")}</MenuItem>
+        <MenuItem onSelect={() => router.push("/settings/notifications")}><BellRing />{t("nav.item.notificationSettings")}</MenuItem>
         {s.demo && <MenuItem onSelect={() => { void logout(); }}><Repeat />{t("switchPersona")}</MenuItem>}
         <MenuSep />
         <LanguageMenuItems />
@@ -155,7 +156,7 @@ function PageTitle() {
   const t = useTranslations("shell");
   const match = navFor(role, tenant, objects).flatMap((g) => g.items).filter((it) => isActive(it.href, path)).sort((a, b) => b.href.length - a.href.length)[0];
   const seg = path.replace(/^\//, "").split("/")[0].replace(/-/g, " ");
-  const title = match ? navLabel(v, match, t) : seg ? `${seg[0].toUpperCase()}${seg.slice(1)}` : navLabel(v, { href: "/", label: "Command Center", icon: Database }, t);
+  const title = match ? navLabel(v, match, t) : seg ? `${seg[0].toUpperCase()}${seg.slice(1)}` : navLabel(v, { href: "/", label: "Home", icon: Database }, t);
   return <div className="hidden min-w-0 items-center lg:flex"><span className="truncate text-[14px] font-semibold text-ink">{title}</span></div>;
 }
 
@@ -237,7 +238,7 @@ export function AppShell({ children, bell }: { children: ReactNode; /** Server-r
             <Link key={it.href} href={it.href} className={cn("relative flex h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium", active ? "text-navy-ink" : "text-navy-ink-3")} aria-current={active ? "page" : undefined}>
               {active && <span className="absolute inset-x-5 top-0 h-0.5 rounded-b-full bg-accent-on-navy" />}
               <it.icon className={cn("size-[18px]", active && "text-accent-on-navy")} aria-hidden />
-              <span className="max-w-full truncate px-1">{it.label === "Command Center" ? t("overview") : navLabel(v, it, t)}</span>
+              <span className="max-w-full truncate px-1">{navLabel(v, it, t)}</span>
             </Link>
           );
         })}

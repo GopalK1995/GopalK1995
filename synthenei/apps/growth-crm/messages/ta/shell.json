@@ -50,6 +50,8 @@
   "nav": {
     "group": {
       "overview": "மேலோட்டம்",
+      "today": "இன்று",
+      "data": "தரவு",
       "sell": "விற்பனை",
       "market": "சந்தைப்படுத்தல்",
       "assist": "உதவி",
@@ -60,11 +62,12 @@
       "showcase": "காட்சி"
     },
     "item": {
-      "commandCenter": "கட்டுப்பாட்டு மையம்",
+      "home": "முகப்பு",
+      "contacts": "தொடர்புகள்",
       "myDay": "என் நாள்",
       "notifications": "அறிவிப்புகள்",
       "leads": "லீடுகள்",
-      "import": "இறக்குமதி",
+      "import": "இறக்குமதி மற்றும் ஏற்றுமதி",
       "pipeline": "பைப்லைன்",
       "lawFirms": "சட்ட நிறுவனங்கள்",
       "inbox": "இன்பாக்ஸ்",
@@ -78,7 +81,7 @@
       "dataHealth": "தரவு நலம்",
       "settings": "அமைப்புகள்",
       "notificationSettings": "அறிவிப்பு அமைப்புகள்",
-      "rolesAccess": "பாத்திரங்களும் அணுகலும்",
+      "access": "அணுகல்",
       "auditLog": "தணிக்கைப் பதிவு",
       "billing": "கட்டணம்",
       "apiKeys": "API சாவிகள்",

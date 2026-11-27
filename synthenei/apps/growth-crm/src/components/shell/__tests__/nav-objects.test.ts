@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { navFor, type NavObject } from "../nav";
+import { navFor, settingsLinksFor, type NavObject } from "../nav";
 import { objectPermissionDefs } from "@/lib/layouts/object-perms";
 import { isObjectPermission } from "@/lib/authz/catalog";
 import { pagePermission } from "@/lib/authz";
@@ -20,7 +20,7 @@ describe("nav entries for custom objects", () => {
     expect(navFor("owner", undefined, [])).toEqual(navFor("owner"));
   });
   it("the settings entries are gated by their permissions, not by role names", () => {
-    const hrefs = (r: Parameters<typeof navFor>[0]) => navFor(r).flatMap((g) => g.items.map((i) => i.href));
+    const hrefs = (r: Parameters<typeof navFor>[0]) => [...navFor(r).flatMap((g) => g.items.map((i) => i.href)), ...settingsLinksFor(r).map((l) => l.href)];
     expect(hrefs("owner")).toEqual(expect.arrayContaining(["/settings/objects", "/settings/layouts", "/settings/fields"]));
     for (const r of ["sales_rep", "marketing", "viewer"] as const) expect(hrefs(r)).not.toContain("/settings/objects");
   });

@@ -1,6 +1,6 @@
 import {
   Building2, CalendarClock, ChartLine, Crosshair, Database, Inbox, LayoutDashboard, ListChecks, Megaphone, MessagesSquare,
-  Bell, BellRing, Boxes, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, FileLock2, CreditCard, type LucideIcon,
+  BellRing, Boxes, Contact, KeyRound, LayoutTemplate, ListPlus, Plug, ScrollText, Settings, ShieldCheck, Webhook, SquareKanban, Users, Upload, Workflow, MailCheck, Share2, FileLock2, CreditCard, type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/data/types";
 import { isModuleEnabled, moduleForPath, type Vertical, type Vocab } from "@/lib/vertical";
@@ -9,35 +9,46 @@ import { SYSTEM_ROLES } from "@/lib/authz/catalog/system-roles";
 import { iconFor } from "@/lib/layouts/icons";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: string; /** Extra permission the role must hold (same key the route asserts). Hidden when missing. */ perm?: string; /** Not in the legacy page matrix: shown on `perm` alone. */ permOnly?: boolean };
+/**
+ * AUD-046. One name per concept (Home, Access, Audience, the workspace name) and four short groups: daily work first, then data, then Admin.
+ * The twelve configuration pages that used to crowd the sidebar live in SETTINGS_NAV and are reached from /settings ("All settings"); no route moved.
+ * Notifications live behind the header bell and the user menu (Notification settings), not in the sidebar.
+ */
 export const NAV: { group: string; items: NavItem[] }[] = [
-  { group: "Overview", items: [{ href: "/", label: "Command Center", icon: LayoutDashboard }, { href: "/sales", label: "My day", icon: CalendarClock }, { href: "/notifications", label: "Notifications", icon: Bell }] },
+  { group: "Today", items: [{ href: "/", label: "Home", icon: LayoutDashboard }, { href: "/sales", label: "My day", icon: CalendarClock }, { href: "/inbox", label: "Inbox", icon: Inbox }, { href: "/tasks", label: "Tasks", icon: ListChecks }, { href: "/ai", label: "Copilot", icon: MessagesSquare }] },
   { group: "Sell", items: [
-    { href: "/leads", label: "Leads", icon: Users }, { href: "/import", label: "Import", icon: Upload, perm: "leads.import", permOnly: true }, { href: "/pipeline", label: "Pipeline", icon: SquareKanban },
-    { href: "/accounts", label: "Law firms", icon: Building2 }, { href: "/inbox", label: "Inbox", icon: Inbox, badge: "Showcase" }, { href: "/tasks", label: "Tasks", icon: ListChecks },
+    { href: "/leads", label: "Leads", icon: Users }, { href: "/contacts", label: "Contacts", icon: Contact }, { href: "/accounts", label: "Law firms", icon: Building2 }, { href: "/pipeline", label: "Pipeline", icon: SquareKanban },
   ] },
   { group: "Market", items: [{ href: "/campaigns", label: "Campaigns", icon: Megaphone }, { href: "/audience", label: "Audience", icon: Crosshair }, { href: "/analytics", label: "Web analytics", icon: ChartLine }, { href: "/analytics/social", label: "Social", icon: Share2, perm: "analytics.read", permOnly: true }] },
-  { group: "Assist", items: [{ href: "/ai", label: "Copilot", icon: MessagesSquare }] },
-  { group: "Admin", items: [{ href: "/integrations", label: "Integrations", icon: Plug }, { href: "/data-health", label: "Data health", icon: Database }, { href: "/settings", label: "Settings", icon: Settings },
-    { href: "/settings/notifications", label: "Notification settings", icon: BellRing },
-    { href: "/settings/roles", label: "Roles & access", icon: ShieldCheck, perm: "members.manage" },
-    { href: "/settings/audit", label: "Audit log", icon: ScrollText, perm: "audit.read" },
-    { href: "/settings/billing", label: "Billing", icon: CreditCard, perm: "billing.read", permOnly: true },
-    { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" },
-    { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" },
-    { href: "/settings/pipelines", label: "Pipelines", icon: Workflow, perm: "pipelines.manage" },
-    { href: "/settings/email", label: "Email sending", icon: MailCheck, perm: "integrations.manage" },
-    { href: "/settings/privacy", label: "Privacy requests", icon: FileLock2, perm: "privacy.fulfil" },
-    { href: "/settings/fields", label: "Custom fields", icon: ListPlus, perm: "fields.manage" },
-    { href: "/settings/objects", label: "Custom objects", icon: Boxes, perm: "objects.manage" },
-    { href: "/settings/layouts", label: "Layouts", icon: LayoutTemplate, perm: "layouts.manage" }] },
+  { group: "Data", items: [{ href: "/import", label: "Import", icon: Upload, perm: "leads.import", permOnly: true }, { href: "/data-health", label: "Data health", icon: Database }, { href: "/integrations", label: "Integrations", icon: Plug }] },
+  { group: "Admin", items: [{ href: "/settings", label: "Settings", icon: Settings },
+    { href: "/settings/roles", label: "Access", icon: ShieldCheck, perm: "members.manage" },
+    { href: "/settings/audit", label: "Audit log", icon: ScrollText, perm: "audit.read" }] },
+];
+
+/** Configuration pages, listed on /settings instead of in the sidebar. Same permissions as before. */
+export const SETTINGS_NAV: NavItem[] = [
+  { href: "/settings/notifications", label: "Notification settings", icon: BellRing },
+  { href: "/settings/billing", label: "Billing", icon: CreditCard, perm: "billing.read", permOnly: true },
+  { href: "/settings/api-keys", label: "API keys", icon: KeyRound, perm: "api_keys.manage" },
+  { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, perm: "webhooks.manage" },
+  { href: "/settings/pipelines", label: "Pipelines", icon: Workflow, perm: "pipelines.manage" },
+  { href: "/settings/email", label: "Email sending", icon: MailCheck, perm: "integrations.manage" },
+  { href: "/settings/privacy", label: "Privacy requests", icon: FileLock2, perm: "privacy.fulfil" },
+  { href: "/settings/fields", label: "Custom fields", icon: ListPlus, perm: "fields.manage" },
+  { href: "/settings/objects", label: "Custom objects", icon: Boxes, perm: "objects.manage" },
+  { href: "/settings/layouts", label: "Layouts", icon: LayoutTemplate, perm: "layouts.manage" },
 ];
 
 /** An enabled custom object the viewer may read, resolved on the server (label already in the viewer's language, icon from the allow-list). */
 export type NavObject = { key: string; label: string; icon: string };
 export const OBJECTS_GROUP = "Records";
 const holds = (role: Role, perm?: string) => !perm || !!SYSTEM_ROLES.find((r) => r.key === role)?.grants[perm];
+const visible = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => (i: NavItem) => (i.permOnly || accessFor(role, i.href)) && holds(role, i.perm) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!));
+/** The configuration pages this role may open (the "All settings" list). */
+export const settingsLinksFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => SETTINGS_NAV.filter(visible(role, tenant));
 export const navFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }, objects: NavObject[] = []) => {
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => (i.permOnly || accessFor(role, i.href)) && holds(role, i.perm) && (!tenant || !moduleForPath(i.href) || isModuleEnabled(tenant, moduleForPath(i.href)!))) })).filter((g) => g.items.length);
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(visible(role, tenant)) })).filter((g) => g.items.length);
   // Custom objects were filtered on the server by obj:<key>.read; they sit between the work groups and Admin.
   if (!objects.length) return groups;
   const group = { group: OBJECTS_GROUP, items: objects.map((o): NavItem => ({ href: `/o/${o.key}`, label: o.label, icon: iconFor(o.icon) })) };
@@ -58,12 +69,12 @@ export const isActive = (href: string, path: string) => (href === "/" || href ==
 
 /** Message keys (shell.nav.*) for the static nav. Custom-object entries and unknown labels have no key and render as given. */
 export const NAV_ITEM_KEYS: Record<string, string> = {
-  "/": "commandCenter", "/sales": "myDay", "/notifications": "notifications", "/leads": "leads", "/import": "import", "/pipeline": "pipeline", "/accounts": "lawFirms", "/inbox": "inbox", "/tasks": "tasks",
+  "/": "home", "/sales": "myDay", "/leads": "leads", "/import": "import", "/pipeline": "pipeline", "/contacts": "contacts", "/accounts": "lawFirms", "/inbox": "inbox", "/tasks": "tasks",
   "/campaigns": "campaigns", "/audience": "audience", "/analytics": "webAnalytics", "/analytics/social": "social", "/ai": "copilot", "/integrations": "integrations", "/data-health": "dataHealth",
-  "/settings": "settings", "/settings/notifications": "notificationSettings", "/settings/roles": "rolesAccess", "/settings/audit": "auditLog", "/settings/billing": "billing", "/settings/api-keys": "apiKeys",
+  "/settings": "settings", "/settings/notifications": "notificationSettings", "/settings/roles": "access", "/settings/audit": "auditLog", "/settings/billing": "billing", "/settings/api-keys": "apiKeys",
   "/settings/webhooks": "webhooks", "/settings/pipelines": "pipelines", "/settings/email": "emailSending", "/settings/privacy": "privacyRequests", "/settings/fields": "customFields", "/settings/objects": "customObjects", "/settings/layouts": "layouts",
 };
-export const NAV_GROUP_KEYS: Record<string, string> = { Overview: "overview", Sell: "sell", Market: "market", Assist: "assist", Admin: "admin", [OBJECTS_GROUP]: "records" };
+export const NAV_GROUP_KEYS: Record<string, string> = { Today: "today", Sell: "sell", Market: "market", Data: "data", Admin: "admin", [OBJECTS_GROUP]: "records" };
 /** A translator for the "shell" namespace (next-intl's useTranslations("shell") or getT("shell")). Optional: without it labels stay English. */
 export type ShellT = (key: string, values?: Record<string, string | number>) => string;
 

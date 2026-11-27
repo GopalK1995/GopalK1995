@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { NAV, navFor } from "../nav";
+import { NAV, navFor, settingsLinksFor } from "../nav";
 import { pagePermission, PAGE_PERMISSION } from "@/lib/authz";
 import { permissionDef } from "@/lib/authz/catalog";
 
-const hrefs = (r: Parameters<typeof navFor>[0]) => navFor(r).flatMap((g) => g.items.map((i) => i.href));
+const hrefs = (r: Parameters<typeof navFor>[0]) => [...navFor(r).flatMap((g) => g.items.map((i) => i.href)), ...settingsLinksFor(r).map((l) => l.href)];
 
 describe("nav entries added after INTEG1", () => {
   it("no duplicate hrefs in the nav", () => {

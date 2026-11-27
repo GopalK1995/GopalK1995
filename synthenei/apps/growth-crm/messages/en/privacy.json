@@ -227,7 +227,7 @@
 
   "breach.title": "Breach register",
   "breach.sub": "A record of every personal-data breach: what happened, who is affected and who was told. Owners only.",
-  "breach.setup": "The breach register is not set up on this database yet. Ask your administrator to apply the T052 database changes.",
+  "breach.setup": "The breach register is not available yet. Contact Synthan support.",
   "breach.empty": "No breaches recorded",
   "breach.emptyBody": "Record an incident as soon as you become aware of it, even if details are still unknown.",
   "breach.add": "Record a breach",

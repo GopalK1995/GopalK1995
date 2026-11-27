@@ -7,6 +7,7 @@ import { dbForRequest, type Db } from "@/lib/db/client";
 import { throwIfError } from "@/lib/db/errors";
 import { from } from "@/lib/db/query";
 import type { Scope } from "@/lib/authz/types";
+import { withoutTestAccounts } from "@/lib/members/test-accounts";
 import { heldOf } from "./ctx";
 import type { BaseRole } from "./guards";
 import { demoMembers, demoRoles } from "./ops";
@@ -56,7 +57,8 @@ export async function loadAccess(): Promise<AccessResult> {
       part("policy", () => loadPolicy(db, tenant), { allowCustomRoles: true, maxSeats: null } as Policy),
     ]);
     if (failed.length === 4) return { status: "error" };
-    return { status: "ok", failed, data: { ...base, members, roles, teams, policy, activeOwners: activeOwnerCount(members) } };
+    // QA personas are hidden from the live list (display only; the owner count and every guard still use the full set, nothing is deleted).
+    return { status: "ok", failed, data: { ...base, members: withoutTestAccounts(members, session.uid), roles, teams, policy, activeOwners: activeOwnerCount(members) } };
   } catch (e) {
     console.error("[settings/roles] load", e);
     return { status: "error" };

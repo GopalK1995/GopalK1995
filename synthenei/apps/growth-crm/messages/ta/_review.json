@@ -67,6 +67,8 @@
       "nav": {
         "group": {
           "overview": true,
+          "today": true,
+          "data": true,
           "sell": true,
           "market": true,
           "assist": true,
@@ -77,7 +79,8 @@
           "showcase": true
         },
         "item": {
-          "commandCenter": true,
+          "home": true,
+          "contacts": true,
           "myDay": true,
           "notifications": true,
           "leads": true,
@@ -95,7 +98,7 @@
           "dataHealth": true,
           "settings": true,
           "notificationSettings": true,
-          "rolesAccess": true,
+          "access": true,
           "auditLog": true,
           "billing": true,
           "apiKeys": true,
