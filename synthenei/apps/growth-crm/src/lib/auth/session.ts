@@ -88,18 +88,18 @@ export function reSign(prev: Session, fresh: { platformAdmin: boolean; membershi
   return { ...prev, name: fresh.fullName || prev.name, platformAdmin: fresh.platformAdmin, memberships: fresh.memberships, iat: now };
 }
 
-/** Where a signed-in user must go before a session cookie is issued, given Supabase assurance levels. */
-export function mfaStep(a: { current: string | null | undefined; next: string | null | undefined }, opts: { platformAdmin: boolean; hasVerifiedTotp: boolean }): "none" | "challenge" | "enrol" {
+/**
+ * Where a signed-in user must go before a session cookie is issued, given Supabase assurance levels.
+ * Anyone with a verified factor is challenged to AAL2. Platform admins and users whose role/tenant policy requires MFA
+ * (see mfa-policy.ts) with no factor are sent to enrolment, never to a dead end; a tenant grace window only defers enrolment.
+ */
+export function mfaStep(a: { current: string | null | undefined; next: string | null | undefined }, opts: { platformAdmin: boolean; hasVerifiedTotp: boolean; required?: boolean; graceActive?: boolean }): "none" | "challenge" | "enrol" {
   if (a.current === "aal2") return "none";
   if (opts.hasVerifiedTotp || a.next === "aal2") return "challenge";
-  return opts.platformAdmin ? "enrol" : "none";
+  if (opts.platformAdmin) return "enrol";
+  if (opts.required) return opts.graceActive ? "none" : "enrol";
+  return "none";
 }
 
-/** Minimum bar for a new password: 10+ characters with a letter and a digit. Returns an error code or null. */
-export function passwordProblem(pw: string, confirm?: string): "short" | "weak" | "mismatch" | null {
-  if (pw.length < 10) return "short";
-  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "weak";
-  if (confirm !== undefined && pw !== confirm) return "mismatch";
-  return null;
-}
+export { passwordProblem, PASSWORD_MIN, PASSWORD_MAX_BYTES, type PasswordProblem } from "./password-policy";
 export const TOTP_RE = /^\d{6}$/;

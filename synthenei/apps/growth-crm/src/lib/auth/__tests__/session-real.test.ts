@@ -43,7 +43,7 @@ describe("helpers", () => {
     expect(mfaStep({ current: "aal2", next: "aal2" }, { platformAdmin: true, hasVerifiedTotp: true })).toBe("none");
   });
   it("password policy", () => {
-    expect(passwordProblem("short1")).toBe("short"); expect(passwordProblem("onlyletterslong")).toBe("weak");
-    expect(passwordProblem("goodpass123", "other")).toBe("mismatch"); expect(passwordProblem("goodpass123", "goodpass123")).toBeNull();
+    expect(passwordProblem("short1")).toBe("short"); expect(passwordProblem("password1234")).toBe("common");
+    expect(passwordProblem("good horse pasture lamp", "other")).toBe("mismatch"); expect(passwordProblem("good horse pasture lamp", "good horse pasture lamp")).toBeNull();
   });
 });

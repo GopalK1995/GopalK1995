@@ -168,10 +168,14 @@
         "save": true,
         "errors": {
           "short": true,
-          "weak": true,
           "mismatch": true,
-          "failed": true
-        }
+          "failed": true,
+          "long": true,
+          "common": true,
+          "context": true
+        },
+        "counter": true,
+        "counterOk": true
       },
       "invite": {
         "incompleteTitle": true,
@@ -195,7 +199,8 @@
         "codeLabel": true,
         "verifying": true,
         "verifyFinish": true,
-        "verifySignIn": true
+        "verifySignIn": true,
+        "requiredLead": true
       }
     },
     "errors": {

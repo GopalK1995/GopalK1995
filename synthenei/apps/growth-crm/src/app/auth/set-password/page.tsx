@@ -4,9 +4,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell, authField } from "../_shell";
 import { getT, pageTitle } from "@/i18n/server";
+import { PasswordFields } from "./password-fields";
 
 export const generateMetadata = pageTitle("setPassword");
-const ERR_KEYS = ["short", "weak", "mismatch", "failed"];
+const ERR_KEYS = ["short", "long", "common", "context", "mismatch", "failed"];
 
 export default async function SetPassword({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const sp = await searchParams;
@@ -19,11 +20,7 @@ export default async function SetPassword({ searchParams }: { searchParams: Prom
       {sp.error && <AuthAlert>{t(`setPassword.errors.${ERR_KEYS.includes(sp.error) ? sp.error : "failed"}`)}</AuthAlert>}
       <form action={setPassword} className="space-y-3">
         <input type="hidden" name="next" value={safeNext(sp.next) ?? ""} />
-        <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t("setPassword.newPassword")}</span>
-          <input name="password" type="password" autoComplete="new-password" minLength={10} required className={authField} /></label>
-        <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t("setPassword.confirm")}</span>
-          <input name="confirm" type="password" autoComplete="new-password" minLength={10} required className={authField} /></label>
-        <p className="text-[12px] text-ink-3">{t("setPassword.hint")}</p>
+        <PasswordFields fieldClass={authField} labels={{ password: t("setPassword.newPassword"), confirm: t("setPassword.confirm"), hint: t("setPassword.hint"), counter: t("setPassword.counter", { count: "{count}" }), counterOk: t("setPassword.counterOk", { count: "{count}" }) }} />
         <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel={t("setPassword.saving")}>{t("setPassword.save")}</SubmitButton>
       </form>
     </AuthShell>

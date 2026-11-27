@@ -193,7 +193,7 @@ export function validateOverrides(raw: unknown, opts: { strict?: boolean } = {})
   const c = new Ctx(opts.strict ?? true);
   const out: Record<string, unknown> = {};
   if (raw === undefined || raw === null) return { value: { v: CONFIG_VERSION }, issues: [] };
-  const top = ["v", "preset", "vocabulary", "stages", "pipelines", "taxonomies", "modules", "modulesLocked", "features", "branding", "dashboard", "data"];
+  const top = ["v", "preset", "vocabulary", "stages", "pipelines", "taxonomies", "modules", "modulesLocked", "features", "branding", "dashboard", "data", "security"];
   obj(c, "config", raw, top, (k, x) => {
     switch (k) {
       case "v": if (x !== CONFIG_VERSION) c.err("config.v", `Unsupported config version (expected ${CONFIG_VERSION}).`); break;
@@ -317,6 +317,17 @@ export function validateOverrides(raw: unknown, opts: { strict?: boolean } = {})
           }
         });
         out.data = o; break;
+      }
+      case "security": {
+        // Read by auth/mfa-policy.ts (AUD-029). Grace date is capped at 30 days from sign-in time there, so any date is stored but only a short window counts.
+        const o: Record<string, unknown> = {};
+        obj(c, "security", x, ["mfa", "mfaGraceUntil"], (kk, xx) => {
+          if (kk === "mfa") set(o, kk, oneOf(c, "security.mfa", xx, ["privileged", "all"] as const));
+          else if (xx === null) o[kk] = null;
+          else if (typeof xx === "string" && /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(xx) && Number.isFinite(Date.parse(xx))) o[kk] = xx;
+          else c.err("security.mfaGraceUntil", "Use a date such as 2026-12-15.");
+        });
+        out.security = o; break;
       }
     }
   });

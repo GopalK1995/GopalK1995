@@ -8,7 +8,7 @@ import { getT, pageTitle } from "@/i18n/server";
 
 export const generateMetadata = pageTitle("mfa");
 
-/** TOTP step. Challenge mode verifies an enrolled factor; enrol mode starts a new factor (platform admins must, org owners may). */
+/** TOTP step. Challenge mode verifies an enrolled factor; enrol mode starts a new factor (platform admins and privileged tenant roles must, see lib/auth/mfa-policy.ts). */
 export default async function Mfa({ searchParams }: { searchParams: Promise<{ enrol?: string; next?: string; via?: string; error?: string }> }) {
   const sp = await searchParams;
   const t = await getT("auth");
@@ -28,7 +28,7 @@ export default async function Mfa({ searchParams }: { searchParams: Promise<{ en
     factorId = data.id; qr = data.totp.qr_code; secret = data.totp.secret;
   }
   return (
-    <AuthShell back={t("shell.backToSignIn")} title={enrol ? t("mfa.setupTitle") : t("mfa.enterCode")} lead={enrol ? t("mfa.setupLead") : t("mfa.codeLead")}>
+    <AuthShell back={t("shell.backToSignIn")} title={enrol ? t("mfa.setupTitle") : t("mfa.enterCode")} lead={enrol ? t("mfa.requiredLead") : t("mfa.codeLead")}>
       {sp.error && <AuthAlert id="mfa-error">{t("mfa.badCode")}</AuthAlert>}
       {enrol && (
         <div className="mb-4 rounded-md border border-line bg-surface p-4">

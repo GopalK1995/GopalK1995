@@ -2,9 +2,10 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { HOME_FOR } from "./roles";
-import { GENERIC_AUTH_ERROR, LOGIN_LIMIT, RESET_LIMIT, SESSION_COOKIE, SUPPORT_COOKIE, TOTP_RE, WS_COOKIE, buildLiveSession, clientIp, isAppCookie, mfaStep, passwordProblem, reSign, sign, signSession, verifySession, verifySupport, type Session } from "./session";
+import { GENERIC_AUTH_ERROR, LOGIN_LIMIT, RESET_LIMIT, SESSION_COOKIE, SUPPORT_COOKIE, TOTP_RE, WS_COOKIE, buildLiveSession, clientIp, isAppCookie, passwordProblem, reSign, sign, signSession, verifySession, verifySupport, type Session } from "./session";
 import { createSupabaseServerClient } from "../supabase/server";
 import { throttled as throttledBy } from "./throttle";
+import { mfaGate, type GateClient } from "./mfa-gate";
 import { recordAuthEvent, type AuthEvent } from "./audit-events";
 import { PERSONAS, membershipsFor, tenantOf, userById, workspaceById } from "../tenancy";
 import { SIGNIN_SLUGS } from "../vertical";
@@ -54,11 +55,6 @@ async function authEvent(action: AuthEvent, o: { uid?: string | null; email?: st
   await recordAuthEvent({ action, ...o, ip: clientIp(h.get("x-forwarded-for")), userAgent: h.get("user-agent") });
 }
 
-async function hasVerifiedTotp(sb: Sb) {
-  const { data } = await sb.auth.mfa.listFactors();
-  return !!data?.totp?.some((f) => f.status === "verified");
-}
-
 /** Read the Supabase user + database claims and build the signed cookie payload. Null when nobody is signed in. */
 async function loadLiveSession(sb: Sb) {
   const { data: u } = await sb.auth.getUser();
@@ -79,8 +75,7 @@ async function finishLiveLogin(sb: Sb, next: string | null, via = "") {
   const { session, platformAdmin } = live;
   if (live.inactive) { await sb.auth.signOut(); redirect("/login?error=inactive"); }
   if (!session.memberships.length && !platformAdmin) { await sb.auth.signOut(); redirect("/login?error=no_profile"); }
-  const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-  const step = mfaStep({ current: aal?.currentLevel, next: aal?.nextLevel }, { platformAdmin, hasVerifiedTotp: await hasVerifiedTotp(sb) });
+  const step = await mfaGate(sb as unknown as GateClient, platformAdmin);
   if (step !== "none") redirect(`/auth/mfa${qs({ enrol: step === "enrol" ? "1" : null, next, via })}`);
   // Client sign-in links (/g/<slug>) only admit members of that client.
   if (via && !platformAdmin && !session.memberships.some((m) => workspaceById(m.ws)?.tenantId === via)) { await sb.auth.signOut(); redirect(`/g/${via}?error=wrong_tenant`); }
@@ -173,7 +168,7 @@ export async function setPassword(formData: FormData) {
   if (!sb) redirect("/login?error=no_backend");
   const { data: u } = await sb.auth.getUser();
   if (!u.user) redirect("/login?error=link");
-  const problem = passwordProblem(pw, confirm);
+  const problem = passwordProblem(pw, confirm, { email: u.user.email });
   if (problem) redirect(`/auth/set-password${qs({ error: problem, next })}`);
   const { error } = await sb.auth.updateUser({ password: pw });
   if (error) redirect(`/auth/set-password${qs({ error: "failed", next })}`);
@@ -195,6 +190,9 @@ export async function refreshSession(next: string | null) {
   if (!prev || prev.demo || !sb) redirect(next ?? "/");
   const live = await loadLiveSession(sb);
   if (!live || live.inactive) { store.delete(SESSION_COOKIE); redirect("/login?error=revoked"); }
+  // A cookie issued before MFA became mandatory (or before a role change) is not honoured past a refresh without AAL2.
+  const step = await mfaGate(sb as unknown as GateClient, live.platformAdmin);
+  if (step !== "none") redirect(`/auth/mfa${qs({ enrol: step === "enrol" ? "1" : null, next })}`);
   store.set(SESSION_COOKIE, await signSession(reSign(prev, { platformAdmin: live.platformAdmin, memberships: live.session.memberships, fullName: live.session.name })), cookieOpts);
   redirect(next ?? "/");
 }
