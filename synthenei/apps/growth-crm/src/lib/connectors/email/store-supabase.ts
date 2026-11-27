@@ -7,6 +7,7 @@ import "server-only";
 import type { Db } from "@/lib/db/client";
 import { from, type Qb } from "@/lib/db/query";
 import { emitEvent } from "@/lib/events/emit";
+import { suppressionAdd, suppressionCheck, suppressionDisplay } from "./suppression-db";
 import { normaliseEmail, type SuppressionEntry, type SuppressionReason } from "./suppression";
 import type { ConsentEntry, EmailEvent, EmailStore, NewOutbound, NewSuppression, OutboundPatch, OutboundRow, Recipient, TemplateRow } from "./store";
 
@@ -65,26 +66,31 @@ export function supabaseEmailStore(db: Db, warn: (m: string) => void = () => und
     },
 
     async isSuppressed(workspaceId, email) {
-      const { data, error } = await q("email_suppressions").select("id").eq("workspace_id", workspaceId).eq("email", normaliseEmail(email)).limit(1);
-      if (error) {
-        if (MISSING_TABLE.has(String(error.code ?? ""))) { warn("email_suppressions table is missing; apply docs/migrations-backlog.md T038 needs"); return false; }
-        throw failed("suppression check");   // fail closed
-      }
-      return ((data as R[] | null) ?? []).length > 0;
+      return suppressionCheck(db, workspaceId, email, async () => {   // legacy path: migration 0030 not applied yet
+        const { data, error } = await q("email_suppressions").select("id").eq("workspace_id", workspaceId).eq("email", normaliseEmail(email)).limit(1);
+        if (error) {
+          if (MISSING_TABLE.has(String(error.code ?? ""))) { warn("email_suppressions table is missing; apply docs/migrations-backlog.md T038 needs"); return false; }
+          throw failed("suppression check");   // fail closed
+        }
+        return ((data as R[] | null) ?? []).length > 0;
+      });
     },
     async addSuppression(s: NewSuppression) {
-      const { data, error } = await q("email_suppressions").insert({ tenant_id: s.tenantId, workspace_id: s.workspaceId, email: normaliseEmail(s.email), reason: s.reason, source: s.source, lead_id: s.leadId ?? null }).select("id");
-      if (error) {
-        if (error.code === "23505") return false;   // already suppressed: the first reason stays
-        if (MISSING_TABLE.has(String(error.code ?? ""))) { warn("email_suppressions table is missing; apply docs/migrations-backlog.md T038 needs"); return false; }
-        throw failed("suppression insert");
-      }
-      return ((data as R[] | null) ?? []).length > 0;
+      return suppressionAdd(db, s, async () => {   // legacy path: migration 0030 not applied yet (stores the clear address, as before)
+        const { data, error } = await q("email_suppressions").insert({ tenant_id: s.tenantId, workspace_id: s.workspaceId, email: normaliseEmail(s.email), reason: s.reason, source: s.source, lead_id: s.leadId ?? null }).select("id");
+        if (error) {
+          if (error.code === "23505") return false;   // already suppressed: the first reason stays
+          if (MISSING_TABLE.has(String(error.code ?? ""))) { warn("email_suppressions table is missing; apply docs/migrations-backlog.md T038 needs"); return false; }
+          throw failed("suppression insert");
+        }
+        return ((data as R[] | null) ?? []).length > 0;
+      });
     },
     async listSuppressions(workspaceId, limit): Promise<SuppressionEntry[]> {
-      const { data, error } = await q("email_suppressions").select("email, reason, source, created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(limit);
+      let { data, error } = await q("email_suppressions").select("email, email_hash, reason, source, created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(limit);
+      if (error && MISSING_COLUMN.has(String(error.code ?? ""))) ({ data, error } = await q("email_suppressions").select("email, reason, source, created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(limit));
       if (error) { if (MISSING_TABLE.has(String(error.code ?? ""))) return []; throw failed("suppression list"); }
-      return ((data as R[] | null) ?? []).map((r) => ({ email: String(r.email), reason: String(r.reason) as SuppressionReason, source: String(r.source), at: String(r.created_at) }));
+      return ((data as R[] | null) ?? []).map((r) => ({ email: suppressionDisplay(str(r.email), str(r.email_hash), (e) => e, true), reason: String(r.reason) as SuppressionReason, source: String(r.source), at: String(r.created_at) }));
     },
 
     async getOutbound(id): Promise<OutboundRow | null> {

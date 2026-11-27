@@ -8,6 +8,7 @@ import { consentRowsForSubject } from "./consent-lookup";
 import type { IntakeStore } from "./intake";
 import { LEAD_CONSENT_FLAG, type ConsentPurpose, type NoticeConfig, type PublicWorkspace } from "./types";
 import { normaliseEmail } from "./subject";
+import { suppressionAdd } from "@/lib/connectors/email/suppression-db";
 
 type R = Record<string, unknown>;
 const failed = (what: string) => new Error(`privacy store: ${what} failed`);
@@ -90,11 +91,14 @@ export function supabaseIntakeStore(db: Db, warn: (m: string) => void = () => un
         if (u.error) throw failed("lead flags");
       }
       if (i.purposes.includes("marketing_email")) {
-        const s = await q("email_suppressions").insert({ tenant_id: i.tenantUuid, workspace_id: i.wsUuid, email: normaliseEmail(i.email), reason: "unsubscribe", source: "privacy_request", lead_id: i.leadIds[0] ?? null });
-        if (s.error && s.error.code !== "23505") {
-          if (MISSING_TABLE.has(String(s.error.code ?? ""))) warn("email_suppressions table is missing; the withdrawal is still held by consent_log");
-          else throw failed("suppression insert");
-        }
+        await suppressionAdd(db, { workspaceId: i.wsUuid, email: i.email, reason: "unsubscribe", source: "privacy_request", leadId: i.leadIds[0] ?? null }, async () => {
+          const s = await q("email_suppressions").insert({ tenant_id: i.tenantUuid, workspace_id: i.wsUuid, email: normaliseEmail(i.email), reason: "unsubscribe", source: "privacy_request", lead_id: i.leadIds[0] ?? null });
+          if (s.error && s.error.code !== "23505") {
+            if (MISSING_TABLE.has(String(s.error.code ?? ""))) warn("email_suppressions table is missing; the withdrawal is still held by consent_log");
+            else throw failed("suppression insert");
+          }
+          return !s.error;
+        });
       }
       return { consentRows: rows.length };
     },

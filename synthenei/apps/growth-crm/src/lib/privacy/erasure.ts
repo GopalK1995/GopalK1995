@@ -133,7 +133,7 @@ export async function runErasure(d: ErasureDeps, i: ErasureInput): Promise<Erasu
     if (p.error) return { status: "none" };
     return ((p.data as R[] | null) ?? []).length ? { status: "kept", detail: "payment records are kept for tax and accounting law" } : { status: "none" };
   });
-  steps.push({ id: "suppression_list", status: "kept", detail: "the unsubscribe entry stays so the address is never mailed again" });
+  steps.push({ id: "suppression_list", status: "kept", detail: "the unsubscribe entry stays so the address is never mailed again (only a keyed hash is kept, not the address)" });
   steps.push({ id: "social_metrics", status: "none", detail: "social and metric tables hold counts only, no person" });
 
   const complete = !steps.some((s) => s.status === "failed");

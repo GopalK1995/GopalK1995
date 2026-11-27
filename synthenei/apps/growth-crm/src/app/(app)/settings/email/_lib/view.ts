@@ -9,6 +9,7 @@ import { domainStateOf } from "@/lib/connectors/email/domain";
 import { senderOf, type Sender } from "@/lib/connectors/email/config";
 import type { DomainState } from "@/lib/connectors/email/transport";
 import type { SuppressionReason } from "@/lib/connectors/email/suppression";
+import { suppressionDisplay } from "@/lib/connectors/email/suppression-db";
 
 export type Denied = { status: "denied"; reason: "support" | "role"; roleLabel: string };
 export interface ConnView { id: string; connectorId: "resend" | "email-smtp"; status: string; showcase: boolean; sender: Sender; domain: DomainState | null; webhookSecretSet: boolean; lastError: string | null }
@@ -59,11 +60,11 @@ export async function loadEmailView(): Promise<EmailView> {
       id: e.id, connectorId: e.connector_id as ConnView["connectorId"], status: e.status, showcase: e.mode === "sandbox" || e.status === "sandbox",
       sender: senderOf(e.settings ?? {}), domain: domainStateOf(e.health), webhookSecretSet: (e.settings ?? {}).webhook_secret_set === true, lastError: e.last_error,
     } : null;
-    const sup = await from(db, "email_suppressions").select("email, reason, source, created_at").eq("workspace_id", ws).order("created_at", { ascending: false }).limit(100);
+    const sup = await from(db, "email_suppressions").select("email, email_hash, reason, source, created_at").eq("workspace_id", ws).order("created_at", { ascending: false }).limit(100);
     const suppressionMissing = !!sup.error && ["PGRST205", "42P01"].includes(String(sup.error.code ?? ""));
     if (sup.error && !suppressionMissing) return { status: "error" };
     const mayPii = can(p, "pii.read");
-    const suppressions = ((sup.data as { email: string; reason: string; source: string; created_at: string }[] | null) ?? []).map((r) => ({ email: mayPii ? r.email : maskEmail(r.email), reason: r.reason as SuppressionReason, source: r.source, at: r.created_at }));
+    const suppressions = ((sup.data as { email: string | null; email_hash: string | null; reason: string; source: string; created_at: string }[] | null) ?? []).map((r) => ({ email: suppressionDisplay(r.email, r.email_hash, maskEmail, mayPii), reason: r.reason as SuppressionReason, source: r.source, at: r.created_at }));
     const seg = await from(db, "audience_segments").select("id, name").eq("workspace_id", ws).order("name", { ascending: true }).limit(100);
     const base = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
     return {
