@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 /** Tiny trend line for KPI tiles. Decorative: the tile's number carries the value (aria-hidden). */
 export function Sparkline({ data, className, tone = "light" }: { data: number[]; className?: string; tone?: "light" | "navy" }) {
   const id = useId();
+  const clean = data.filter((v) => Number.isFinite(v));
+  if (clean.length === 0) return <svg viewBox="0 0 96 36" className={cn("overflow-visible", className)} aria-hidden />; // empty series: draw nothing (no NaN path)
+  data = clean.length === 1 ? [clean[0], clean[0]] : clean; // one point still needs a line
   const W = 96, H = 36, p = 3;
   const min = Math.min(...data), max = Math.max(...data), span = max - min || 1;
   const pts = data.map((v, i) => [p + (i / (data.length - 1)) * (W - 2 * p), H - p - ((v - min) / span) * (H - 2 * p)] as const);

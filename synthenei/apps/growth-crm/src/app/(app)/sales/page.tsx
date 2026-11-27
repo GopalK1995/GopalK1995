@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/components/ui/kpi";
 import { PageHeader, ScoreChip } from "@/components/ui/misc";
+import { EmptyState } from "@/components/ui/states";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { QuickActions } from "@/components/quick-actions";
 import { RepSwitcher } from "./rep-switcher";
@@ -34,8 +35,10 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
   const [allLeads, allDeals, rawTasks, team, accounts, acts, convs, holidays] = await Promise.all([ds.leads(), ds.deals(), ds.tasks(), ds.team(), ds.accounts(), ds.activities(), ds.conversations(), ds.holidays().catch(() => [])]);
   const allTasks = normTasks(rawTasks); // real rows use assigneeId/numeric priority; normalised once for every widget below
   const reps = team.filter((t) => t.role === "sales_rep");
-  const repId = role === "sales_rep" ? session.uid : reps.find((r) => r.id === sp.rep)?.id ?? reps[0].id;
-  const rep = team.find((t) => t.id === repId)!;
+  const repId = role === "sales_rep" ? session.uid : reps.find((r) => r.id === sp.rep)?.id ?? reps[0]?.id;
+  const rep = repId ? team.find((t) => t.id === repId) : undefined;
+  // No sales rep in the team yet (a new or emptied workspace): there is no day to show, so say so instead of crashing.
+  if (!repId || !rep) return <><PageHeader title="My Day" sub="Your calls, follow-ups and meetings for today." /><EmptyState title="No sales reps yet" body="My Day appears once a team member with the Sales rep role is added. Invite one from Settings, then assign leads to them." /></>;
   const nowMs = new Date(now).getTime();
   const today = dayKey(now);
 
