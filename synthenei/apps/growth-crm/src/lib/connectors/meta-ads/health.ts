@@ -3,10 +3,15 @@
 import { TOKEN_WARN_DAYS, effectiveScopes } from "./constants";
 import type { TokenDebug } from "./gateway";
 
+type R = Record<string, unknown>;
 const DAY_MS = 86400e3;
 const secIso = (s: number | null | undefined): string | null => (typeof s === "number" && s > 0 ? new Date(s * 1000).toISOString() : null);
 
-export interface WebhookHealth { subscribed: boolean; /** short PII-free reason when not subscribed */ error: string | null; at: string }
+export interface WebhookPageHealth { id: string; subscribed: boolean; error: string | null }
+export interface WebhookHealth {
+  /** true only when EVERY connected Page is subscribed */ subscribed: boolean; /** short PII-free reason when not subscribed (the first failing Page) */ error: string | null; at: string;
+  /** AUD-100: per Page, when the connection tracks more than one */ pages?: WebhookPageHealth[];
+}
 export interface MetaHealth {
   /** user token expiry (debug_token.expires_at); null = Meta says it does not expire, or unknown */
   tokenExpiresAt: string | null;
@@ -55,6 +60,6 @@ export function readMetaHealth(health: unknown): MetaHealth | null {
   return {
     tokenExpiresAt: s(o.tokenExpiresAt), tokenNeverExpires: o.tokenNeverExpires === true, dataAccessExpiresAt: s(o.dataAccessExpiresAt),
     scopesGranted: strs(o.scopesGranted), scopesRequested: strs(o.scopesRequested), scopesMissing: strs(o.scopesMissing),
-    webhook: w ? { subscribed: w.subscribed === true, error: s(w.error), at: s(w.at) ?? "" } : null, checkedAt: s(o.checkedAt) ?? "",
+    webhook: w ? { subscribed: w.subscribed === true, error: s(w.error), at: s(w.at) ?? "", ...(Array.isArray(w.pages) ? { pages: w.pages.flatMap((x): WebhookPageHealth[] => (x && typeof x === "object" && typeof (x as R).id === "string" ? [{ id: String((x as R).id), subscribed: (x as R).subscribed === true, error: s((x as R).error) }] : [])) } : {}) } : null, checkedAt: s(o.checkedAt) ?? "",
   };
 }

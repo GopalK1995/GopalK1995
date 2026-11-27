@@ -6,8 +6,9 @@ import { createHash } from "node:crypto";
 import { contentHash } from "../core/upserter";
 import { applyFieldMap, effectiveMap } from "../core/field-map";
 import type { ConnectionRow, ConnectionSecrets, FieldMapSpec } from "../core/types";
-import { CRED, FORM_CONSENT_PURPOSES, LEAD_OBJECT, OBJ, type FormConsentPurpose } from "./constants";
+import { FORM_CONSENT_PURPOSES, LEAD_OBJECT, OBJ, type FormConsentPurpose } from "./constants";
 import type { GraphLead, MetaGateway } from "./gateway";
+import { ownsPageId } from "./pages";
 import type { LeadgenEvent } from "./payload";
 import type { ConnScope, MetaDeps } from "./store";
 
@@ -76,8 +77,8 @@ export function attributionOf(lead: GraphLead, campaignId: string | null): Recor
   };
 }
 
-/** Tenant isolation: a leadgen event is processed only for the page this connection selected. */
-export const ownsPage = (secrets: ConnectionSecrets, pageId: string): boolean => !!secrets[CRED.pageId] && secrets[CRED.pageId] === pageId;
+/** Tenant isolation: a leadgen event is processed only for a page this connection selected. */
+export const ownsPage = (secrets: ConnectionSecrets, pageId: string): boolean => ownsPageId(secrets, pageId);   // AUD-100: any Page of the connection
 
 export interface LeadCtx { deps: MetaDeps; conn: ConnectionRow; secrets: ConnectionSecrets; gateway: MetaGateway; reject: (reason: string) => void }
 export type LeadOutcome = "created" | "matched" | "duplicate" | "rejected";

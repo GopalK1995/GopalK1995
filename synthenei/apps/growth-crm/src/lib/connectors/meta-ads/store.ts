@@ -10,6 +10,8 @@ export type CoreLeadPort = Pick<ConnectorStore, "getFieldMap" | "getLink" | "put
 
 export interface AssetRegistration extends ConnScope {
   pageId: string; pageName?: string; igUserId?: string; igUsername?: string; adAccountId?: string; adAccountName?: string; currency?: string;
+  /** AUD-100: true = add this Page next to the ones the connection already owns. Unset keeps the old behaviour (everything else the connection owned is released). */
+  append?: boolean;
 }
 export type RegisterResult = { ok: true } | { ok: false; reason: "page_taken" | "ig_taken" };
 
@@ -37,8 +39,16 @@ export interface HealthRecord { tokenExpiresAt?: string | null; health: Partial<
 export interface MetaStore {
   /** Merges `health` into integrations.health.meta and optionally sets token_expires_at. Optional so older fakes keep working; the health check degrades to "not recorded". */
   recordHealth?(connectionId: string, r: HealthRecord): Promise<void>;
+  /** integrations.health.meta as stored (AUD-100: the per-Page webhook states are merged from it). Optional like recordHealth. */
+  readHealth?(connectionId: string): Promise<MetaHealth | null>;
   /** page_id and ig_user_id -> workspace. Globally unique: an asset owned by another workspace's live connection is refused. */
   registerAssets(a: AssetRegistration): Promise<RegisterResult>;
+  /**
+   * AUD-100: stops tracking one Page (and its Instagram account) for this connection without touching its other Pages: the meta_assets rows are
+   * released (integration_id null, so the Page can be claimed again) and the synced accounts are detached (history kept, no longer shown or synced).
+   * Optional so older fakes keep working.
+   */
+  releaseAssets?(i: { workspaceId: string; connectionId: string; pageId: string; igUserId?: string }): Promise<void>;
   /** Finds the campaign for a Meta campaign id in this workspace, creating it when unknown. `synthetic` marks sandbox rows. */
   ensureCampaign(i: { tenantId: string; workspaceId: string; externalId: string; name: string; synthetic: boolean }): Promise<string>;
   /** Upserts on (campaign, day): re-running a day replaces it, never doubles it. `source` is api for the real gateway, mock for the sandbox. */

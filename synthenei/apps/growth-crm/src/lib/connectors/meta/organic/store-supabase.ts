@@ -66,6 +66,11 @@ export function supabaseSocialStore(db: Db): SocialStore {
         profile_views: x.profileViews, reach: x.reach, website_clicks: x.websiteClicks, captured_at: x.at,
       })), "account_id,day", "account metrics upsert");
     },
+    async markFailed(scope, accounts, status, error, at) {
+      for (const a of accounts) {
+        await rows(q("social_accounts").update({ last_synced_at: at, last_sync_status: status, last_error: error }).eq("workspace_id", scope.workspaceId).eq("integration_id", scope.connectionId).eq("platform", a.platform).eq("external_id", a.externalId).select("id"), "account status");
+      }
+    },
     async markSynced(accountId, r) {
       try { await rows(q("social_accounts").update({ last_synced_at: r.at, last_sync_status: r.status, last_error: r.error ?? null }).eq("id", accountId).select("id"), "account status"); }
       catch (e) {

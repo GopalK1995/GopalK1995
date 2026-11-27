@@ -44,6 +44,8 @@ export function effectiveScopes(raw: string | undefined = process.env.META_OAUTH
 /** Credential bundle keys kept in the Vault (never returned to a client, never logged). */
 export const CRED = {
   accessToken: "access_token", refreshToken: "refresh_token", pageId: "page_id", pageToken: "page_token", igUserId: "ig_user_id", adAccountId: "ad_account_id",
+  /** AUD-100: JSON list of every connected Page (id, page token, linked Instagram id, names). The single-page keys above always mirror the FIRST entry, so the older single-page readers (and a bundle saved before this key existed) keep working. */
+  pages: "pages_json",
 } as const;
 /** Keys of the webhook secret bundle (webhook_secret_id): the signing secret and the hub.challenge token. */
 export const WEBHOOK_KEYS = { appSecret: "app_secret", verifyToken: "verify_token" } as const;

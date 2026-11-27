@@ -13,6 +13,7 @@ import { DEFAULT_LEAD_MAP, handleLeadgen } from "./leads";
 import { dispatchQueued } from "./outbound";
 import { parseWebhook, type MetaEvent } from "./payload";
 import type { MetaDeps } from "./store";
+import { pagesOf, secretsForInstagram, secretsForPage } from "./pages";
 import { refreshUserToken } from "./token";
 import { socialStream } from "../meta/organic/stream";
 
@@ -35,7 +36,7 @@ async function streamCtx(ctx: SyncContext) {
 
 async function dispatchStream(ctx: SyncContext): Promise<SyncResult> {
   const { rt, c } = await streamCtx(ctx);
-  if (!c.secrets[CRED.igUserId]) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_instagram_account" }, status: "skipped", reason: "no_instagram_account" };
+  if (!pagesOf(c.secrets).some((p) => p.igUserId)) return { cursor: null, rowsIn: 0, rowsRejected: 0, done: true, sample: { skipped: "no_instagram_account" }, status: "skipped", reason: "no_instagram_account" };
   let rejected = 0;
   const s = await dispatchQueued(rt.deps, ctx.conn, c.gateway, (reason) => { rejected++; ctx.reject?.(reason); });
   return { cursor: null, rowsIn: s.sent, rowsRejected: rejected, done: true, sample: { sent: s.sent, blocked: s.blocked, failed: s.failed, retry: s.retry, mode: c.gateway.kind } };
@@ -61,7 +62,11 @@ export const metaAdsConnector: ConnectorDef = {
     // The edge already verified X-Hub-Signature-256 on the raw body (verify/receive.ts); this only parses it.
     async verify(req) { return parseWebhook(req.rawBody); },
     async handle(ctx, evt) {
-      const e = evt as MetaEvent, rt = await runtime(), secrets = await ctx.secrets();
+      const e = evt as MetaEvent, rt = await runtime();
+      // AUD-100: a connection can hold several Pages; the event is handled with the token of the Page (or Instagram account) it is about.
+      // An id this connection does not own falls through with the primary's bundle and is rejected by the ownership check.
+      const all = await ctx.secrets();
+      const secrets = (e.kind === "leadgen" ? secretsForPage(all, e.pageId) : secretsForInstagram(all, e.igUserId)) ?? all;
       const c = { deps: rt.deps, conn: ctx.conn, secrets, gateway: gw(rt, ctx.conn, secrets), reject: (r: string) => ctx.reject?.(r) };
       if (e.kind === "leadgen") await handleLeadgen(c, e);
       else await handleIgMessage(c, e);

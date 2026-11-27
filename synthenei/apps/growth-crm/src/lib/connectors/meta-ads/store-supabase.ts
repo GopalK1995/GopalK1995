@@ -5,6 +5,7 @@ import "server-only";
 import type { Db } from "@/lib/db/client";
 import { from, type Qb } from "@/lib/db/query";
 import { emitEvent } from "@/lib/events/emit";
+import { readMetaHealth } from "./health";
 import type { ConsentEntry, ConversationRef, DailyMetricRow, InsertResult, MetaStore, NewInboundMessage, OutboundPatch, OutboundRow, AssetRegistration, RegisterResult } from "./store";
 
 type R = Record<string, unknown>;
@@ -45,6 +46,10 @@ export function supabaseMetaStore(db: Db): MetaStore {
       if (r.tokenExpiresAt !== undefined) patch.token_expires_at = r.tokenExpiresAt;
       await rows(q("integrations").update(patch).eq("id", connectionId).select("id"), "write health");
     },
+    async readHealth(connectionId) {
+      const cur = (await rows(q("integrations").select("health").eq("id", connectionId).limit(1), "read health"))[0];
+      return readMetaHealth(cur?.health);
+    },
     async registerAssets(a: AssetRegistration): Promise<RegisterResult> {
       const wanted = [{ platform: "facebook_page", id: a.pageId, name: a.pageName ?? null }, ...(a.igUserId ? [{ platform: "instagram", id: a.igUserId, name: a.igUsername ?? null }] : [])];
       const found: Record<string, string | null> = {};
@@ -61,9 +66,11 @@ export function supabaseMetaStore(db: Db): MetaStore {
           if (error) { if (error.code === "23505") return { ok: false, reason: w.platform === "instagram" ? "ig_taken" : "page_taken" }; throw failed("asset insert"); }
         }
       }
-      // A re-selection drops what this connection used to own.
-      const keep = wanted.map((w) => w.id);
-      for (const old of await rows(q("meta_assets").select("id, external_id").eq("integration_id", a.connectionId), "asset list")) if (!keep.includes(String(old.external_id))) await rows(q("meta_assets").update({ integration_id: null }).eq("id", old.id).select("id"), "asset drop");
+      // Without `append` a re-selection drops what this connection used to own (AUD-100: the connect flow appends instead).
+      if (!a.append) {
+        const keep = wanted.map((w) => w.id);
+        for (const old of await rows(q("meta_assets").select("id, external_id").eq("integration_id", a.connectionId), "asset list")) if (!keep.includes(String(old.external_id))) await rows(q("meta_assets").update({ integration_id: null }).eq("id", old.id).select("id"), "asset drop");
+      }
       if (a.adAccountId) {
         const own = (await rows(q("ad_accounts").select("id").eq("workspace_id", a.workspaceId).eq("platform", "meta").eq("external_id", a.adAccountId).limit(1), "ad account lookup"))[0];
         const row = { integration_id: a.connectionId, name: a.adAccountName ?? null, ...(a.currency && /^[A-Z]{3}$/.test(a.currency) ? { currency: a.currency } : {}), updated_at: new Date().toISOString() };
@@ -71,6 +78,14 @@ export function supabaseMetaStore(db: Db): MetaStore {
         else await rows(q("ad_accounts").insert({ ...row, tenant_id: a.tenantId, workspace_id: a.workspaceId, platform: "meta", external_id: a.adAccountId }).select("id"), "ad account insert");
       }
       return { ok: true };
+    },
+
+    async releaseAssets(i) {
+      const ids = [i.pageId, ...(i.igUserId ? [i.igUserId] : [])];
+      for (const id of ids) {
+        await rows(q("meta_assets").update({ integration_id: null, updated_at: new Date().toISOString() }).eq("workspace_id", i.workspaceId).eq("integration_id", i.connectionId).eq("external_id", id).select("id"), "asset release");
+        await rows(q("social_accounts").update({ integration_id: null, updated_at: new Date().toISOString() }).eq("workspace_id", i.workspaceId).eq("integration_id", i.connectionId).eq("external_id", id).select("id"), "account detach");
+      }
     },
 
     async ensureCampaign(i) {

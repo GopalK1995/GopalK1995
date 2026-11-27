@@ -161,3 +161,45 @@ describe("stream gates", () => {
     expect(urls.every((u) => u.includes("debug_token"))).toBe(true);
   });
 });
+
+describe("several accounts in one workspace (AUD-100)", () => {
+  const two = { access_token: "real", page_id: "pgA", page_token: "tA", ig_user_id: "igA", pages_json: JSON.stringify([{ id: "pgA", token: "tA", igUserId: "igA" }, { id: "pgB", token: "tB", igUserId: "igB" }]) };
+  const ctx = (secrets: Record<string, string>) => ({ conn: { id: "c1", tenantId: "t1", workspaceId: "w1" }, secrets: async () => secrets, reject: () => undefined }) as never;
+  // Each Page has its own accounts (ids derived from the Page) and can be scripted to fail.
+  const perPage = (fail: Record<string, Error> = {}) => (page: { id: string; igUserId?: string }): OrganicGateway => ({
+    ...gw({ posts: [rp(`post-${page.id}`, 30)] }),
+    async profile(p) { if (fail[page.id]) throw fail[page.id]; return { externalId: p === "instagram" ? page.igUserId! : page.id, displayName: page.id, username: null, followers: 10 }; },
+    async posts(p) { return { items: p === "instagram" ? [rp(`post-${page.id}`, 30)] : [] }; },
+  });
+  const rt = (gatewayFor: (p: { id: string; igUserId?: string }) => OrganicGateway, store = new MemStore()) => ({ env: {}, store, now: () => NOW, gatewayFor });
+
+  it("syncs every Page into its own accounts with its own posts", async () => {
+    const st = new MemStore();
+    const r = await socialRun(ctx(two), rt(perPage(), st) as never);
+    expect([...st.accounts.keys()].sort()).toEqual(["w1|facebook|pgA", "w1|facebook|pgB", "w1|instagram|igA", "w1|instagram|igB"]);
+    expect(st.posts.size).toBe(2);
+    expect(r.status).not.toBe("partial");
+  });
+  it("one Page failing does not block the other; the run is partial and names the Page", async () => {
+    const st = new MemStore();
+    const marks: { ids: string[]; status: string }[] = [];
+    (st as unknown as { markFailed: unknown }).markFailed = async (_s: unknown, accts: { externalId: string }[], status: string) => { marks.push({ ids: accts.map((a) => a.externalId), status }); };
+    const r = await socialRun(ctx(two), rt(perPage({ pgA: new CredentialError("dead") }), st) as never);
+    expect(r.status).toBe("partial");
+    expect(r.reason).toContain("page_pgA:credentials_rejected");
+    expect([...st.accounts.keys()].some((k) => k.includes("igB"))).toBe(true);
+    expect(st.posts.size).toBe(1);
+    expect(marks).toEqual([{ ids: ["pgA", "igA"], status: "needs_attention" }]);
+    expect((r.sample as { accounts: { page: string; ok: boolean }[] }).accounts.map((a) => [a.page, a.ok])).toEqual([["pgA", false], ["pgB", true]]);
+  });
+  it("every Page failing fails the run exactly as a single-account run does", async () => {
+    await expect(socialRun(ctx(two), rt(perPage({ pgA: new CredentialError("dead"), pgB: new CredentialError("dead") })) as never)).rejects.toBeInstanceOf(CredentialError);
+  });
+  it("a bundle without pages_json (the live single-page workspace) runs as one account with the single-account result", async () => {
+    const legacy = { access_token: "real", page_id: "pgA", page_token: "tA", ig_user_id: "igA" };
+    const st = new MemStore();
+    const r = await socialRun(ctx(legacy), rt(perPage(), st) as never);
+    expect([...st.accounts.keys()].sort()).toEqual(["w1|facebook|pgA", "w1|instagram|igA"]);
+    expect((r.sample as { platforms?: unknown[] }).platforms).toBeDefined();
+  });
+});

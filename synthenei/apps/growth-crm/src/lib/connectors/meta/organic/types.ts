@@ -51,5 +51,7 @@ export interface SocialStore {
   upsertPostMetrics(rows: { postId: string; day: string; metrics: PostMetrics; at: string }[], scope: Scope): Promise<void>;
   upsertAccountMetrics(rows: (AccountDay & { accountId: string; at: string })[], scope: Scope): Promise<void>;
   /** Outcome of the run on the account row (last_synced_at, last_sync_status, last_error). */
+  /** AUD-100: records that one Page's run failed before an account row could be written/updated (looked up by external id). Optional so older fakes keep working. */
+  markFailed?(scope: Scope, accounts: { platform: SocialPlatform; externalId: string }[], status: "error" | "needs_attention", error: string, at: string): Promise<void>;
   markSynced(accountId: string, r: { at: string; status: "ok" | "partial" | "no_data" | "error" | "needs_attention"; error?: string | null }): Promise<void>;
 }

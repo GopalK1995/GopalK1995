@@ -17,9 +17,16 @@ export class FakeStore implements MetaStore, CoreLeadPort {
   async registerAssets(a: AssetRegistration): Promise<RegisterResult> {
     if (this.assets.some((o) => o.workspaceId !== a.workspaceId && o.pageId === a.pageId)) return { ok: false, reason: "page_taken" };
     if (a.igUserId && this.assets.some((o) => o.workspaceId !== a.workspaceId && o.igUserId === a.igUserId)) return { ok: false, reason: "ig_taken" };
-    this.assets = this.assets.filter((o) => o.connectionId !== a.connectionId); this.assets.push(a);
+    // Like the database: the same Page registered again updates its row; without `append` the connection's other assets are released.
+    this.assets = this.assets.filter((o) => (a.append ? !(o.connectionId === a.connectionId && o.pageId === a.pageId) : o.connectionId !== a.connectionId)); this.assets.push(a);
     return { ok: true };
   }
+  released: { connectionId: string; pageId: string; igUserId?: string }[] = [];
+  async releaseAssets(i: { workspaceId: string; connectionId: string; pageId: string; igUserId?: string }) {
+    this.released.push({ connectionId: i.connectionId, pageId: i.pageId, igUserId: i.igUserId });
+    this.assets = this.assets.filter((o) => !(o.connectionId === i.connectionId && o.pageId === i.pageId));
+  }
+  async readHealth(connectionId: string) { const h = [...this.healthRecords].reverse().find((x) => x.connectionId === connectionId); return h ? (h.health as never) : null; }
   async ensureCampaign(i: { tenantId: string; workspaceId: string; externalId: string; name: string; synthetic: boolean }) {
     const f = this.campaigns.find((c) => c.workspaceId === i.workspaceId && c.externalId === i.externalId);
     if (f) return f.id;

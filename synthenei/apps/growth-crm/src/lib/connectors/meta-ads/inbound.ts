@@ -2,13 +2,13 @@
 // the edge verified X-Hub-Signature-256 (verify/receive.ts); nothing here re-checks signatures. Idempotent: a re-delivered message
 // is found by its mid and skipped, last_inbound_at only moves forward (it is the 24 h window's clock).
 import type { ConnectionRow, ConnectionSecrets } from "../core/types";
-import { CRED } from "./constants";
+import { ownsIgId } from "./pages";
 import type { MetaGateway } from "./gateway";
 import { bodyOf, type IgMessageEvent } from "./payload";
 import type { MetaDeps } from "./store";
 
-/** Tenant isolation: an event is processed only for the Instagram account this connection selected. */
-export const ownsIg = (secrets: ConnectionSecrets, igUserId: string): boolean => !!secrets[CRED.igUserId] && secrets[CRED.igUserId] === igUserId;
+/** Tenant isolation: an event is processed only for an Instagram account this connection selected. */
+export const ownsIg = (secrets: ConnectionSecrets, igUserId: string): boolean => ownsIgId(secrets, igUserId);   // AUD-100: any Instagram account of the connection
 
 export interface IgCtx { deps: MetaDeps; conn: ConnectionRow; secrets: ConnectionSecrets; gateway: MetaGateway; reject: (reason: string) => void }
 export type IgOutcome = "stored" | "duplicate" | "rejected";
