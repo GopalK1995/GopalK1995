@@ -9,7 +9,7 @@ import {
 import { makeRepo } from "../db/repo/base";
 import { from } from "../db/query";
 import { ApiError } from "./errors";
-import { parseFilters, parseLimit, type FieldSpec } from "./filters";
+import { parseFilters, parseInclude, parseLimit, parseSort, type FieldSpec } from "./filters";
 import { getRow, listPage, type Row } from "./list";
 import { route, type ApiCtx, type Deps } from "./handler";
 import * as S from "./schemas";
@@ -86,17 +86,19 @@ const ownerOf = (row: Row, f: ResourceDef["ownerField"]) => (row[f] as string | 
 const recRef = (def: ResourceDef, row: Row) => ({ type: def.objectType, id: String(row.id), ownerId: def.ownerField === "owner_id" ? ownerOf(row, "owner_id") : null, assigneeId: def.ownerField === "assignee_id" ? ownerOf(row, "assignee_id") : null });
 
 function parseBody<T>(schema: ZodType<T> | undefined, body: Record<string, unknown> | null): T {
-  if (!schema || !body) throw new ApiError("invalid", "A JSON body is required.");
+  if (!schema || !body) throw new ApiError("bad_request", "A JSON body is required.");
   return schema.parse(body);
 }
 
 export function collection(def: ResourceDef, deps: Deps = {}) {
   const GET = route({ resource: def.scope, action: "read" }, async (ctx) => {
     const filters = parseFilters(ctx.url.searchParams, def.filters, def.customCol === "custom");
+    const sp = ctx.url.searchParams;
     const page = await listPage(ctx.db, {
-      table: def.table, ws: ctx.ws, softDelete: def.softDelete, filters, cursor: ctx.url.searchParams.get("cursor"), limit: parseLimit(ctx.url.searchParams.get("limit")),
+      table: def.table, ws: ctx.ws, softDelete: def.softDelete, filters, cursor: sp.get("cursor"), limit: parseLimit(sp.get("limit")),
+      sort: parseSort(sp.get("sort"), S.SORTS[def.name] ?? ["created_at"]), includeTotal: parseInclude(sp.get("include")).total,
     });
-    return { status: 200, body: listBody(page.rows, page.nextCursor) };
+    return { status: 200, body: listBody(page.rows, page.nextCursor, page.total) };
   }, deps);
   if (!def.createSchema) return { GET };
   const POST = route({ resource: def.scope, action: "create", body: "required", idempotent: true }, async (ctx) => {
@@ -176,8 +178,12 @@ export function recordsCollection(deps: Deps = {}) {
   const GET = route({ resource: "records", action: "read", objectParam: "object" }, async (ctx) => {
     const ot = await resolveObjectType(ctx.db, ctx.auth.key.tenantId, ctx.params.object);
     const filters = parseFilters(ctx.url.searchParams, S.FILTERS.records, true);
-    const page = await listPage(ctx.db, { table: "records", ws: ctx.ws, customCol: "data", eq: { object_type_id: ot.id }, filters, cursor: ctx.url.searchParams.get("cursor"), limit: parseLimit(ctx.url.searchParams.get("limit")) });
-    return { status: 200, body: listBody(page.rows, page.nextCursor) };
+    const sp = ctx.url.searchParams;
+    const page = await listPage(ctx.db, {
+      table: "records", ws: ctx.ws, customCol: "data", eq: { object_type_id: ot.id }, filters, cursor: sp.get("cursor"), limit: parseLimit(sp.get("limit")),
+      sort: parseSort(sp.get("sort"), S.SORTS.records), includeTotal: parseInclude(sp.get("include")).total,
+    });
+    return { status: 200, body: listBody(page.rows, page.nextCursor, page.total) };
   }, deps);
   const POST = route({ resource: "records", action: "create", body: "required", idempotent: true, objectParam: "object" }, async (ctx) => {
     const ot = await resolveObjectType(ctx.db, ctx.auth.key.tenantId, ctx.params.object);

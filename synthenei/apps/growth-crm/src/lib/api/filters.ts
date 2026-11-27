@@ -17,7 +17,7 @@ const MAX_FILTERS = 10;
 export function parseLimit(raw: string | null): number {
   if (raw === null || raw === "") return DEFAULT_PAGE;
   const n = Number(raw);
-  if (!Number.isInteger(n) || n < 1 || n > MAX_PAGE) throw new ApiError("invalid", `limit must be an integer between 1 and ${MAX_PAGE}.`, { errors: [{ path: "limit", message: `1 to ${MAX_PAGE}` }] });
+  if (!Number.isInteger(n) || n < 1 || n > MAX_PAGE) throw new ApiError("bad_request", `limit must be an integer between 1 and ${MAX_PAGE}.`, { errors: [{ path: "limit", message: `1 to ${MAX_PAGE}` }] });
   return n;
 }
 
@@ -34,7 +34,7 @@ function coerce(spec: FieldSpec, raw: string, path: string, issues: FieldIssue[]
 
 /**
  * `allowed` = system fields filterable on this resource. `customAllowed` = whether filter[custom.<key>] is accepted
- * (text equality / in / contains only). Throws ApiError("invalid") listing every problem.
+ * (text equality / in / contains only). Throws ApiError("bad_request") listing every problem.
  */
 export function parseFilters(params: URLSearchParams, allowed: Record<string, FieldSpec>, customAllowed: boolean): ParsedFilter[] {
   const out: ParsedFilter[] = [], issues: FieldIssue[] = [];
@@ -59,6 +59,27 @@ export function parseFilters(params: URLSearchParams, allowed: Record<string, Fi
     out.push({ field, op, value, custom: false });
   }
   if (out.length > MAX_FILTERS) issues.push({ path: "filter", message: `at most ${MAX_FILTERS} filters` });
-  if (issues.length) throw new ApiError("invalid", "Some filters are not valid.", { errors: issues });
+  if (issues.length) throw new ApiError("bad_request", "Some filters are not valid.", { errors: issues });
   return out;
+}
+
+export interface SortSpec { col: string; dir: "asc" | "desc" }
+/** `sort=created_at` (ascending) or `sort=-created_at` (descending); one allow-listed column. Default: first allowed column, descending. */
+export function parseSort(raw: string | null, allowed: readonly string[]): SortSpec {
+  const def: SortSpec = { col: allowed[0] ?? "created_at", dir: "desc" };
+  if (raw === null || raw === "") return def;
+  const desc = raw.startsWith("-");
+  const col = desc || raw.startsWith("+") ? raw.slice(1) : raw;
+  if (col.includes(",")) throw new ApiError("bad_request", "Sort by one field at a time.", { errors: [{ path: "sort", message: "only one sort field is supported" }] });
+  if (!allowed.includes(col)) throw new ApiError("bad_request", `Cannot sort by ${col.slice(0, 40)}.`, { errors: [{ path: "sort", message: `must be one of ${allowed.join(", ")} (prefix with - for descending)` }] });
+  return { col, dir: desc ? "desc" : "asc" };
+}
+
+/** `include=total` adds an exact `total` to list responses (an extra count query, so opt-in). */
+export function parseInclude(raw: string | null): { total: boolean } {
+  if (raw === null || raw === "") return { total: false };
+  const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+  const bad = parts.filter((p) => p !== "total");
+  if (bad.length) throw new ApiError("bad_request", "Unknown include value.", { errors: [{ path: "include", message: "only total is supported" }] });
+  return { total: parts.includes("total") };
 }

@@ -7,9 +7,9 @@ import { loadEnv } from "../env";
 import { clientKey } from "../security/rate-limit";
 import { authenticateApiKey, type ApiAuth, type AuthDeps } from "./auth";
 import { ApiError, problemResponse, toApiError } from "./errors";
-import { requestHash, serviceIdempotencyStore, validIdempotencyKey, type IdempotencyStore } from "./idempotency";
-import { checkKeyRate, rateHeaders } from "./rate";
-import { safePath, serviceRequestLogger, type RequestLogger } from "./request-log";
+import { IdempotencyUnavailableError, requestHash, serviceIdempotencyStore, validIdempotencyKey, type IdempotencyStore } from "./idempotency";
+import { checkIpRate, checkKeyRate, rateHeaders } from "./rate";
+import { flushLog, safePath, serviceRequestLogger, type RequestLogger } from "./request-log";
 import { permissionFor, scopeAllows, type ApiAction, type ScopeResource } from "./scopes";
 
 export interface ApiResult { status: number; body?: unknown; headers?: Record<string, string> }
@@ -34,6 +34,10 @@ export interface Deps extends AuthDeps {
   idempotency?: IdempotencyStore;
   logger?: RequestLogger;
   rate?: typeof checkKeyRate;
+  /** Pre-auth per-IP check (tests). */
+  ipRate?: typeof checkIpRate;
+  /** Overrides next/server after() when flushing the request log (tests). */
+  scheduleLog?: Parameters<typeof flushLog>[1];
   /** Overrides the Supabase-configured check (tests). */
   configured?: () => boolean;
 }
@@ -45,17 +49,36 @@ export function jsonResponse(status: number, body: unknown, headers: Record<stri
   return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), "cache-control": "no-store", ...headers } });
 }
 
+export const MAX_BODY_BYTES = 256 * 1024;
+const tooLarge = () => new ApiError("payload_too_large", `Request body is too large (limit ${MAX_BODY_BYTES / 1024} KiB).`);
+
+/** Reads at most MAX_BODY_BYTES: a declared Content-Length over the cap is refused before reading, and a streamed body is cut off at the cap. */
+async function readText(req: Request): Promise<string> {
+  const declared = Number(req.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw tooLarge();
+  if (!req.body) return await req.text();
+  const reader = req.body.getReader(), dec = new TextDecoder();
+  let total = 0, out = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) { await reader.cancel().catch(() => undefined); throw tooLarge(); }
+    out += dec.decode(value, { stream: true });
+  }
+  return out + dec.decode();
+}
+
 async function readBody(req: Request, mode: RouteSpec["body"]): Promise<{ raw: string; json: Record<string, unknown> | null }> {
   if (!mode) return { raw: "", json: null };
-  const raw = await req.text();
-  if (raw.length > 256 * 1024) throw new ApiError("invalid", "Request body is too large.");
+  const raw = await readText(req);
   if (!raw.trim()) {
-    if (mode === "required") throw new ApiError("invalid", "A JSON body is required.");
+    if (mode === "required") throw new ApiError("bad_request", "A JSON body is required.");
     return { raw, json: null };
   }
   let parsed: unknown;
-  try { parsed = JSON.parse(raw); } catch { throw new ApiError("invalid", "Body is not valid JSON.", { errors: [{ path: "", message: "invalid JSON" }] }); }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError("invalid", "Body must be a JSON object.");
+  try { parsed = JSON.parse(raw); } catch { throw new ApiError("bad_request", "Body is not valid JSON.", { errors: [{ path: "", message: "invalid JSON" }] }); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError("bad_request", "Body must be a JSON object.");
   return { raw, json: parsed as Record<string, unknown> };
 }
 
@@ -65,6 +88,14 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
   type RouteCtx = { params?: Promise<Record<string, string>> | Record<string, string> };
   type Handler = { (req: Request): Promise<Response>; (req: Request, routeCtx: { params: Promise<Record<string, string>> }): Promise<Response> };
   return (async function handler(req: Request, routeCtx?: RouteCtx): Promise<Response> {
+    const logs: Promise<void>[] = [];
+    const res = await run(req, routeCtx, logs);
+    // Logs are flushed before the handler returns (or handed to after()), never left as a floating promise.
+    await Promise.all(logs.map((p) => flushLog(p, deps.scheduleLog)));
+    return res;
+  }) as Handler;
+
+  async function run(req: Request, routeCtx: RouteCtx | undefined, logs: Promise<void>[]): Promise<Response> {
     const started = Date.now();
     const requestId = sanitizeRid(req.headers.get("x-request-id"));
     const logger = deps.logger ?? serviceRequestLogger();
@@ -76,16 +107,18 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
       res.headers.set("x-request-id", requestId);
       for (const [k, v] of Object.entries(hdrs)) res.headers.set(k, v);
       if (auth || status !== 404) {
-        void logger.log({
+        logs.push(logger.log({
           keyId: auth?.key.id ?? null, tenantId: auth?.key.tenantId ?? null, workspaceId: auth?.key.workspaceId ?? null, method: req.method, path: safePath(req.url),
           status, ms: Date.now() - started, ip: clientKey(req.headers), requestId,
-        });
+        }).catch(() => undefined));
       }
       return res;
     };
     try {
       // Demo deployments have no database: the API does not exist there.
       if (!(deps.configured ?? isConfigured)()) return finish(problemResponse(new ApiError("not_found", "Resource not found."), requestId));
+      const ipr = await (deps.ipRate ?? checkIpRate)(clientKey(req.headers));
+      if (!ipr.ok) throw new ApiError("rate_limited", "Too many requests from this address. Retry after the delay in the Retry-After header.", { headers: { "Retry-After": String(ipr.retryAfterSec) } });
       auth = await authenticateApiKey(req, deps);
       const rate = await (deps.rate ?? checkKeyRate)(auth.key.id);
       hdrs = rateHeaders(rate);
@@ -117,13 +150,15 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
       };
 
       const idemKey = spec.idempotent ? req.headers.get("idempotency-key") : null;
-      if (idemKey !== null && !validIdempotencyKey(idemKey)) throw new ApiError("invalid", "Idempotency-Key must be 8 to 200 printable characters.");
+      if (idemKey !== null && !validIdempotencyKey(idemKey)) throw new ApiError("bad_request", "Idempotency-Key must be 8 to 200 printable characters.");
       const store = idemKey ? (deps.idempotency ?? serviceIdempotencyStore()) : null;
       if (idemKey && store) {
-        const b = await store.begin(auth.key.id, auth.key.tenantId, idemKey, requestHash(req.method, safePath(req.url) + url.search, raw));
+        let b;
+      try { b = await store.begin(auth.key.id, auth.key.tenantId, idemKey, requestHash(req.method, safePath(req.url) + url.search, raw)); }
+        catch (e) { if (e instanceof IdempotencyUnavailableError) throw new ApiError("unavailable", "Idempotency-Key cannot be honoured right now. Retry shortly.", { headers: { "Retry-After": "5" } }); throw e; }
         if (b.state === "replay") return finish(jsonResponse(b.status, b.body, { ...hdrs, "idempotent-replayed": "true", ...(b.status >= 400 ? { "content-type": "application/problem+json" } : {}) }));
         if (b.state === "mismatch") throw new ApiError("conflict", "This Idempotency-Key was already used with a different request.", { extra: { reason: "idempotency_key_reuse" } });
-        if (b.state === "inflight") throw new ApiError("conflict", "A request with this Idempotency-Key is still being processed.", { headers: { "Retry-After": "1" }, extra: { reason: "idempotency_in_flight" } });
+        if (b.state === "inflight") throw new ApiError("conflict", "A request with this Idempotency-Key is still being processed.", { headers: { "Retry-After": String(b.retryAfterSec ?? 1) }, extra: { reason: "idempotency_in_flight" } });
       }
       let out: ApiResult;
       try {
@@ -144,7 +179,7 @@ export function route(spec: RouteSpec, fn: (ctx: ApiCtx) => Promise<ApiResult>, 
       if (ae.code === "error") console.error("api/v1 error", { request_id: requestId, name: e instanceof Error ? e.name : "unknown" });
       return finish(problemResponse(ae, requestId, hdrs));
     }
-  }) as Handler;
+  }
 }
 
 async function problemJson(e: ApiError, requestId: string): Promise<Record<string, unknown>> {

@@ -56,7 +56,7 @@ describe("filter parser", () => {
       expect(() => p(q), q).toThrow(ApiError);
     }
     expect(() => p("filter[custom.room]=x", false)).toThrow(/not valid/);
-    try { p("filter[nope]=1"); } catch (e) { expect((e as ApiError).code).toBe("invalid"); expect((e as ApiError).opts.errors?.[0].path).toBe("filter[nope]"); }
+    try { p("filter[nope]=1"); } catch (e) { expect((e as ApiError).code).toBe("bad_request"); expect((e as ApiError).opts.errors?.[0].path).toBe("filter[nope]"); }
   });
   it("ignores unrelated parameters and caps the number of filters", () => {
     expect(p("cursor=abc&limit=5&foo=bar")).toEqual([]);
@@ -76,7 +76,7 @@ describe("error envelope (problem+json)", () => {
     expect(b).toEqual({ type: `${ERROR_BASE}not_found`, title: "Not found", status: 404, detail: "Resource not found.", code: "not_found", request_id: "rid-1" });
   });
   it("uses the contract statuses for every code", () => {
-    const want = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, error: 500 } as const;
+    const want = { bad_request: 400, payload_too_large: 413, unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, error: 500 } as const;
     for (const [code, status] of Object.entries(want)) expect(problemBody(new ApiError(code as keyof typeof want, "x")).status).toBe(status);
   });
   it("responds with application/problem+json and no-store", async () => {

@@ -15,19 +15,21 @@ const pageParams = [
   { name: "cursor", in: "query", schema: { type: "string" }, description: "Opaque cursor from next_cursor." },
   { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
 ];
+const sortParam = { name: "sort", in: "query", schema: { type: "string" }, description: "One column, ascending (created_at) or descending (-created_at). Allowed columns depend on the resource; others answer 400. A cursor is only valid with the sort that issued it." };
+const includeParam = { name: "include", in: "query", schema: { type: "string", enum: ["total"] }, description: "include=total adds an exact total (an extra count query)." };
 const filterParam = { name: "filter[field]", in: "query", schema: { type: "string" }, description: "Equality filter on a listed field; filter[field][gte|lte|in|contains|neq] and filter[custom.<key>] are supported." };
-const idemHeader = { name: "Idempotency-Key", in: "header", required: false, schema: { type: "string", minLength: 8, maxLength: 200 }, description: "Replays the stored response for 24 hours." };
+const idemHeader = { name: "Idempotency-Key", in: "header", required: false, schema: { type: "string", minLength: 8, maxLength: 200 }, description: "Replays the stored response for 24 hours. A request still running answers 409 with Retry-After; one that crashed frees the key after 60 seconds." };
 const idPath = { name: "id", in: "path", required: true, schema: { type: "string" } };
 
 type Op = Record<string, unknown>;
 function op(summary: string, scope: string | null, o: { query?: unknown[]; body?: ZodType; created?: boolean; list?: boolean; noContent?: boolean; idem?: boolean; params?: unknown[] } = {}): Op {
   const ok = o.noContent ? { "204": { description: "Deleted." } }
-    : { [o.created ? "201" : "200"]: { description: "OK", content: { "application/json": { schema: { type: "object", properties: { data: o.list ? { type: "array", items: { type: "object" } } : { type: "object" }, ...(o.list ? { next_cursor: { type: ["string", "null"] } } : {}) } } } } } };
+    : { [o.created ? "201" : "200"]: { description: "OK", content: { "application/json": { schema: { type: "object", properties: { data: o.list ? { type: "array", items: { type: "object" } } : { type: "object" }, ...(o.list ? { next_cursor: { type: ["string", "null"] }, total: { type: "integer", description: "Only with include=total." } } : {}) } } } } } };
   return {
     summary, security: [{ bearerAuth: [] }], ...(scope ? { "x-required-scope": scope } : {}),
     parameters: [...(o.params ?? []), ...(o.query ?? []), ...(o.idem ? [idemHeader] : [])],
     ...(o.body ? { requestBody: { required: true, content: { "application/json": { schema: json(o.body) } } } } : {}),
-    responses: { ...ok, "401": errResp("Missing, invalid, expired or revoked key."), "403": errResp("Scope or permission missing."), "404": errResp("Not found, or not visible to this key."), "409": errResp("Conflict or idempotency reuse."), "422": errResp("Validation failed."), "429": errResp("Rate limit exceeded.") },
+    responses: { ...ok, "400": errResp("Malformed JSON, query parameter, filter, sort or cursor."), "401": errResp("Missing, invalid, expired or revoked key."), "403": errResp("Scope or permission missing."), "404": errResp("Not found, or not visible to this key."), "409": errResp("Conflict or idempotency reuse."), "413": errResp("Body larger than 256 KiB."), "422": errResp("Validation failed; errors[] names each field."), "429": errResp("Rate limit exceeded.") },
   };
 }
 
@@ -46,7 +48,7 @@ export function buildOpenApi(baseUrl = "https://app.synthan.app"): Record<string
   const paths: Record<string, Record<string, Op>> = {};
   for (const r of RES) {
     const tag = [r.tag];
-    paths[`/${r.path}`] = { get: { ...op(`List ${r.path}`, `${r.scope}:read`, { list: true, query: [...pageParams, filterParam] }), tags: tag } };
+    paths[`/${r.path}`] = { get: { ...op(`List ${r.path}`, `${r.scope}:read`, { list: true, query: [...pageParams, sortParam, includeParam, filterParam] }), tags: tag } };
     if (r.create) paths[`/${r.path}`].post = { ...op(`Create ${r.path}`, `${r.scope}:write`, { body: r.create, created: true, idem: true }), tags: tag };
     paths[`/${r.path}/{id}`] = { get: { ...op(`Get one of ${r.path}`, `${r.scope}:read`, { params: [idPath] }), tags: tag } };
     if (r.update) paths[`/${r.path}/{id}`].patch = { ...op(`Update ${r.path}`, `${r.scope}:write`, { body: r.update, params: [idPath], idem: true }), tags: tag };
@@ -55,7 +57,7 @@ export function buildOpenApi(baseUrl = "https://app.synthan.app"): Record<string
   paths["/deals/{id}/move"] = { post: { ...op("Move a deal to a stage", "deals:write", { body: S.dealMove, params: [idPath], idem: true }), tags: ["Deals"] } };
   const objParam = { name: "object", in: "path", required: true, schema: { type: "string" }, description: "Custom object key." };
   paths["/records/{object}"] = {
-    get: { ...op("List records of a custom object", "records:read", { list: true, params: [objParam], query: pageParams }), tags: ["Records"] },
+    get: { ...op("List records of a custom object", "records:read", { list: true, params: [objParam], query: [...pageParams, sortParam, includeParam] }), tags: ["Records"] },
     post: { ...op("Create a record", "records:write", { body: S.recordCreate, created: true, params: [objParam], idem: true }), tags: ["Records"] },
   };
   paths["/records/{object}/{id}"] = {
@@ -84,7 +86,7 @@ export function buildOpenApi(baseUrl = "https://app.synthan.app"): Record<string
     components: {
       securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "sk_live_<prefix>_<secret> or sk_test_<prefix>_<secret>" } },
       schemas: {
-        Problem: { type: "object", required: ["type", "title", "status", "detail", "code"], properties: { type: { type: "string" }, title: { type: "string" }, status: { type: "integer" }, detail: { type: "string" }, code: { enum: ["unauthorized", "forbidden", "not_found", "conflict", "invalid", "rate_limited", "error"] }, errors: { type: "array", items: { type: "object", properties: { path: { type: "string" }, message: { type: "string" } } } } } },
+        Problem: { type: "object", required: ["type", "title", "status", "detail", "code"], properties: { type: { type: "string" }, title: { type: "string" }, status: { type: "integer" }, detail: { type: "string" }, code: { enum: ["bad_request", "unauthorized", "forbidden", "not_found", "conflict", "payload_too_large", "invalid", "rate_limited", "unavailable", "error"] }, errors: { type: "array", items: { type: "object", properties: { path: { type: "string" }, message: { type: "string" } } } } } },
       },
     },
     "x-scopes": ALL_SCOPES,

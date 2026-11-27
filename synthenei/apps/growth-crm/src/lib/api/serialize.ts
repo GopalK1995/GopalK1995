@@ -25,5 +25,5 @@ export function toDbInput(body: Record<string, unknown>, opts: { customCol?: str
   return o;
 }
 
-export const listBody = (rows: Record<string, unknown>[], nextCursor: string | null) => ({ data: rows.map(serializeRow), next_cursor: nextCursor });
+export const listBody = (rows: Record<string, unknown>[], nextCursor: string | null, total?: number) => ({ data: rows.map(serializeRow), next_cursor: nextCursor, ...(total === undefined ? {} : { total }) });
 export const itemBody = (row: Record<string, unknown>) => ({ data: serializeRow(row) });

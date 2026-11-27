@@ -47,7 +47,7 @@ export function pipelines(deps: Deps = {}) {
 export function fields(deps: Deps = {}) {
   return route({ resource: "fields", action: "read" }, async (ctx) => {
     const object = ctx.url.searchParams.get("object");
-    if (!object || !/^[a-z][a-z0-9_]{1,40}$/.test(object)) throw new ApiError("invalid", "The object query parameter is required (for example ?object=lead).", { errors: [{ path: "object", message: "required" }] });
+    if (!object || !/^[a-z][a-z0-9_]{1,40}$/.test(object)) throw new ApiError("bad_request", "The object query parameter is required (for example ?object=lead).", { errors: [{ path: "object", message: "required" }] });
     const ot = await from(ctx.db, "object_types").select("id,key").eq("tenant_id", ctx.auth.key.tenantId).eq("key", object).maybeSingle();
     throwIfError(ot.error);
     if (!ot.data) throw new ApiError("not_found", "Resource not found.");

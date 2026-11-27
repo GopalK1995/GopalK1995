@@ -26,8 +26,16 @@ export function checkKeyRate(keyId: string, limit = DEFAULT_KEY_LIMIT.limit, opt
   return rateLimit("apikey", keyId, { limit, windowMs: DEFAULT_KEY_LIMIT.windowMs }, { store: opts.store ?? shared, now: opts.now }).then((r) => ({ ...r, limit }));
 }
 
+/** Coarse per-IP ceiling checked before any key lookup, so a flood of bad keys cannot hammer the database. In-memory only. */
+export const IP_LIMIT = { limit: 600, windowMs: 60_000 } as const;
+const ipStore = memoryStore();
+export function checkIpRate(ip: string, opts: { store?: RateLimitStore; now?: number } = {}): Promise<RateLimitResult & { limit: number }> {
+  return rateLimit("apiip", ip, IP_LIMIT, { store: opts.store ?? ipStore, now: opts.now }).then((r) => ({ ...r, limit: IP_LIMIT.limit }));
+}
+
 export function rateHeaders(r: RateLimitResult & { limit: number }, now = Date.now()): Record<string, string> {
   return {
+    "RateLimit-Policy": `${r.limit};w=${Math.round(DEFAULT_KEY_LIMIT.windowMs / 1000)}`,
     "RateLimit-Limit": String(r.limit), "RateLimit-Remaining": String(r.remaining), "RateLimit-Reset": String(r.retryAfterSec),
     ...(r.ok ? {} : { "Retry-After": String(r.retryAfterSec) }),
     "x-ratelimit-reset-at": String(Math.floor(now / 1000) + r.retryAfterSec),

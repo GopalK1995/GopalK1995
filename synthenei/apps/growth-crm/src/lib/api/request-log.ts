@@ -1,5 +1,6 @@
 // Request log (api_request_log): method, path, status, duration, ip, request id. Never bodies, query strings, headers or keys.
 import { isIP } from "node:net";
+import { after } from "next/server";
 import { serviceDb } from "../db/service";
 import { from } from "../db/query";
 
@@ -29,3 +30,21 @@ export function serviceRequestLogger(getDb = serviceDb): RequestLogger {
     },
   };
 }
+
+/** Budget for an inline (awaited) log write when no after() scope exists; a slow log must not slow the response much. */
+export const LOG_FLUSH_TIMEOUT_MS = 1500;
+
+/**
+ * Makes sure a log write is not lost when the serverless function freezes after the response: registers it with
+ * Next's after() (kept alive until it settles) and, outside a request scope or if after() is unavailable, awaits it
+ * (bounded by LOG_FLUSH_TIMEOUT_MS) before the response returns. Never throws.
+ */
+export async function flushLog(p: Promise<void>, schedule: (cb: () => Promise<void>) => void = defaultAfter): Promise<void> {
+  try { schedule(() => p); return; } catch { /* no request scope: await below */ }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([p, new Promise<void>((r) => { timer = setTimeout(r, LOG_FLUSH_TIMEOUT_MS); })]);
+  } catch { /* logging must never fail a request */ } finally { if (timer) clearTimeout(timer); }
+}
+
+function defaultAfter(cb: () => Promise<void>): void { after(cb); }

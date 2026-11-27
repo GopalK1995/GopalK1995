@@ -183,7 +183,7 @@ describe("idempotency", () => {
     expect(r.status).toBe(409);
     expect((await json(r)).reason).toBe("idempotency_key_reuse");
   });
-  it("a request still in flight is a 409 with Retry-After; client errors replay; a malformed key is 422", async () => {
+  it("a request still in flight is a 409 with Retry-After; client errors replay; a malformed key is 400", async () => {
     const { s } = mk();
     const POST = collection(RESOURCES.leads, s.deps).POST!;
     await s.idempotency.begin(s.row.id, s.row.tenantId, "inflight-key-1", "x");
@@ -195,7 +195,7 @@ describe("idempotency", () => {
     expect(bad2.status).toBe(422);
     expect(bad2.headers.get("idempotent-replayed")).toBe("true");
     expect(bad2.headers.get("content-type")).toBe("application/problem+json");
-    expect((await POST(s.req("/leads", { method: "POST", body, headers: { "idempotency-key": "short" } }))).status).toBe(422);
+    expect((await POST(s.req("/leads", { method: "POST", body, headers: { "idempotency-key": "short" } }))).status).toBe(400);
   });
   it("server errors release the key so a retry can succeed", async () => {
     const s = setup();
@@ -214,7 +214,7 @@ describe("idempotency", () => {
 });
 
 describe("validation, envelope and logging", () => {
-  it("422 with field paths for invalid bodies; 422 for non-JSON; unknown fields rejected", async () => {
+  it("422 with field paths for invalid bodies; 400 for non-JSON; unknown fields rejected", async () => {
     const s = setup();
     const POST = collection(RESOURCES.leads, s.deps).POST!;
     const r = await POST(s.req("/leads", { method: "POST", body: JSON.stringify({ full_name: "", email: "nope" }) }));
@@ -222,8 +222,8 @@ describe("validation, envelope and logging", () => {
     const b = await json(r);
     expect(b).toMatchObject({ code: "invalid", status: 422, title: expect.any(String), type: expect.stringContaining("/invalid") });
     expect((b.errors as { path: string }[]).map((e) => e.path).sort()).toEqual(["email", "full_name"]);
-    expect((await POST(s.req("/leads", { method: "POST", body: "{not json" }))).status).toBe(422);
-    expect((await POST(s.req("/leads", { method: "POST", body: "[]" }))).status).toBe(422);
+    expect((await POST(s.req("/leads", { method: "POST", body: "{not json" }))).status).toBe(400);
+    expect((await POST(s.req("/leads", { method: "POST", body: "[]" }))).status).toBe(400);
   });
   it("logs method, path, status and key id; never bodies, query strings, headers or the key", async () => {
     const s = setup({ db: fakeDb({ leads: { data: [], error: null } }) });
@@ -253,8 +253,8 @@ describe("validation, envelope and logging", () => {
     expect(b.next_cursor).toBeTruthy();
     expect(b.data[0]).toHaveProperty("org_id", "t1");
     expect(b.data[0]).not.toHaveProperty("tenant_id");
-    expect((await collection(RESOURCES.leads, s.deps).GET(s.req("/leads?limit=500"))).status).toBe(422);
-    expect((await collection(RESOURCES.leads, s.deps).GET(s.req("/leads?cursor=%%%"))).status).toBe(422);
+    expect((await collection(RESOURCES.leads, s.deps).GET(s.req("/leads?limit=500"))).status).toBe(400);
+    expect((await collection(RESOURCES.leads, s.deps).GET(s.req("/leads?cursor=%%%"))).status).toBe(400);
   });
   beforeEach(() => undefined);
 });

@@ -2,11 +2,12 @@
 import type { Db } from "./client";
 import type { PgErrorLike } from "./errors";
 
-export interface QResult { data: unknown; error: PgErrorLike | null }
+export interface QResult { data: unknown; error: PgErrorLike | null; count?: number | null }
 export interface Qb extends PromiseLike<QResult> {
-  select(cols?: string): Qb;
+  select(cols?: string, opts?: { count?: "exact" | "planned" | "estimated"; head?: boolean }): Qb;
   insert(v: Record<string, unknown> | Record<string, unknown>[]): Qb;
   update(v: Record<string, unknown>): Qb;
+  delete(): Qb;
   eq(c: string, v: unknown): Qb;
   neq(c: string, v: unknown): Qb;
   gt(c: string, v: unknown): Qb;

@@ -4,11 +4,12 @@ import { AuthzError } from "../authz/engine";
 import { GrantsUnavailableError } from "../authz/errors";
 import { DbError } from "../db/errors";
 import { serializeRow } from "./serialize";
+import { fieldForConstraint } from "../validation/shared";
 
-export type ApiCode = "unauthorized" | "forbidden" | "not_found" | "conflict" | "invalid" | "rate_limited" | "unavailable" | "error";
-export const STATUS: Record<ApiCode, number> = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 422, rate_limited: 429, unavailable: 503, error: 500 };
+export type ApiCode = "bad_request" | "unauthorized" | "forbidden" | "not_found" | "conflict" | "payload_too_large" | "invalid" | "rate_limited" | "unavailable" | "error";
+export const STATUS: Record<ApiCode, number> = { bad_request: 400, unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, payload_too_large: 413, invalid: 422, rate_limited: 429, unavailable: 503, error: 500 };
 const TITLE: Record<ApiCode, string> = {
-  unauthorized: "Unauthorized", forbidden: "Forbidden", not_found: "Not found", conflict: "Conflict",
+  bad_request: "Bad request", payload_too_large: "Payload too large", unauthorized: "Unauthorized", forbidden: "Forbidden", not_found: "Not found", conflict: "Conflict",
   invalid: "Invalid request", rate_limited: "Too many requests", unavailable: "Service unavailable", error: "Internal error",
 };
 export const ERROR_BASE = "https://docs.synthan.app/errors/";
@@ -56,7 +57,11 @@ export function toApiError(e: unknown): ApiError {
       case "not_found": return new ApiError("not_found", "Resource not found.");
       case "conflict": return new ApiError("conflict", "The record changed since you read it.", { extra: e.current && typeof e.current === "object" ? { current: serializeRow(e.current as Record<string, unknown>) } : {} });
       case "unique": return new ApiError("conflict", "A record with these values already exists.");
-      case "invalid": return new ApiError("invalid", "A value was rejected by the database.");
+      case "invalid": {
+        // Name the field when the database tells us which CHECK failed (never the SQL text or constraint name).
+        const f = fieldForConstraint(e.detail);
+        return new ApiError("invalid", f ? `${f.path} ${f.message}.` : "A value was rejected by the database.", f ? { errors: [f] } : {});
+      }
       default: return new ApiError("error", "Something went wrong on our side.");
     }
   }
