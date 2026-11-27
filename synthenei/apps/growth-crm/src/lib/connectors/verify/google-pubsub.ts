@@ -1,5 +1,7 @@
 // Google Pub/Sub push: Authorization: Bearer <RS256 JWT> signed by Google. We check the signature (Google JWKS), iss, exp and that aud
-// equals the configured audience. `secret` is the expected audience, optionally "audience|service-account-email" to pin the sender.
+// equals the configured audience, and that the sender is OUR push service account: the signed token must carry email_verified=true and
+// an email equal to the pinned address (secret "audience|email", else env GMAIL_PUBSUB_SERVICE_ACCOUNT). With no pin the check FAILS CLOSED in
+// production (NODE_ENV=production): any Google account can mint an ID token for any audience, so an audience-only check proves nothing.
 import { createPublicKey, createVerify } from "node:crypto";
 import type { Verifier, VerifyOpts } from "./util";
 
@@ -14,6 +16,8 @@ async function googleKeys(opts?: VerifyOpts): Promise<Record<string, unknown>[]>
   cache = { at: Date.now(), keys };
   return keys;
 }
+/** The platform pin (GMAIL_PUBSUB_SERVICE_ACCOUNT, or opts override in tests). Empty string = not configured. */
+const platformPin = (opts?: VerifyOpts): string => (opts?.pubsubServiceAccount ?? process.env.GMAIL_PUBSUB_SERVICE_ACCOUNT ?? "").trim().toLowerCase();
 const b64 = (s: string) => Buffer.from(s, "base64url");
 
 export const verify: Verifier = async (_raw, headers, secret, opts) => {
@@ -30,7 +34,12 @@ export const verify: Verifier = async (_raw, headers, secret, opts) => {
     const now = (opts?.now ?? Date.now()) / 1000;
     if (!claims.exp || claims.exp < now) return false;
     if (claims.aud !== aud || !["accounts.google.com", "https://accounts.google.com"].includes(claims.iss ?? "")) return false;
-    if (email && (claims.email !== email || claims.email_verified !== true)) return false;
+    const conn = (email ?? "").trim().toLowerCase(), plat = platformPin(opts);
+    if (conn && plat && conn !== plat) return false;   // a per-connection pin may only narrow, never contradict, the platform pin
+    const pin = plat || conn;
+    const production = opts?.production ?? process.env.NODE_ENV === "production";
+    if (!pin && production) return false;   // fail closed: owner must set GMAIL_PUBSUB_SERVICE_ACCOUNT
+    if (pin && (claims.email?.toLowerCase() !== pin || claims.email_verified !== true)) return false;
     const jwk = (await googleKeys(opts)).find((k) => k.kid === header.kid);
     if (!jwk) return false;
     return createVerify("RSA-SHA256").update(`${h}.${p}`).verify(createPublicKey({ key: jwk as never, format: "jwk" }), b64(s));

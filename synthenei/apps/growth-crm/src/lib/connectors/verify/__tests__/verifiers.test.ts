@@ -96,6 +96,22 @@ describe("google pub/sub JWT", () => {
     expect(await v("", h(mint(claims)), "https://x.test/hook|evil@x.com", opts)).toBe(false);
     expect(await v("", H({}), "https://x.test/hook", opts)).toBe(false);
   });
+  it("pins the sender: a token from another service account, or with email_verified false, is refused (AUD-030)", async () => {
+    const bare = "https://x.test/hook";
+    const env = { ...opts, pubsubServiceAccount: "push@p.iam.gserviceaccount.com", production: true };
+    expect(await v("", h(mint(claims)), bare, env)).toBe(true);                                                  // platform pin matches
+    expect(await v("", h(mint({ ...claims, email: "attacker@gmail.com" })), bare, env)).toBe(false);             // other account, right audience
+    expect(await v("", h(mint({ ...claims, email_verified: false })), bare, env)).toBe(false);
+    expect(await v("", h(mint({ ...claims, email: undefined, email_verified: undefined })), bare, env)).toBe(false);
+    expect(await v("", h(mint({ ...claims, email: "PUSH@p.iam.gserviceaccount.com" })), bare, env)).toBe(true); // case-insensitive
+    expect(await v("", h(mint(claims)), `${bare}|other@p.iam.gserviceaccount.com`, env)).toBe(false);          // connection pin contradicting platform pin
+  });
+  it("fails closed in production with no pin configured, allows audience-only elsewhere", async () => {
+    const bare = "https://x.test/hook";
+    expect(await v("", h(mint(claims)), bare, { ...opts, pubsubServiceAccount: "", production: true })).toBe(false);
+    expect(await v("", h(mint(claims)), bare, { ...opts, pubsubServiceAccount: "", production: false })).toBe(true);
+    expect(await v("", h(mint(claims)), `${bare}|push@p.iam.gserviceaccount.com`, { ...opts, pubsubServiceAccount: "", production: true })).toBe(true);
+  });
 });
 
 describe("helpers", () => {
@@ -108,7 +124,9 @@ describe("helpers", () => {
     expect(pickSecret(null)).toBeNull();
   });
   it("event id prefers vendor ids, else body hash; headers allow-list drops signatures", () => {
-    expect(providerEventId("razorpay", H({ "x-razorpay-event-id": "evt_1" }), "{}")).toBe("evt_1");
+    expect(providerEventId("razorpay", H({ "x-razorpay-event-id": "evt_1" }), "{}")).toMatch(/^sha256:[0-9a-f]{64}$/);   // unsigned header ignored
+    expect(providerEventId("razorpay", H({ "x-razorpay-event-id": "evt_2" }), "{}")).toBe(providerEventId("razorpay", H({}), "{}"));
+    expect(providerEventId("svix", H({ "svix-id": "msg_1" }), "{}")).toBe("msg_1");   // signed inside the HMAC
     expect(providerEventId("slack", H({}), '{"event_id":"Ev1"}')).toBe("Ev1");
     expect(providerEventId("meta", H({}), "abc")).toMatch(/^sha256:[0-9a-f]{64}$/);
     const kept = allowListedHeaders(H({ "content-type": "a/b", "x-hub-signature-256": "sha256=zz", authorization: "Bearer t" }));

@@ -46,9 +46,11 @@ export function pickVerifyToken(raw: string | null): string | null {
 }
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
-/** Provider event id used for dedupe (before the connection prefix): the vendor's own id when it sends one, else a body hash. */
+/** Provider event id used for dedupe (before the connection prefix). It must come from bytes the signature covers (SEC-040): Standard Webhooks
+ *  and Svix sign their id header inside the HMAC, Slack's event_id and Pub/Sub's messageId live in the authenticated body. Razorpay's
+ *  x-razorpay-event-id header is NOT covered by its body HMAC, so it is ignored: the body hash is the id, and a vendor retry carries the same body. */
 export function providerEventId(scheme: Scheme, headers: Headers, raw: string): string {
-  const h = scheme === "razorpay" ? headers.get("x-razorpay-event-id") : scheme === "standard" ? headers.get("webhook-id") : scheme === "svix" ? headers.get("svix-id") : null;
+  const h = scheme === "standard" ? headers.get("webhook-id") : scheme === "svix" ? headers.get("svix-id") : null;
   if (h && h.length <= 200) return h;
   try {
     const j = JSON.parse(raw) as { event_id?: unknown; message?: { messageId?: unknown } };

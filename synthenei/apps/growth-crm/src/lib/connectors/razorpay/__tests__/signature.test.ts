@@ -32,7 +32,7 @@ describe("Razorpay webhook signature", () => {
     const body = F.paymentLinkPaid();
     const r = await receivePost(deps(), req(body, { "x-razorpay-signature": signRazorpayBody(SECRET, body), "x-razorpay-event-id": "evt_1" }));
     expect(r.status).toBe(200);
-    expect(rows[0]).toMatchObject({ signatureOk: true, connectorId: "razorpay", body, providerEventId: expect.stringContaining("evt_1") });
+    expect(rows[0]).toMatchObject({ signatureOk: true, connectorId: "razorpay", body, providerEventId: expect.stringContaining("sha256:") });
   });
   it("rejects a tampered body, a wrong secret, the key secret, a missing header and a malformed header with 401 and keeps no body", async () => {
     rows.length = 0;

@@ -1,5 +1,5 @@
 // Inbound webhook receiver logic (CONTRACTS C10), framework free so it is unit tested with fakes.
-// Order: rate limit -> resolve connection -> size -> verify signature on the RAW body -> persist webhook_inbox -> enqueue -> 200.
+// Order: rate limit -> resolve connection -> size -> verify signature on the RAW body -> persist webhook_inbox (signed requests only) -> enqueue -> 200.
 // Nothing is processed inline. Bodies and secrets are never logged. Unknown/disabled connection = 404, bad signature = 401, both with
 // the same empty-detail body.
 import { LIMITS, type RateLimitResult } from "@/lib/security/rate-limit";
@@ -8,7 +8,6 @@ import { answerValidation } from "../microsoft/validation";
 import { VERIFIERS, allowListedHeaders, pickSecret, pickVerifyToken, providerEventId, schemeFor, type Scheme } from "./index";
 
 export const MAX_BODY_BYTES = 1_048_576;
-export const BAD_SIG_PER_MIN = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NO_STORE = { "cache-control": "no-store" };
 
@@ -102,10 +101,7 @@ export async function receivePost(d: ReceiveDeps, req: ReceiveReq): Promise<Rece
   if (secret) { try { valid = await VERIFIERS[scheme](raw, h, secret, { now: d.now() }); } catch { valid = false; } }
   if (!valid) {
     d.log.warn("webhook_signature_failed", { connector: req.connector, connection: conn.id });   // never the body, headers or secret
-    const bad = await d.rate("hook-bad", conn.id, { limit: BAD_SIG_PER_MIN, windowMs: 60_000 });
-    if (bad.ok) {
-      await d.store.insertInbox({ connectorId: conn.connectorId, connectionId: conn.id, tenantId: conn.tenantId, workspaceId: conn.workspaceId, providerEventId: `bad:${conn.id}:${d.now()}:${Math.random().toString(36).slice(2, 10)}`, signatureOk: false, headers: {}, body: null }).catch(() => undefined);
-    }
+    // Unsigned requests are NOT persisted (AUD-030 / SEC-042): the log line above is the counter, and throttled() already caps volume.
     return unauthorized();
   }
 

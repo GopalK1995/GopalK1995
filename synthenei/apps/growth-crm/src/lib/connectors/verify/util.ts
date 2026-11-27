@@ -1,7 +1,7 @@
 // Shared primitives for the vendor webhook verifiers. Pure Node crypto, no server-only import, so unit tests run anywhere.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export interface VerifyOpts { now?: number; fetchKeys?: () => Promise<Record<string, unknown>[]> }
+export interface VerifyOpts { now?: number; fetchKeys?: () => Promise<Record<string, unknown>[]>; pubsubServiceAccount?: string; production?: boolean }
 /** Pseudo headers the route sets itself (a client value is always overwritten): request method, full URL, and the `k` query value. */
 export const HOOK_METHOD = "x-hook-method", HOOK_URL = "x-hook-url", HOOK_KEY = "x-hook-key";
 

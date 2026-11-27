@@ -65,14 +65,14 @@ describe("POST happy path", () => {
     expect(store.rows).toHaveLength(1);
     expect(queued).toHaveLength(1);
   });
-  it("dedupes on the vendor event id (razorpay) even when the body differs", async () => {
+  it("razorpay dedupe ignores the unsigned event-id header: same body = duplicate, new body = new event", async () => {
     store.conns.set(CONN, { ...store.conns.get(CONN)!, connectorId: "razorpay" });
-    const one = (b: string) => req({ connector: "razorpay", body: b, headers: { "x-razorpay-signature": hmac(SECRET, b, "hex"), "x-razorpay-event-id": "evt_9" } });
+    const one = (b: string, id: string) => req({ connector: "razorpay", body: b, headers: { "x-razorpay-signature": hmac(SECRET, b, "hex"), "x-razorpay-event-id": id } });
     const d = { ...deps(), getSecret: async () => SECRET };
-    await receivePost(d, one('{"a":1}'));
-    const r = await receivePost(d, one('{"a":2}'));
-    expect(r.json).toEqual({ ok: true, duplicate: true });
-    expect(queued).toHaveLength(1);
+    await receivePost(d, one('{"a":1}', "evt_9"));
+    expect((await receivePost(d, one('{"a":1}', "evt_CHANGED"))).json).toEqual({ ok: true, duplicate: true });   // header swap cannot dodge dedupe
+    expect((await receivePost(d, one('{"a":2}', "evt_9"))).json).toEqual({ ok: true });                         // same header, new signed body
+    expect(queued).toHaveLength(2);
   });
   it("enqueue failure returns 503 and removes the row so the vendor retry is not a duplicate", async () => {
     enqueueFails = true;
@@ -86,13 +86,13 @@ describe("POST happy path", () => {
 });
 
 describe("rejections leak nothing", () => {
-  it("tampered body, wrong secret, missing signature: 401 with the same generic body; stored without body", async () => {
+  it("tampered body, wrong secret, missing signature: 401 with the same generic body; nothing stored", async () => {
     for (const r of [
       await receivePost(deps(), req({ headers: metaSig(), body: BODY + " " })),
       await receivePost(deps(), req({ headers: metaSig(BODY, "wrong") })),
       await receivePost(deps(), req({})),
     ]) { expect(r.status).toBe(401); expect(r.json).toEqual({ ok: false }); expect(r.text).toBeUndefined(); }
-    expect(store.rows.every((x) => !x.signatureOk && x.body === null)).toBe(true);
+    expect(store.rows).toHaveLength(0);   // unsigned requests write no webhook_inbox row (AUD-030)
     expect(queued).toHaveLength(0);
   });
   it("unknown, malformed, wrong-connector, disabled and unsupported connections: 404 with the same body", async () => {
@@ -126,10 +126,10 @@ describe("rejections leak nothing", () => {
     expect(last.status).toBe(429);
     expect(last.headers?.["Retry-After"]).toBeDefined();
   });
-  it("stores at most 30 failed-signature rows per minute per connection", async () => {
+  it("never stores a failed-signature row, however many arrive (SEC-042)", async () => {
     const d = deps();
     for (let i = 0; i < 60; i++) await receivePost(d, req({}));
-    expect(store.rows.length).toBe(30);
+    expect(store.rows.length).toBe(0);
   });
 });
 
