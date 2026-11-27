@@ -22,6 +22,8 @@ import { vocabFor } from "@/lib/vertical";
 import { normTasks } from "../tasks/_lib/rows";
 import { tt } from "../tasks/_lib/strings";
 import { DayRuler } from "./day-ruler";
+import { PhoneCollapse } from "./phone-collapse";
+import { StickyLogCall } from "./sticky-log-call";
 import { pageTitle } from "@/i18n/server";
 
 export const generateMetadata = pageTitle("myDay");
@@ -148,7 +150,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
           </div>
           <Kpi label={m.slaLabel(SLA_MINUTES / 60)} metric="M14" value={sla.within} format="pct" spark={slaSpark}
             foot={<>Median {minsToHuman(sla.median)} · team {pct(teamSla.within, 0)} · last 30 days, n={sla.n}</>} />
-          <div className="rounded-md border border-line bg-surface p-4 shadow-1">
+          <div className="hidden rounded-md border border-line bg-surface p-4 shadow-1 lg:block">
             <div className="text-[12px] font-medium text-ink-2">Quick log</div>
             <p className="mt-1 text-[12px] text-ink-3">Log the outcome right after each call so the SLA clock and the touch list stay true.</p>
             <div className="mt-3"><QuickActions size="sm" /></div>
@@ -178,7 +180,8 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
           </Card>
         </StaggerItem>
         <StaggerItem className="lg:col-span-12"><DayRuler now={now} tasks={tasks} holidays={holidays} t={tt(v)} /></StaggerItem>
-        {/* W5 */}
+        {/* W5-W9 + mix: on a phone these sit behind one toggle so the page is short; from lg up they lay out in the grid as before */}
+        <PhoneCollapse title="Week, targets and trends" hint="Meetings this week, pipeline value, target, conversion, activity">
         <StaggerItem className="lg:col-span-7">
           <Card className="h-full">
             <CardHeader title={m.wk} sub={m.wkSub} />
@@ -252,6 +255,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
             <CardBody><Donut label={m.mixAria} data={mix} centerValue={num(mix.reduce((a, x) => a + x.n, 0))} centerLabel={m.mixCenter} size={132} /></CardBody>
           </Card>
         </StaggerItem>
+        </PhoneCollapse>
         <StaggerItem className="lg:col-span-4">
           <Card className="h-full">
             <CardHeader title={m.stuck} sub={m.stuckSub} />
@@ -306,6 +310,8 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<{ 
         )}
       </Stagger>
       <p className="mt-6 flex items-center gap-1.5 text-[11px] text-ink-3"><CalendarDays className="size-3.5" aria-hidden />{m.foot}</p>
+      <div className="h-16 lg:hidden" aria-hidden />
+      <StickyLogCall />
     </>
   );
 }
