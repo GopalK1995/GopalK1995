@@ -47,6 +47,8 @@ export function IntegrationGrid({ items, categories }: { items: GridItem[]; cate
       </div>
 
       {featured.length > 0 && (
+        <section aria-label="Featured connectors">
+        <h2 className="sr-only">Featured connectors</h2>
         <ul className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <AnimatePresence initial={false}>
             {featured.map((it, idx) => (
@@ -57,6 +59,7 @@ export function IntegrationGrid({ items, categories }: { items: GridItem[]; cate
             ))}
           </AnimatePresence>
         </ul>
+        </section>
       )}
 
       {rest.length > 0 && (
