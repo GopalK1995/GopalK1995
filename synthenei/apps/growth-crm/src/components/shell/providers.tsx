@@ -31,7 +31,7 @@ export const useVocab = (): Vocab => vocabFor(useSession().tenant);
 
 /** White-label branding. Stored per browser for the demo (a real tenant stores it in `tenants.brand_*`). */
 export type Brand = { name: string; product: string; hue: number; /** Keys into FONT_STACKS (allow-list); "default" = built-in fonts. */ fonts?: { heading: string; body: string } };
-export const DEFAULT_BRAND: Brand = { name: "LAWSOME", product: "Growth CRM", hue: 245 };
+export const DEFAULT_BRAND: Brand = { name: "", product: "", hue: 245 };
 export const BRAND_KEY = "gcrm-brand"; // per tenant: `${BRAND_KEY}:${tenantId}`
 const BrandCtx = createContext<{ brand: Brand; setBrand: (b: Partial<Brand>) => void; reset: () => void }>({ brand: DEFAULT_BRAND, setBrand: () => {}, reset: () => {} });
 export const useBrand = () => useContext(BrandCtx);

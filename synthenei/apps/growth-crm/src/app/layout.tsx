@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { WS_COOKIE } from "@/lib/auth/session";
 import { tenantOf } from "@/lib/tenancy";
 import { getLocale } from "@/i18n/server";
+import { platformProduct } from "@/lib/brand/platform";
 import { intlTag } from "@/i18n/config";
 import { notoSansTamil } from "@/i18n/fonts";
 import { HydrationMarker } from "@/components/shell/hydration-marker";
@@ -12,8 +13,9 @@ import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = tenantOf((await cookies()).get(WS_COOKIE)?.value ?? "");
-  const product = t?.vertical === "hospitality" ? t.product : "Growth CRM";
-  return { title: { default: product, template: `%s · ${product}` }, description: t?.vertical === "hospitality" ? `${product} for ${t.name} (sample data).` : "Sales and marketing CRM for LAWSOME (sample data)." };
+  // Public pages: the tenant brand wins, the platform product (config) is only the fallback. No customer or vendor name in code.
+  const product = t?.product ?? platformProduct() ?? "CRM";
+  return { title: { default: product, template: `%s · ${product}` }, description: t ? `${product} for ${t.name}.` : "Sales and marketing CRM." };
 }
 export const viewport: Viewport = { themeColor: "#0e2236", width: "device-width", initialScale: 1 };
 
@@ -27,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
   const ta = locale === "ta";
   return (
-    <html lang={intlTag(locale)} data-tenant={tenant?.id ?? "lawsome"} className={`${GeistSans.variable} ${GeistMono.variable}${ta ? ` ${notoSansTamil.variable}` : ""}`} suppressHydrationWarning>
+    <html lang={intlTag(locale)} data-tenant={tenant?.id ?? "default"} className={`${GeistSans.variable} ${GeistMono.variable}${ta ? ` ${notoSansTamil.variable}` : ""}`} suppressHydrationWarning>
       <head>
         {ta && <style>{TAMIL_CSS}</style>}
       </head>

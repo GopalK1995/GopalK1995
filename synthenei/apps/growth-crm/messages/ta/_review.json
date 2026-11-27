@@ -124,6 +124,8 @@
         "hub": true,
         "signedOut": true,
         "intro": true,
+        "introLive": true,
+        "emailPlaceholder": true,
         "workEmail": true,
         "signingIn": true,
         "noBackend": true,

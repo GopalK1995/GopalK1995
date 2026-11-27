@@ -4,12 +4,13 @@ import en from "../../../../../messages/en/integrations.json";
 import ta from "../../../../../messages/ta/integrations.json";
 
 export type IntLocale = "en" | "ta";
+import { platformName } from "@/lib/brand/platform";
 const FILES: Record<IntLocale, Record<string, unknown>> = { en, ta };
 const fill = (s: string, vars: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => String(k in vars ? vars[k] : m));
 
 export function tr(locale: IntLocale, key: string, vars: Record<string, string | number> = {}): string {
   const v = FILES[locale][key] ?? FILES.en[key];
-  return typeof v === "string" ? fill(v, vars) : key;
+  return typeof v === "string" ? fill(v, { platform: platformName(locale), ...vars }) : key;
 }
 export const makeT = (locale: IntLocale) => (key: string, vars?: Record<string, string | number>) => tr(locale, key, vars);
 export type T = ReturnType<typeof makeT>;
