@@ -139,18 +139,22 @@ export async function loadDetail(ws: string, id: string): Promise<DetailResult> 
     };
     // Chosen Page / Instagram account and what the first sync produced. Names and counts only; every read is optional.
     let igUsername: string | null = null, accounts = 0, posts = 0;
+    let pageNames: string[] = [], igNames: string[] = [];
     try {
-      const a = await from(db, "meta_assets").select("platform, name").eq("integration_id", row.connectionId).limit(5);
-      igUsername = s(((a.data as R[] | null) ?? []).find((x) => x.platform === "instagram")?.name);
+      const a = await from(db, "meta_assets").select("platform, name").eq("integration_id", row.connectionId).order("created_at", { ascending: true }).limit(60);
+      const assets = (a.data as R[] | null) ?? [];
+      igNames = assets.filter((x) => x.platform === "instagram").flatMap((x) => (s(x.name) ? [s(x.name) as string] : []));
+      pageNames = assets.filter((x) => x.platform === "facebook_page").flatMap((x) => (s(x.name) ? [s(x.name) as string] : []));
+      igUsername = igNames[0] ?? null;
     } catch { /* the step then says no Instagram account is linked */ }
     try {
-      const cnt = (table: string) => (db as unknown as { from(t: string): { select(c: string, o: { count: "exact"; head: true }): { eq(c: string, v: string): PromiseLike<{ count: number | null }> } } }).from(table).select("id", { count: "exact", head: true }).eq("workspace_id", ws);
-      accounts = (await cnt("social_accounts")).count ?? 0;
+      const cnt = (table: string, col = "workspace_id", val = ws) => (db as unknown as { from(t: string): { select(c: string, o: { count: "exact"; head: true }): { eq(c: string, v: string): PromiseLike<{ count: number | null }> } } }).from(table).select("id", { count: "exact", head: true }).eq(col, val);
+      accounts = (await cnt("social_accounts", "integration_id", row.connectionId!)).count ?? 0;   // detached (removed) accounts are not counted
       posts = (await cnt("social_posts")).count ?? 0;
     } catch { /* counts stay 0 */ }
     metaConnect = {
       connected: true, needsReconnect: row.chip === "needs_attention" || row.chip === "error", connectionId: row.connectionId,
-      pageName: s(connRow.external_account_label), igUsername, accounts, posts, lastOkRows,
+      pageName: s(connRow.external_account_label), igUsername, pageNames, igNames, accounts, posts, lastOkRows,
     };
   } else if (id === META_ID) {
     metaConnect = { connected: false, needsReconnect: false, connectionId: row.connectionId, pageName: null, igUsername: null, accounts: 0, posts: 0, lastOkRows: null };

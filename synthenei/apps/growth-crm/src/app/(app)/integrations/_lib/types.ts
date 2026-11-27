@@ -25,6 +25,8 @@ export interface MetaConnectView {
   /** a connection with credentials exists (connected, needs attention or error) */
   connected: boolean; needsReconnect: boolean; connectionId: string | null;
   pageName: string | null; igUsername: string | null;
+  /** AUD-100: every tracked Page / Instagram account by name (a workspace can track several). Optional: older callers pass the single names above. */
+  pageNames?: string[]; igNames?: string[];
   accounts: number; posts: number; lastOkRows: number | null;
 }
 export interface DetailView {

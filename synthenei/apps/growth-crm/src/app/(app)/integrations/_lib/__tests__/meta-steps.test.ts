@@ -38,7 +38,7 @@ describe("Instagram and Facebook step list", () => {
     const lines = m.steps[1].lines.map((l) => l.text);
     expect(lines).toContain("Facebook Page: Sea View Resort");
     expect(lines).toContain("Instagram: @seaview");
-    expect(lines.join(" ")).toMatch(/One Page per workspace/);
+    expect(lines.join(" ")).toMatch(/Each Page belongs to one workspace/);
     expect(lines.join(" ")).not.toMatch(/connecting again/i);
   });
 

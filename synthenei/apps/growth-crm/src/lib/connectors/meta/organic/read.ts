@@ -24,7 +24,7 @@ export async function loadSocialView(): Promise<SocialView> {
     const rows = async (b: ReturnType<typeof from>): Promise<R[]> => { const r = await b; if (r.error) throw new Error("read failed"); return (r.data as R[] | null) ?? []; };
     const [conns, accounts, posts, postMetrics, accountMetrics] = await Promise.all([
       rows(from(db, "integrations").select("id, status, oauth_scopes").eq("workspace_id", ws).eq("connector_id", "meta-ads").limit(50)),
-      rows(from(db, "social_accounts").select("id, platform, external_id, display_name, username, followers, last_synced_at, last_sync_status, last_error").eq("workspace_id", ws).limit(100)),
+      rows(from(db, "social_accounts").select("id, platform, external_id, display_name, username, followers, last_synced_at, last_sync_status, last_error, integration_id").eq("workspace_id", ws).limit(100)),
       rows(from(db, "social_posts").select("id, account_id, kind, caption, permalink, posted_at, status").eq("workspace_id", ws).gte("posted_at", since.toISOString()).order("posted_at", { ascending: false }).limit(500)),
       rows(from(db, "social_post_metrics_daily").select("post_id, day, impressions, reach, likes, comments, shares, saves, video_views, link_clicks, engagement_rate").eq("workspace_id", ws).gte("day", sinceDay).limit(5000)),
       rows(from(db, "social_account_metrics_daily").select("account_id, day, followers, reach").eq("workspace_id", ws).gte("day", sinceDay).limit(1000)),

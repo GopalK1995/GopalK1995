@@ -48,8 +48,9 @@ export function buildMetaConnectModel({ c, h, t, connectBlocked }: { c: MetaConn
   const l2: StepLine[] = [];
   if (s2 === "blocked") l2.push({ text: t("metaSteps.s2.blocked") });
   else if (c.pageName) {
-    l2.push({ text: t("metaSteps.s2.page", { name: c.pageName }) });
-    l2.push({ text: c.igUsername ? t("metaSteps.s2.ig", { name: c.igUsername.replace(/^@/, "") }) : t("metaSteps.s2.noIg") });
+    const pages = c.pageNames ?? [], igs = (c.igNames ?? []).map((n) => `@${n.replace(/^@/, "")}`);
+    l2.push({ text: pages.length > 1 ? t("metaSteps.s2.pages", { count: pages.length, names: pages.join(", ") }) : t("metaSteps.s2.page", { name: c.pageName }) });
+    l2.push({ text: igs.length > 1 ? t("metaSteps.s2.igs", { count: igs.length, names: igs.join(", ") }) : c.igUsername ? t("metaSteps.s2.ig", { name: c.igUsername.replace(/^@/, "") }) : t("metaSteps.s2.noIg") });
     l2.push({ text: t("metaSteps.s2.oneOnly") });
   } else l2.push({ text: t("metaSteps.s2.todo") }, { text: t("metaSteps.s2.oneOnly") });
 

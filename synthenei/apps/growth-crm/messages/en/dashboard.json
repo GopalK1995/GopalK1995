@@ -56,6 +56,7 @@
   "vsPrev": "vs previous period",
 
   "pvoTitle": "Paid and organic social",
+  "pvoAccounts": "Organic adds up {count} connected accounts: {names}.",
   "pvoSub": "Last 30 days. Paid comes from campaign metrics, organic from your connected Instagram and Facebook accounts. A blank is shown as No data, never as 0.",
   "pvoOpen": "Open social analytics",
   "paid": "Paid",

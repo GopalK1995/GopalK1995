@@ -95,6 +95,7 @@ const FMTS = { num, inr, pct: (n: number) => pct(n, 1) } as const;
 export function PaidOrganicTable({ t, data }: { t: T; data: PaidOrganic }) {
   const show = (v: number | null | "na", f: keyof typeof FMTS) => v === "na" ? <span className="text-ink-3">{t("notApplicable")}</span> : v === null ? <span className="text-ink-3">{t("noData")}</span> : FMTS[f](v);
   return (
+    <>
     <table className="w-full border-collapse text-[12px]">
       <caption className="sr-only">{t("pvoTitle")}</caption>
       <thead><tr className="border-b border-line text-ink-3">
@@ -112,5 +113,7 @@ export function PaidOrganicTable({ t, data }: { t: T; data: PaidOrganic }) {
         ))}
       </tbody>
     </table>
+    {data.organicAccounts.length > 1 && <p className="mt-2 text-[12px] text-ink-3" data-testid="pvo-accounts">{t("pvoAccounts", { count: data.organicAccounts.length, names: data.organicAccounts.map((a) => a.name).join(", ") })}</p>}
+    </>
   );
 }

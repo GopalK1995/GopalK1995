@@ -64,10 +64,10 @@ describe("MetaConnectSteps", () => {
     expect(p).toHaveAttribute("data-embedded", "true");
   });
 
-  it("with a Page chosen the picker is hidden until 'Choose another Page' is pressed", () => {
+  it("with a Page chosen the picker is hidden until 'Add or remove Pages' is pressed", () => {
     setup(conn(), health());
     expect(screen.queryByTestId("picker-stub")).toBeNull();
-    const btn = screen.getByRole("button", { name: "Choose another Page" });
+    const btn = screen.getByRole("button", { name: "Add or remove Pages" });
     expect(btn.className).toMatch(/h-11/);
     fireEvent.click(btn);
     expect(screen.getByTestId("picker-stub")).toBeInTheDocument();
@@ -85,6 +85,13 @@ describe("MetaConnectSteps", () => {
   it("never says to add more accounts by connecting again", () => {
     const { container } = setup(conn(), health());
     expect(container.textContent).not.toMatch(/connecting again/i);
-    expect(container.textContent).toMatch(/One Page per workspace/);
+    expect(container.textContent).toMatch(/Each Page belongs to one workspace/);
+  });
+
+  it("names every tracked Page and Instagram account when there are several, and no longer claims one Page only", () => {
+    setup(conn({ pageNames: ["Sea View Resort", "Studio Two"], igNames: ["seaview", "studio.two"] }), health());
+    expect(screen.getByText("Facebook Pages (2): Sea View Resort, Studio Two")).toBeInTheDocument();
+    expect(screen.getByText("Instagram accounts (2): @seaview, @studio.two")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/one page per workspace|replaces this one/i);
   });
 });

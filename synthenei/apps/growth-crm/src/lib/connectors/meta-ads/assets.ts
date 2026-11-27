@@ -5,7 +5,7 @@
 import { randomToken } from "../core/oauth";
 import type { RuntimeDeps } from "../core/ports";
 import { loadSecrets, saveSecrets } from "../core/secrets";
-import { CredentialError, TransientError, type ConnectionSecrets } from "../core/types";
+import { CredentialError, type ConnectionSecrets } from "../core/types";
 import { gatewayFor } from "./config";
 import { CRED, META_CONNECTOR_ID, META_ENV, WEBHOOK_KEYS } from "./constants";
 import type { AdAccountAsset, PageAsset } from "./gateway";

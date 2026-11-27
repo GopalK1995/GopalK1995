@@ -181,6 +181,8 @@ export const PAID_SOCIAL = new Set<string>(["meta", "linkedin"]);
 export type Cell = number | null | "na";
 export interface PaidOrganic {
   paidConnected: boolean; organicState: SocialView["state"];
+  /** AUD-100: the connected accounts the organic column adds up (platform + name), so a total over several Pages is never anonymous. */
+  organicAccounts: { platform: "instagram" | "facebook"; name: string }[];
   rows: { key: "reach" | "impressions" | "clicks" | "engagements" | "engagementRate" | "spend" | "leads" | "costPerLead" | "followers"; paid: Cell; organic: Cell; format: "num" | "pct" | "inr" }[];
   weekly: { week: string; a: number | null; b: number | null }[];
 }
@@ -221,5 +223,5 @@ export function paidVsOrganic(i: { campaigns: Campaign[]; days: CampaignDay[]; l
     const b = ready ? sumNN(sv.trend.filter((x) => x.day >= f && x.day <= t).map((x) => x.reach)) : null;
     return { week: new Date(to).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }), a, b };
   });
-  return { paidConnected: has, organicState: sv.state, rows, weekly };
+  return { paidConnected: has, organicState: sv.state, organicAccounts: ready ? sv.accounts.map((a) => ({ platform: a.platform, name: a.name })) : [], rows, weekly };
 }

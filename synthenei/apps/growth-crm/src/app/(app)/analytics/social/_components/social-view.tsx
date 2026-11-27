@@ -23,17 +23,22 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
   const [open, setOpen] = useState<SocialPostView | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "postedAt", dir: -1 });
   const [pending, start] = useTransition();
+  // AUD-100: several Pages / Instagram accounts can be connected; "all" sums them (the default), or one account is shown alone.
+  const [account, setAccount] = useState<string>("all");
+  const selected = account !== "all" && view.accounts.some((a) => a.id === account) ? account : "all";
+  const posts = useMemo(() => (selected === "all" ? view.posts : view.posts.filter((p) => p.accountId === selected)), [view.posts, selected]);
+  const trend = selected === "all" ? view.trend : view.trendByAccount[selected] ?? [];
   const n = (v: number | null) => (v === null ? <span className="text-ink-3">{t("notReported")}</span> : num(v));
   const kindLabel = (k: PostKind) => t(`kind${k[0]!.toUpperCase()}${k.slice(1)}`);
   const platformLabel = (p: string) => t(p === "instagram" ? "platformInstagram" : "platformFacebook");
 
-  const rows = useMemo(() => [...view.posts].sort((a, b) => {
+  const rows = useMemo(() => [...posts].sort((a, b) => {
     const x = valueOf(a, sort.key), y = valueOf(b, sort.key);
     if (x === null && y === null) return 0;
     if (x === null) return 1;   // unknown always sorts last, whichever direction
     if (y === null) return -1;
     return (typeof x === "string" ? x.localeCompare(String(y)) : x - Number(y)) * sort.dir;
-  }), [view.posts, sort]);
+  }), [posts, sort]);
 
   const refresh = () => start(async () => {
     if (!view.connectionId) return;
@@ -63,17 +68,43 @@ export function SocialBody({ view, canManage }: { view: SocialView; canManage: b
         )}
       </div>
 
+      {view.accounts.length > 1 && (
+        <Card>
+          <CardHeader title={t("accountsHeading")} />
+          <CardBody>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <label htmlFor="social-account" className="text-13 text-ink-2">{t("filterLabel")}</label>
+              <select id="social-account" value={selected} onChange={(e) => setAccount(e.target.value)} className="h-11 rounded-control border border-field-line bg-surface px-2 text-13 text-ink md:h-8" data-cy="social-account-filter">
+                <option value="all">{t("filterAll", { count: view.accounts.length })}</option>
+                {view.accounts.map((a) => <option key={a.id} value={a.id}>{platformLabel(a.platform)} · {a.name}</option>)}
+              </select>
+            </div>
+            <ul className="grid gap-1.5 text-13" data-testid="social-accounts">
+              {view.accounts.map((a) => {
+                const bad = a.status === "error" || a.status === "needs_attention";
+                return (
+                  <li key={a.id} data-account={a.id} data-status={a.status ?? "none"} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-medium text-ink">{platformLabel(a.platform)} · {a.name}{a.username ? <span className="font-normal text-ink-3"> @{a.username.replace(/^@/, "")}</span> : null}</span>
+                    <span className={bad ? "font-medium text-danger" : "text-ink-3"}>{bad ? t("accountFailed", { detail: a.lastError ?? a.status ?? "" }) : a.lastSyncedAt ? t("accountOk", { when: fmtDateY(a.lastSyncedAt) }) : t("accountNever")}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardBody>
+        </Card>
+      )}
+
       <Card>
         <CardHeader title={t("timelineTitle")} sub={t("timelineHelp")} />
-        <CardBody><Timeline posts={view.posts} onOpen={setOpen} kindLabel={kindLabel} label={(c, f, to) => t("timelineLabel", { count: c, from: f, to })} /></CardBody>
+        <CardBody><Timeline posts={posts} onOpen={setOpen} kindLabel={kindLabel} label={(c, f, to) => t("timelineLabel", { count: c, from: f, to })} /></CardBody>
       </Card>
 
-      {view.trend.length > 1 && (
+      {trend.length > 1 && (
         <Card>
           <CardHeader title={t("trendTitle")} sub={t("trendHelp")} />
           <CardBody>
             <LineTrend label={t("trendTitle")} xKey="date" yFormat="numCompact" height={220}
-              data={view.trend.map((d) => ({ date: d.day, followers: d.followers, reach: d.reach }))}
+              data={trend.map((d) => ({ date: d.day, followers: d.followers, reach: d.reach }))}
               series={[{ key: "followers", label: t("trendFollowers"), color: "var(--chart-1)" }, { key: "reach", label: t("trendReach"), color: "var(--chart-3)", dashed: true }]} />
           </CardBody>
         </Card>

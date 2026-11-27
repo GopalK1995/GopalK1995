@@ -54,3 +54,27 @@ describe("demo", () => {
     expect(a.posts.some((p) => p.metrics.reach === null)).toBe(true);
   });
 });
+
+describe("several accounts (AUD-100)", () => {
+  const a2 = { ...acct, id: "a2", platform: "facebook", external_id: "pg2", display_name: "Studio Two", username: null, followers: 30 };
+  const m = (account_id: string, day: string, followers: number, reach: number) => ({ account_id, day, followers, reach });
+  it("sums the trend over every account and keeps each account's own series for the filter", () => {
+    const v = assembleView(raw({ accounts: [acct, a2], accountMetrics: [m("a1", "2026-11-19", 10, 5), m("a2", "2026-11-19", 30, 7), m("a2", "2026-11-20", 31, 8)] }));
+    expect(v.trend).toEqual([{ day: "2026-11-19", followers: 40, reach: 12 }, { day: "2026-11-20", followers: 31, reach: 8 }]);
+    expect(v.trendByAccount.a1).toEqual([{ day: "2026-11-19", followers: 10, reach: 5 }]);
+    expect(v.trendByAccount.a2).toHaveLength(2);
+  });
+  it("an account removed from the workspace (integration_id null) is neither listed nor summed, and history stays in the database", () => {
+    const gone = { ...a2, integration_id: null };
+    const v = assembleView(raw({ accounts: [{ ...acct, integration_id: "c1" }, gone], posts: [post("p1"), { ...post("p2"), account_id: "a2" }], accountMetrics: [m("a1", "2026-11-19", 10, 5), m("a2", "2026-11-19", 30, 7)] }));
+    expect(v.accounts.map((a) => a.id)).toEqual(["a1"]);
+    expect(v.posts.map((p) => p.id)).toEqual(["p1"]);
+    expect(v.trend).toEqual([{ day: "2026-11-19", followers: 10, reach: 5 }]);
+    expect(assembleView(raw({ connections: [], accounts: [gone] })).state).toBe("not_connected");
+  });
+  it("one account failing shows on that account while the other stays ok", () => {
+    const v = assembleView(raw({ accounts: [acct, { ...a2, last_sync_status: "needs_attention", last_error: "Meta rejected the saved credentials" }] }));
+    expect(v.accounts.map((a) => a.status)).toEqual(["ok", "needs_attention"]);
+    expect(v.state).toBe("needs_attention");
+  });
+});
