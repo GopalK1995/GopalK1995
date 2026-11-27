@@ -5,14 +5,14 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { requireActive } from "@/lib/auth/server";
 import { can } from "@/lib/authz";
 import { loadPrincipal } from "@/lib/authz/load";
-import { getLocale } from "@/i18n/server";
+import { getLocale, pageTitle } from "@/i18n/server";
 import { ot, otAll } from "@/lib/layouts/strings";
 import { tenantOfWorkspace } from "@/lib/metadata/repo";
 import { demoObject } from "../../o/_lib/demo";
 import { ObjectsView, type ObjectRowView } from "./_components/objects-view";
 import { customObjectsAllowed, listCustomObjects, recordCounts, type AdminObject } from "./_lib/repo";
 
-export const metadata = { title: "Custom objects" };
+export const generateMetadata = pageTitle("customObjects");
 
 const rowOf = (o: AdminObject, records: number): ObjectRowView => ({
   key: o.key, id: o.id, rev: o.rev, icon: o.icon, enabled: o.isEnabled, records,

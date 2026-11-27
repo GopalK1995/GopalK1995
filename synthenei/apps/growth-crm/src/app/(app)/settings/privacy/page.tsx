@@ -9,8 +9,9 @@ import { DueChip } from "./_components/due-chip";
 import { PrivacyNav } from "./_components/privacy-nav";
 import { loadInbox } from "./_lib/view";
 import { fmtIstDate } from "@/lib/datetime";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Privacy requests" };
+export const generateMetadata = pageTitle("privacyRequests");
 export const dynamic = "force-dynamic";
 
 // Owner inbox: every request with its due date, oldest due first (overdue on top). The register is never deleted from.

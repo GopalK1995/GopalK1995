@@ -7,8 +7,9 @@ import { emAll, getEmT } from "@/lib/connectors/email/strings";
 import { loadAudiences } from "./_lib/audiences";
 import { loadEmailView } from "./_lib/view";
 import { EmailSettings } from "./_components/email-settings";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Email sending" };
+export const generateMetadata = pageTitle("emailSending");
 
 export default async function EmailSettingsPage() {
   const { t, locale } = await getEmT();

@@ -21,8 +21,9 @@ import { vocabFor } from "@/lib/vertical";
 import { normTasks } from "../tasks/_lib/rows";
 import { tt } from "../tasks/_lib/strings";
 import { DayRuler } from "./day-ruler";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "My day" };
+export const generateMetadata = pageTitle("myDay");
 const KIND_ICON: Record<Task["kind"], typeof Phone> = { call: Phone, whatsapp: MessageCircle, email: Mail, demo: Video, follow_up: Clock, proposal: FileText };
 const DAY = 86400e3;
 

@@ -35,6 +35,7 @@ import enGmail from "../../messages/en/gmail.json";
 import enLinkedin from "../../messages/en/linkedin.json";
 import enSearch from "../../messages/en/search.json";
 import enAi from "../../messages/en/ai.json";
+import enTitles from "../../messages/en/titles.json";
 import taCommon from "../../messages/ta/common.json";
 import taShell from "../../messages/ta/shell.json";
 import taAuth from "../../messages/ta/auth.json";
@@ -68,6 +69,7 @@ import taLinkedin from "../../messages/ta/linkedin.json";
 import taSearch from "../../messages/ta/search.json";
 import taAi from "../../messages/ta/ai.json";
 import taSlack from "../../messages/ta/slack.json";
+import taTitles from "../../messages/ta/titles.json";
 import type { Locale } from "./config";
 
 export type Messages = { [k: string]: string | boolean | Messages };
@@ -75,9 +77,9 @@ export type Messages = { [k: string]: string | boolean | Messages };
 const clean = (m: Messages): Messages => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith("_")));
 const RAW: Record<Locale, Messages> = {
   en: { common: enCommon, shell: enShell, auth: enAuth, errors: enErrors,
-    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks, objects: enObjects, imports: enImports, whatsapp: enWhatsapp, razorpay: enRazorpay, metaAds: enMetaAds, crmSync: enCrmSync, email: enEmail, google: enGoogle, social: enSocial, dashboard: enDashboard, linkedin: enLinkedin, gmail: enGmail, calendly: enCalendly, reviews: enReviews, ai: enAi, search: enSearch, slack: enSlack, ota: enOta },
+    leads: enLeads, tasks: enTasks, accounts: enAccounts, pipeline: enPipeline, inbox: enInbox, settingsAccess: enSettingsAccess, admin: enAdmin, audit: enAudit, api: enApi, collab: enCollab, integrations: enIntegrations, campaigns: enCampaigns, fields: enFields, webhooks: enWebhooks, objects: enObjects, imports: enImports, whatsapp: enWhatsapp, razorpay: enRazorpay, metaAds: enMetaAds, crmSync: enCrmSync, email: enEmail, google: enGoogle, social: enSocial, dashboard: enDashboard, linkedin: enLinkedin, gmail: enGmail, calendly: enCalendly, reviews: enReviews, ai: enAi, search: enSearch, slack: enSlack, ota: enOta, titles: enTitles },
   ta: { common: taCommon, shell: taShell, auth: taAuth, errors: taErrors,
-    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks, objects: taObjects, whatsapp: taWhatsapp, razorpay: taRazorpay, metaAds: taMetaAds, email: taEmail, google: taGoogle, social: taSocial, linkedin: taLinkedin, gmail: taGmail, calendly: taCalendly, reviews: taReviews, ai: taAi, search: taSearch, slack: taSlack, ota: taOta },
+    leads: taLeads, tasks: taTasks, accounts: taAccounts, pipeline: taPipeline, inbox: taInbox, settingsAccess: taSettingsAccess, admin: taAdmin, audit: taAudit, api: taApi, collab: taCollab, integrations: taIntegrations, campaigns: taCampaigns, fields: taFields, webhooks: taWebhooks, objects: taObjects, whatsapp: taWhatsapp, razorpay: taRazorpay, metaAds: taMetaAds, email: taEmail, google: taGoogle, social: taSocial, linkedin: taLinkedin, gmail: taGmail, calendly: taCalendly, reviews: taReviews, ai: taAi, search: taSearch, slack: taSlack, ota: taOta, titles: taTitles },
 };
 export const BASE: Record<Locale, Messages> = {
   en: Object.fromEntries(Object.entries(RAW.en).map(([k, v]) => [k, clean(v as Messages)])),

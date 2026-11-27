@@ -5,8 +5,9 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { wh, whAll } from "../_lib/strings";
 import { loadDeliveries } from "../_lib/view";
 import { DeliveriesView } from "../_components/deliveries-view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Webhook deliveries" };
+export const generateMetadata = pageTitle("webhookDeliveries");
 
 export default async function DeliveriesPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ status?: string }> }) {
   const { id } = await params;

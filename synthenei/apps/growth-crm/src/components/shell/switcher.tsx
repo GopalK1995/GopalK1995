@@ -2,6 +2,7 @@
 import * as M from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { useSession, useVocab } from "./providers";
 import { can } from "@/lib/auth/roles";
 import { switchWorkspace } from "@/lib/auth/actions";
@@ -16,6 +17,7 @@ function Monogram({ letter, size = 28, onNavy = true }: { letter: string; size?:
 export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: boolean; onNavy?: boolean }) {
   const s = useSession();
   const vv = useVocab();
+  const t = useTranslations("shell");
   const [q, setQ] = useState("");
   const [pending, start] = useTransition();
   const groups = useMemo(() => {
@@ -58,7 +60,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
           {s.workspaces.length > 5 && (
             <div className="relative mb-1 p-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-ink-3" aria-hidden />
-              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Find workspace" aria-label="Find workspace" className="h-8 w-full rounded-sm border border-field-line bg-paper pl-7 pr-2 text-[13px] focus-ring focus:border-ring" />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder={t("workspaceSwitcher.find")} aria-label={t("workspaceSwitcher.find")} className="h-8 w-full rounded-sm border border-field-line bg-paper pl-7 pr-2 text-[13px] focus-ring focus:border-ring" />
             </div>
           )}
           {groups.map((g) => (
@@ -69,7 +71,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
                   className="flex h-10 cursor-default items-center gap-2.5 rounded-sm px-2 text-[13px] outline-none data-[highlighted]:bg-paper-2">
                   <Monogram letter={w.monogram} size={22} onNavy={false} />
                   <span className="min-w-0 flex-1"><span className="block truncate font-medium text-ink">{w.name}</span><span className="block text-[11px] text-ink-3">{vv.role[w.role]}</span></span>
-                  {w.id === s.ws.id && <Check className="size-4 text-accent" aria-label="Current" />}
+                  {w.id === s.ws.id && <Check className="size-4 text-accent" aria-label={t("workspaceSwitcher.current")} />}
                 </M.Item>
               ))}
             </M.Group>
@@ -78,7 +80,7 @@ export function WorkspaceSwitcher({ collapsed, onNavy = true }: { collapsed?: bo
           <M.Separator className="my-1 h-px bg-line" />
           <M.Item disabled={!can("createWorkspace", { role: s.role, support: s.support })} onSelect={() => toast(`New workspace in ${s.tenant.name}`, "Demo: create_workspace() would run here; nothing was created.")}
             className="flex h-9 cursor-default items-center gap-2 rounded-sm px-2 text-[13px] text-ink-2 outline-none data-[disabled]:opacity-45 data-[highlighted]:bg-paper-2">
-            <Plus className="size-4 text-ink-3" aria-hidden />Create workspace{s.role !== "owner" && <span className="ml-auto text-[11px] text-ink-3">Owner only</span>}
+            <Plus className="size-4 text-ink-3" aria-hidden />{t("workspaceSwitcher.create")}{s.role !== "owner" && <span className="ml-auto text-[11px] text-ink-3">{t("workspaceSwitcher.ownerOnly")}</span>}
           </M.Item>
         </M.Content>
       </M.Portal>

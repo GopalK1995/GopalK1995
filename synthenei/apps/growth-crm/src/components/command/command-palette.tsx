@@ -32,6 +32,7 @@ const headCls = "[&_[cmdk-group-heading]]:label-caps [&_[cmdk-group-heading]]:px
 
 export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounceMs = DEBOUNCE_MS }: { fetcher?: Fetcher; debounceMs?: number }) {
   const t = useTranslations("search");
+  const ts = useTranslations("shell");
   const router = useRouter();
   const { uid, ws, role, tenant, objects } = useSession();
   const v = useVocab();
@@ -109,7 +110,7 @@ export function CommandPalette({ fetcher = fetch as unknown as Fetcher, debounce
   }, [router, uid, ws.id]);
 
   const needle = q.toLowerCase();
-  const pages = useMemo(() => navFor(role, tenant, objects).flatMap((g) => g.items).map((i) => ({ href: i.href, label: navLabel(v, i), Icon: i.icon })), [role, tenant, objects, v]);
+  const pages = useMemo(() => navFor(role, tenant, objects).flatMap((g) => g.items).map((i) => ({ href: i.href, label: navLabel(v, i, ts), Icon: i.icon })), [role, tenant, objects, v, ts]);
   const shownPages = needle ? pages.filter((p) => p.label.toLowerCase().includes(needle)) : pages.slice(0, 6);
   const actionLabel = (a: SearchAction) => a.id === "new-lead" ? t("newItem", { noun: v.n.lead.one }) : a.id === "log-call" ? t("logCall") : a.id === "new-task" ? t("newTask") : t("importItems", { nouns: v.n.lead.many });
   const shownActions = (boot?.actions ?? []).map((a) => ({ a, label: actionLabel(a) })).filter((x) => !needle || x.label.toLowerCase().includes(needle));

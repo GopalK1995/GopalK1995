@@ -1,19 +1,21 @@
 import { requestPasswordReset } from "@/lib/auth/actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AuthAlert, AuthShell, authField } from "../_shell";
+import { getT, pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Reset password" };
+export const generateMetadata = pageTitle("reset");
 
 export default async function Reset({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string }> }) {
   const sp = await searchParams;
+  const t = await getT("auth");
   return (
-    <AuthShell title="Reset your password" lead="Enter your work email and we will send a link if an account exists for it.">
-      {sp.sent && <AuthAlert tone="info">If that address has an account, a reset link is on its way. It expires in one hour.</AuthAlert>}
-      {sp.error === "email" && <AuthAlert>Enter a valid email address.</AuthAlert>}
+    <AuthShell back={t("shell.backToSignIn")} title={t("reset.title")} lead={t("reset.lead")}>
+      {sp.sent && <AuthAlert tone="info">{t("reset.sent")}</AuthAlert>}
+      {sp.error === "email" && <AuthAlert>{t("reset.badEmail")}</AuthAlert>}
       <form action={requestPasswordReset} className="space-y-3">
-        <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Work email</span>
+        <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t("reset.email")}</span>
           <input name="email" type="email" autoComplete="email" required className={authField} /></label>
-        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel="Sending…">Send reset link</SubmitButton>
+        <SubmitButton variant="primary" size="lg" className="w-full" pendingLabel={t("reset.sending")}>{t("reset.send")}</SubmitButton>
       </form>
     </AuthShell>
   );

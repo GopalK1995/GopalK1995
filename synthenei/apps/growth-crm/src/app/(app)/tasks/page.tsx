@@ -8,8 +8,9 @@ import { TasksApp } from "./_components/tasks-app";
 import type { TaskRow } from "./_components/shared";
 import { normTasks } from "./_lib/rows";
 import { fill, tt, ttAll } from "./_lib/strings";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Tasks" };
+export const generateMetadata = pageTitle("tasks");
 type SP = { kind?: string; priority?: string; owner?: string; tab?: string; week?: string };
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<SP> }) {

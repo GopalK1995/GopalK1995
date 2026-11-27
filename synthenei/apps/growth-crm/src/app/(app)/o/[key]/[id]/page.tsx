@@ -21,8 +21,9 @@ import type { ObjectRecord } from "../../_lib/types";
 import { RecordHeader } from "../_components/record-header";
 import { RelatedPanel } from "../_components/related-panel";
 import { pickLabel } from "@/components/fields/labels";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Record" };
+export const generateMetadata = pageTitle("record");
 
 export default async function ObjectDetailPage({ params }: { params: Promise<{ key: string; id: string }> }) {
   const { key, id } = await params;

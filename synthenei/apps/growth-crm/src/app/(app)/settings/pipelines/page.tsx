@@ -12,8 +12,9 @@ import { withVocabLabels } from "@/lib/metadata/pipelines-load";
 import { PT } from "@/lib/metadata/pipelines-strings";
 import { vocabFor } from "@/lib/vertical";
 import { PipelinesView } from "./_components/pipelines-view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Pipelines" };
+export const generateMetadata = pageTitle("pipelines");
 
 export default async function PipelinesSettingsPage({ searchParams }: { searchParams: Promise<{ pipeline?: string; object?: string }> }) {
   const { session, active } = await requireActive();

@@ -5,5 +5,90 @@
   "signOut": "Sign out",
   "profile": "Profile",
   "notifications": "Notifications",
-  "workspace": "Workspace"
+  "workspace": "Workspace",
+  "mainNav": "Main",
+  "quickNav": "Quick",
+  "navigation": "Navigation",
+  "openNavigation": "Open navigation",
+  "closeNavigation": "Close navigation",
+  "expandSidebar": "Expand sidebar",
+  "collapseSidebar": "Collapse sidebar",
+  "collapse": "Collapse",
+  "more": "More",
+  "moreDestinations": "More destinations",
+  "overview": "Overview",
+  "sampleDataIst": "Sample data · IST",
+  "sampleDataTip": "All figures are synthetic sample data",
+  "sampleData": "Sample data",
+  "demoNote": "Synthetic {tenant} · {ws} data. Nothing is sent.",
+  "demoNoteLogin": "Synthetic {tenant} · {ws} data · demo login. Nothing is sent.",
+  "demoDot": "Sample data: synthetic {tenant}, {ws}. Nothing is sent.",
+  "userMenu": "User menu",
+  "signedInAs": "Signed in as",
+  "switchPersona": "Switch persona",
+  "logOut": "Log out",
+  "support": {
+    "banner": "Support session by {admin} (Synthan) · {mode} · ends {time} IST",
+    "readOnly": "read-only",
+    "readWrite": "read-write",
+    "reason": "Reason: “{reason}” · logged",
+    "endNow": "End now"
+  },
+  "workspaceSwitcher": {
+    "find": "Find workspace",
+    "current": "Current",
+    "create": "Create workspace",
+    "ownerOnly": "Owner only"
+  },
+  "language": {
+    "label": "Language",
+    "saved": "Language changed",
+    "savedDevice": "Language changed on this device. Sign in with a real account to keep it on your profile.",
+    "unavailable": "Tamil is awaiting language review and is not switched on yet.",
+    "failed": "Could not change the language. Try again."
+  },
+  "nav": {
+    "group": {
+      "overview": "Overview",
+      "sell": "Sell",
+      "market": "Market",
+      "assist": "Assist",
+      "admin": "Admin",
+      "records": "Records"
+    },
+    "badge": {
+      "showcase": "Showcase"
+    },
+    "item": {
+      "commandCenter": "Command Center",
+      "myDay": "My day",
+      "notifications": "Notifications",
+      "leads": "Leads",
+      "import": "Import",
+      "pipeline": "Pipeline",
+      "lawFirms": "Law firms",
+      "inbox": "Inbox",
+      "tasks": "Tasks",
+      "campaigns": "Campaigns",
+      "audience": "Audience",
+      "webAnalytics": "Web analytics",
+      "social": "Social",
+      "copilot": "Copilot",
+      "integrations": "Integrations",
+      "dataHealth": "Data health",
+      "settings": "Settings",
+      "notificationSettings": "Notification settings",
+      "rolesAccess": "Roles & access",
+      "auditLog": "Audit log",
+      "billing": "Billing",
+      "apiKeys": "API keys",
+      "webhooks": "Webhooks",
+      "pipelines": "Pipelines",
+      "emailSending": "Email sending",
+      "privacyRequests": "Privacy requests",
+      "customFields": "Custom fields",
+      "customObjects": "Custom objects",
+      "layouts": "Layouts"
+    }
+  }
 }

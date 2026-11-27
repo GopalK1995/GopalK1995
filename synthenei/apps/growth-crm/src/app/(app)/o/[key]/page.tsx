@@ -20,10 +20,11 @@ import * as repo from "../_lib/repo";
 import { canEditView, effectiveQuery, resolveView } from "../_lib/views";
 import { PAGE_LIMIT, type ListRow, type ObjectRecord, type SavedView } from "../_lib/types";
 import { ListView } from "./_components/list-view";
+import { pageTitle } from "@/i18n/server";
 
 type SP = Record<string, string | string[] | undefined>;
 
-export const metadata = { title: "Records" };
+export const generateMetadata = pageTitle("records");
 
 export default async function ObjectListPage({ params, searchParams }: { params: Promise<{ key: string }>; searchParams: Promise<SP> }) {
   const { key } = await params;

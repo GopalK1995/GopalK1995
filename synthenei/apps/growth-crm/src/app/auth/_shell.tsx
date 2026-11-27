@@ -5,13 +5,14 @@ import { LegalFooter } from "@/components/legal/legal-page";
 export const authField = "h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring";
 
 /** Shared frame for the account-lifecycle screens (invite, reset, password, MFA). */
-export function AuthShell({ title, lead, children }: { title: string; lead?: string; children: ReactNode }) {
+/** `back` is the already-translated "Back to sign in" label (callers have t); keeping this component synchronous lets it render in client-side tests. */
+export function AuthShell({ title, lead, back, children }: { title: string; lead?: string; back: string; children: ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-[420px] flex-col justify-center px-4 py-10">
       <h1 className="text-[22px] font-semibold tracking-[-0.02em]">{title}</h1>
       {lead && <p className="mt-1 text-[13px] text-ink-2">{lead}</p>}
       <div className="mt-6">{children}</div>
-      <p className="mt-8 border-t border-line pt-4 text-[12px] text-ink-3"><Link href="/login" className="font-medium text-accent hover:underline">Back to sign in</Link></p>
+      <p className="mt-8 border-t border-line pt-4 text-[12px] text-ink-3"><Link href="/login" className="font-medium text-accent hover:underline">{back}</Link></p>
       <LegalFooter className="mt-3" />
     </main>
   );

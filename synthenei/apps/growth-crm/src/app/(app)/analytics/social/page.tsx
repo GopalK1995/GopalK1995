@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getT } from "@/i18n/server";
+import { getT, pageTitle } from "@/i18n/server";
 import { loadPrincipal } from "@/lib/authz/load";
 import { can } from "@/lib/authz";
 import { loadSocialView } from "@/lib/connectors/meta/organic/read";
@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, PartialState } from "@/components/ui/states";
 import { AssetPicker } from "./_components/asset-picker";
 import { SocialBody } from "./_components/social-view";
 
-export const metadata = { title: "Social" };
+export const generateMetadata = pageTitle("social");
 export const dynamic = "force-dynamic";
 
 export default async function SocialPage() {

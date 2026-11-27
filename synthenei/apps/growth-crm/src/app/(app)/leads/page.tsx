@@ -16,12 +16,12 @@ import { fieldFilterDefs } from "@/components/fields/field-column";
 import { loadListFields } from "@/lib/metadata/list-server";
 import { loadListCustom } from "@/lib/metadata/list-custom";
 import { matchesFilter } from "@/lib/metadata/filters";
-import { getLocale } from "@/i18n/server";
+import { getLocale, pageTitle } from "@/i18n/server";
 import { LeadsTable, type LeadRow } from "./_components/leads-table";
 import { ImportDialog } from "./_components/import-dialog";
 import { CreateLead } from "./_components/create-lead";
 
-export const metadata = { title: "Leads" };
+export const generateMetadata = pageTitle("leads");
 const PAGE = 40;
 type SP = { [custom: string]: string | undefined; view?: string; q?: string; stage?: string; status?: string; source?: string; district?: string; owner?: string; band?: string; sort?: string; page?: string };
 

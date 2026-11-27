@@ -22,9 +22,9 @@ import { dbForRequest } from "@/lib/db/client";
 import { loadAiOverview } from "@/lib/ai/read";
 import { modelsOf } from "@/lib/ai/models";
 import { PROVIDER_IDS } from "@/lib/ai/types";
-import { getT } from "@/i18n/server";
+import { getT, pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Copilot" };
+export const generateMetadata = pageTitle("copilot");
 const DAY = 86400e3;
 
 export default async function Copilot() {

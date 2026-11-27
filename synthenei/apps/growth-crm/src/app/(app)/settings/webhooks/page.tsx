@@ -5,8 +5,9 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { wh, whAll } from "./_lib/strings";
 import { loadEndpoints } from "./_lib/view";
 import { WebhooksView } from "./_components/webhooks-view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Webhooks" };
+export const generateMetadata = pageTitle("webhooks");
 
 export default async function WebhooksPage() {
   const res = await loadEndpoints();

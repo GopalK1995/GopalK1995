@@ -8,8 +8,9 @@ import { canDo, collabCtx } from "@/lib/notify/session";
 import { ctAll } from "@/lib/notify/strings";
 import type { PrefRow, RuleRow } from "@/lib/notify/types";
 import { NotificationSettings } from "./_components/editor";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Notification settings" };
+export const generateMetadata = pageTitle("notificationSettings");
 
 export default async function NotificationSettingsPage() {
   const s = ctAll();

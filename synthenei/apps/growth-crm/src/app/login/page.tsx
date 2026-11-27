@@ -8,13 +8,11 @@ import { demoModeOn } from "@/lib/auth/cookies";
 import { PendingButton, SubmitButton } from "@/components/ui/submit-button";
 import { vocabFor } from "@/lib/vertical";
 import { LegalFooter } from "@/components/legal/legal-page";
+import { getT, pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Sign in" };
+export const generateMetadata = pageTitle("signIn");
 const ICON: Record<string, typeof UserRound> = { "owner-lawsome": Briefcase, "mgr-lawsome": BarChart3, "rep-lawsome": UserRound, "mkt-lawsome": Megaphone, "owner-kaveri": Building2, super: ShieldCheck, "data-lawsome": Database, "viewer-lawsome": Eye };
-const ERR: Record<string, string> = {
-  credentials: "Email or password is incorrect.", no_backend: "Password sign-in needs the Supabase backend. Use a demo role below.",
-  inactive: "Your access was removed by your admin.", no_profile: "You are signed in but not invited to a workspace.", revoked: "Your access to that workspace was removed. Sign in again.", link: "That link has expired or was already used. Ask for a new invitation or reset your password.", throttled: "Too many attempts. Wait 15 minutes and try again.", role: "Pick one of the demo roles.", demo_disabled: "Demo roles are disabled on this deployment.",
-};
+const ERR_KEYS = ["credentials", "no_backend", "inactive", "no_profile", "revoked", "link", "throttled", "role", "demo_disabled"];
 
 function Mono({ letter, size = 32 }: { letter: string; size?: number }) {
   return <span aria-hidden className="grid shrink-0 place-items-center rounded-[6px] bg-accent font-semibold text-accent-ink" style={{ width: size, height: size, fontSize: size * 0.46 }}>{letter}</span>;
@@ -22,6 +20,7 @@ function Mono({ letter, size = 32 }: { letter: string; size?: number }) {
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; signed_out?: string; t?: string }> }) {
   const sp = await searchParams;
+  const t = await getT("auth");
   // ?t=<tenant id> previews another tenant's branded login (white-label).
   const tenant = TENANTS.find((x) => x.id === sp.t) ?? TENANTS[0];
   const ws = WORKSPACES.find((w) => w.tenantId === tenant.id)!;
@@ -53,25 +52,25 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       <main className="flex items-start justify-center px-4 py-10 sm:px-8 lg:items-center">
         <div className="w-full max-w-[560px]">
           <div className="mb-8 flex items-center gap-3 lg:hidden"><Mono letter={tenant.monogram} /><div><div className="text-[15px] font-semibold">{tenant.name}</div><div className="text-[12px] text-ink-3">{tenant.product}</div></div></div>
-          <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Sign in</h1>
-          <p className="mt-1 text-[12px] text-ink-3">Internal demo hub. Client links are /g/&lt;client&gt;, for example /g/shola-mist and /g/lawsome.</p>
-          <p className="mt-1 text-[13px] text-ink-2">{sp.signed_out ? "You have been signed out." : "Use your work email, or open the demo as one of the personas below."}</p>
-          {sp.error && <p id="login-error" role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">{ERR[sp.error] ?? "Sign-in failed."}</p>}
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em]">{t("login.title")}</h1>
+          <p className="mt-1 text-[12px] text-ink-3">{t("login.hub")}</p>
+          <p className="mt-1 text-[13px] text-ink-2">{sp.signed_out ? t("login.signedOut") : t("login.intro")}</p>
+          {sp.error && <p id="login-error" role="alert" className="mt-4 rounded-sm border border-danger/25 bg-danger-soft px-3 py-2 text-[13px] text-danger">{ERR_KEYS.includes(sp.error) ? t(`login.errors.${sp.error}`) : t("login.generic")}</p>}
 
           <form action={passwordLogin} className="mt-6 space-y-3">
             <input type="hidden" name="next" value={sp.next ?? ""} />
-            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Work email</span>
+            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t("login.workEmail")}</span>
               <input name="email" type="email" autoComplete="email" required {...fieldErr} placeholder={lv.emailPh} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring placeholder:text-ink-3 focus:border-ring disabled:bg-paper-2 disabled:text-ink-3" /></label>
-            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">Password</span>
+            <label className="block"><span className="mb-1 block text-[12px] font-medium text-ink-2">{t("password")}</span>
               <input name="password" type="password" autoComplete="current-password" required {...fieldErr} disabled={!live} className="h-10 w-full rounded-sm border border-field-line bg-surface px-3 text-[14px] focus-ring focus:border-ring disabled:bg-paper-2" /></label>
-            <SubmitButton variant="primary" size="lg" className="w-full" disabled={!live} pendingLabel="Signing in…">Sign in</SubmitButton>
-            {live && <p className="text-[12px]"><Link href="/auth/reset" className="font-medium text-accent hover:underline">Forgot password?</Link></p>}
-            {!live && <p className="text-[12px] text-ink-3">Password sign-in activates when the Supabase project is connected. This deployment runs in demo mode.</p>}
+            <SubmitButton variant="primary" size="lg" className="w-full" disabled={!live} pendingLabel={t("login.signingIn")}>{t("login.title")}</SubmitButton>
+            {live && <p className="text-[12px]"><Link href="/auth/reset" className="font-medium text-accent hover:underline">{t("forgotPassword")}</Link></p>}
+            {!live && <p className="text-[12px] text-ink-3">{t("login.noBackend")}</p>}
           </form>
 
           {demo && (
             <section className="mt-8" aria-labelledby="demo-h">
-              <div className="mb-3 flex items-center gap-3"><h2 id="demo-h" className="eyebrow">Open the demo as</h2><span className="rounded-[3px] border border-dashed border-line-strong px-1.5 text-[10px] text-ink-3">Demo sessions read sample data only</span><span className="h-px flex-1 bg-line" /></div>
+              <div className="mb-3 flex items-center gap-3"><h2 id="demo-h" className="eyebrow">{t("login.demoHeading")}</h2><span className="rounded-[3px] border border-dashed border-line-strong px-1.5 text-[10px] text-ink-3">{t("login.demoNote")}</span><span className="h-px flex-1 bg-line" /></div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {PERSONAS.filter((p) => !p.secondary).map((p) => {
                   const I = ICON[p.key] ?? UserRound;
@@ -83,7 +82,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-ink">{p.label}</span><ArrowRight className="size-3.5 shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden /></span>
                           <span className="block text-[12px] leading-4 text-ink-3">{p.detail}</span>
-                          <span className="mt-1 block text-[11px] text-ink-3">as {userById(p.userId)?.name}</span>
+                          <span className="mt-1 block text-[11px] text-ink-3">{t("login.as", { name: userById(p.userId)?.name ?? "" })}</span>
                         </span>
                       </PendingButton>
                     </form>
@@ -91,7 +90,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
                 })}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-3">
-                <span>More roles:</span>
+                <span>{t("login.moreRoles")}</span>
                 {PERSONAS.filter((p) => p.secondary).map((p) => (
                   <form key={p.key} action={demoLogin}><input type="hidden" name="persona" value={p.key} /><PendingButton data-persona={p.key} className="font-medium text-accent hover:underline">{p.label}</PendingButton></form>
                 ))}
@@ -99,8 +98,8 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             </section>
           )}
           <div className="mt-8 flex items-center justify-between border-t border-line pt-4 text-[12px] text-ink-3">
-            <span>Synthan staff?</span>
-            <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-medium text-ink-2 hover:text-accent"><ShieldCheck className="size-3.5" aria-hidden />Platform admin sign-in</Link>
+            <span>{t("login.staff")}</span>
+            <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-medium text-ink-2 hover:text-accent"><ShieldCheck className="size-3.5" aria-hidden />{t("login.platformAdmin")}</Link>
           </div>
           <LegalFooter className="mt-3" />
         </div>

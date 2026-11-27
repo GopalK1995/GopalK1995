@@ -2,7 +2,7 @@
 // Real sessions read their own workspace only; demo sessions read the labelled sample dataset. A reading that cannot be
 // computed shows "No data", never 0. Viewers get the same page with names and record links removed.
 import Link from "next/link";
-import { getT } from "@/i18n/server";
+import { getT, pageTitle } from "@/i18n/server";
 import { loadPrincipal } from "@/lib/authz/load";
 import { can } from "@/lib/authz";
 import { loadSocialView } from "@/lib/connectors/meta/organic/read";
@@ -23,7 +23,7 @@ import { CostChart, FunnelChart, MixChart, PairedChart, PerDayChart, RulerChart 
 import { leadsInWindow } from "@/lib/data/lead-window";
 import { costPerConverted, decisions, leadFunnel, leadsPerDay, monthRuler, paidVsOrganic, stageFlow, teamVsTarget, tiles, topAccounts, type StageMap } from "./analytics/_lib/home";
 
-export const metadata = { title: "Home" };
+export const generateMetadata = pageTitle("home");
 export const dynamic = "force-dynamic";
 
 const section = "border-t border-line pt-5";

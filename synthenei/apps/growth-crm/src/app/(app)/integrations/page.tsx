@@ -7,8 +7,9 @@ import { RealList } from "./_components/real-list";
 import { viewCtx } from "./_lib/ctx";
 import { getIntT } from "./_lib/strings";
 import { loadList } from "./_lib/view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Integrations" };
+export const generateMetadata = pageTitle("integrations");
 export const dynamic = "force-dynamic";
 
 /** Demo keeps the showcase screens (sample data, no database). Real sessions get the catalogue-driven, truthful screens. */

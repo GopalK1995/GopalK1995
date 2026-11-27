@@ -7,8 +7,9 @@ import { getPrT } from "@/lib/privacy/strings-server";
 import { PrivacyNav } from "../_components/privacy-nav";
 import { RetentionPanel } from "../_components/retention-panel";
 import { loadRetention } from "../_lib/view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Retention" };
+export const generateMetadata = pageTitle("retention");
 export const dynamic = "force-dynamic";
 
 export default async function RetentionPage() {

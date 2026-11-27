@@ -8,8 +8,9 @@ import { ExportPanel } from "./_components/export-button";
 import { HistoryTable } from "./_components/history";
 import { ImportWizard } from "./_components/import-wizard";
 import { importT, objectOptions } from "./_lib/server";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Import and export" };
+export const generateMetadata = pageTitle("import");
 export const dynamic = "force-dynamic";
 
 const section = "rounded-control border border-line bg-surface p-4";

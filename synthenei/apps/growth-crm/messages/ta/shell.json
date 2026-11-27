@@ -5,5 +5,90 @@
   "signOut": "வெளியேறு",
   "profile": "சுயவிவரம்",
   "notifications": "அறிவிப்புகள்",
-  "workspace": "பணியிடம்"
+  "workspace": "பணியிடம்",
+  "mainNav": "முதன்மை",
+  "quickNav": "விரைவு",
+  "navigation": "வழிசெலுத்தல்",
+  "openNavigation": "வழிசெலுத்தலைத் திற",
+  "closeNavigation": "வழிசெலுத்தலை மூடு",
+  "expandSidebar": "பக்கப்பட்டியை விரி",
+  "collapseSidebar": "பக்கப்பட்டியைச் சுருக்கு",
+  "collapse": "சுருக்கு",
+  "more": "மேலும்",
+  "moreDestinations": "மேலும் பக்கங்கள்",
+  "overview": "மேலோட்டம்",
+  "sampleDataIst": "மாதிரி தரவு · IST",
+  "sampleDataTip": "அனைத்து எண்களும் செயற்கை மாதிரி தரவு",
+  "sampleData": "மாதிரி தரவு",
+  "demoNote": "செயற்கை {tenant} · {ws} தரவு. எதுவும் அனுப்பப்படாது.",
+  "demoNoteLogin": "செயற்கை {tenant} · {ws} தரவு · டெமோ உள்நுழைவு. எதுவும் அனுப்பப்படாது.",
+  "demoDot": "மாதிரி தரவு: செயற்கை {tenant}, {ws}. எதுவும் அனுப்பப்படாது.",
+  "userMenu": "பயனர் பட்டி",
+  "signedInAs": "உள்நுழைந்தவர்",
+  "switchPersona": "பாத்திரத்தை மாற்று",
+  "logOut": "வெளியேறு",
+  "support": {
+    "banner": "{admin} (Synthan) நடத்தும் ஆதரவு அமர்வு · {mode} · {time} IST வரை",
+    "readOnly": "படிக்க மட்டும்",
+    "readWrite": "படிக்க/எழுத",
+    "reason": "காரணம்: “{reason}” · பதிவு செய்யப்பட்டது",
+    "endNow": "இப்போது முடி"
+  },
+  "workspaceSwitcher": {
+    "find": "பணியிடத்தைத் தேடு",
+    "current": "தற்போதையது",
+    "create": "பணியிடத்தை உருவாக்கு",
+    "ownerOnly": "உரிமையாளர் மட்டும்"
+  },
+  "language": {
+    "label": "மொழி",
+    "saved": "மொழி மாற்றப்பட்டது",
+    "savedDevice": "இந்தச் சாதனத்தில் மொழி மாற்றப்பட்டது. சுயவிவரத்தில் சேமிக்க உண்மையான கணக்கில் உள்நுழையவும்.",
+    "unavailable": "தமிழ் மொழிச் சரிபார்ப்புக்காகக் காத்திருக்கிறது; இன்னும் இயக்கப்படவில்லை.",
+    "failed": "மொழியை மாற்ற முடியவில்லை. மீண்டும் முயலவும்."
+  },
+  "nav": {
+    "group": {
+      "overview": "மேலோட்டம்",
+      "sell": "விற்பனை",
+      "market": "சந்தைப்படுத்தல்",
+      "assist": "உதவி",
+      "admin": "நிர்வாகம்",
+      "records": "பதிவுகள்"
+    },
+    "badge": {
+      "showcase": "காட்சி"
+    },
+    "item": {
+      "commandCenter": "கட்டுப்பாட்டு மையம்",
+      "myDay": "என் நாள்",
+      "notifications": "அறிவிப்புகள்",
+      "leads": "லீடுகள்",
+      "import": "இறக்குமதி",
+      "pipeline": "பைப்லைன்",
+      "lawFirms": "சட்ட நிறுவனங்கள்",
+      "inbox": "இன்பாக்ஸ்",
+      "tasks": "பணிகள்",
+      "campaigns": "பிரச்சாரங்கள்",
+      "audience": "பார்வையாளர்கள்",
+      "webAnalytics": "இணைய பகுப்பாய்வு",
+      "social": "சமூக ஊடகம்",
+      "copilot": "கோபைலட்",
+      "integrations": "ஒருங்கிணைப்புகள்",
+      "dataHealth": "தரவு நலம்",
+      "settings": "அமைப்புகள்",
+      "notificationSettings": "அறிவிப்பு அமைப்புகள்",
+      "rolesAccess": "பாத்திரங்களும் அணுகலும்",
+      "auditLog": "தணிக்கைப் பதிவு",
+      "billing": "கட்டணம்",
+      "apiKeys": "API சாவிகள்",
+      "webhooks": "வெப்ஹூக்குகள்",
+      "pipelines": "பைப்லைன்கள்",
+      "emailSending": "மின்னஞ்சல் அனுப்புதல்",
+      "privacyRequests": "தனியுரிமைக் கோரிக்கைகள்",
+      "customFields": "தனிப்பயன் புலங்கள்",
+      "customObjects": "தனிப்பயன் பொருட்கள்",
+      "layouts": "தளவமைப்புகள்"
+    }
+  }
 }

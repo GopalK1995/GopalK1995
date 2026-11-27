@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Compass } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Page not found" };
+export const generateMetadata = pageTitle("notFound");
 
 /** Unknown URLs: a plain 404 with a way back. Not a role 403 and not the framework default. */
 export default function NotFound() {

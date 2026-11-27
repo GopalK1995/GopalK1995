@@ -11,12 +11,12 @@ import { loadPipelines } from "@/lib/metadata/pipelines-load";
 import { DAY } from "../leads/_lib/sales";
 import { vocabFor } from "@/lib/vertical";
 import { PartialState } from "@/components/ui/states";
-import { getLocale } from "@/i18n/server";
+import { getLocale, pageTitle } from "@/i18n/server";
 import { fill, pipelineLabels } from "./_lib/labels";
 import { DEFAULT_STAGE_MAX_DAYS } from "./_lib/stage-age";
 import { fmtIstMonth } from "@/lib/datetime";
 
-export const metadata = { title: "Pipeline" };
+export const generateMetadata = pageTitle("pipeline");
 type SP = { owner?: string; district?: string; close?: string; value?: string; pipeline?: string };
 
 export default async function PipelinePage({ searchParams }: { searchParams: Promise<SP> }) {

@@ -8,8 +8,9 @@ import { collabCtx } from "@/lib/notify/session";
 import { ctAll } from "@/lib/notify/strings";
 import type { NotificationRow } from "@/lib/notify/types";
 import { NotificationList } from "./_components/notification-list";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Notifications" };
+export const generateMetadata = pageTitle("notifications");
 type SP = { tab?: string; unread?: string };
 
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<SP> }) {

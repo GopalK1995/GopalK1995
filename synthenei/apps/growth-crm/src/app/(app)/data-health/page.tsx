@@ -14,8 +14,9 @@ import { cn } from "@/lib/utils";
 import { DefaultRulesButton, HeartbeatButton, LogDrillButton, RuleToggle, RunCheckButton } from "./_components/controls";
 import type { SyncRun } from "@/lib/data/types";
 import type { ConnectorFreshness } from "@/lib/backups/types";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Data health" };
+export const generateMetadata = pageTitle("dataHealth");
 const H = 3600e3, D = 24 * H;
 /** Demo runs are simulated: neutral, never green. Real runs show their real outcome. */
 const SIM_TONE = { success: "not_configured", partial: "needs_attention", failed: "error" } as const;

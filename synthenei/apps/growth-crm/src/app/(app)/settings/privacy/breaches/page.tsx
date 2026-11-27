@@ -7,8 +7,9 @@ import { getPrT } from "@/lib/privacy/strings-server";
 import { BreachPanel } from "../_components/breach-panel";
 import { PrivacyNav } from "../_components/privacy-nav";
 import { loadBreaches } from "../_lib/view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Breach register" };
+export const generateMetadata = pageTitle("breachRegister");
 export const dynamic = "force-dynamic";
 
 // Breach register: owners only. Setup state when the table is not applied yet (docs/migrations-backlog.md "T052 needs").

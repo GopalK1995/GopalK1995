@@ -20,8 +20,9 @@ import { PipelineTab, type Stage } from "./_components/pipeline-tab";
 import { ConfigTab } from "./_components/config-tab";
 import { EraseButton, PrivacyHubLink } from "./_components/privacy-controls";
 import { stageList } from "@/lib/config/types";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Settings" };
+export const generateMetadata = pageTitle("settings");
 const LABEL: Record<string, string> = { users: "Users & roles", branding: "White-label branding", config: "Configuration", pipeline: "Pipeline stages", privacy: "Consent & privacy", audit: "Audit log" };
 const PURPOSE: Record<string, string> = { demo_followup: "Demo follow-up", marketing_email: "Marketing email", whatsapp: "WhatsApp" };
 const KIND: Record<string, string> = { erasure: "Erasure", withdrawal: "Withdrawal", access: "Access" };

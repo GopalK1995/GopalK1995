@@ -11,8 +11,9 @@ import { buildRealItems } from "./_lib/items";
 import { readInbox } from "./_lib/reads";
 import { itAll } from "./_lib/strings";
 import type { InboxConv, TemplateOpt } from "./_lib/types";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Inbox" };
+export const generateMetadata = pageTitle("inbox");
 
 export default async function Inbox() {
   const { ds, now, role, support, session, scope, active, masked } = await pageCtx();

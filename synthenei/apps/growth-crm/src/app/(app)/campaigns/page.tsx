@@ -21,8 +21,9 @@ import { loadCampaigns, loadDays } from "./_lib/load";
 import { EmptyState } from "@/components/ui/states";
 import { tc } from "./_lib/strings";
 import { leadsInWindow } from "@/lib/data/lead-window";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Campaigns" };
+export const generateMetadata = pageTitle("campaigns");
 const STATUS_TONE = { live: "success", paused: "warn", ended: "neutral" } as const;
 const STATUS_LABEL = { live: "Live", paused: "Paused", ended: "Ended" } as const;
 const money = (n: number) => inr(n);

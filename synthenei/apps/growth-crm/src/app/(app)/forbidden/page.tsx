@@ -5,8 +5,9 @@ import { requireActive } from "@/lib/auth/server";
 import { HOME_FOR } from "@/lib/auth/roles";
 import { pagePermission } from "@/lib/authz/pages";
 import { vocabFor } from "@/lib/vertical";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "No access" };
+export const generateMetadata = pageTitle("noAccess");
 export default async function Forbidden({ searchParams }: { searchParams: Promise<{ page?: string; off?: string; role?: string }> }) {
   const { active } = await requireActive();
   const s = { role: active.role };

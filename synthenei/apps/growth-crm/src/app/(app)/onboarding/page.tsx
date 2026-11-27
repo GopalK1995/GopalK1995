@@ -11,8 +11,9 @@ import { STEPS } from "./_lib/steps";
 import { resumeStep, statusOf as stepStatus } from "./_lib/progress";
 import type { StepId } from "./_lib/types";
 import { WizardShell } from "./_components/wizard-shell";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Set up your workspace" };
+export const generateMetadata = pageTitle("onboarding");
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {

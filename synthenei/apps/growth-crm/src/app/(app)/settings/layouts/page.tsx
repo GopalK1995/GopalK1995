@@ -6,7 +6,7 @@ import { requireActive } from "@/lib/auth/server";
 import { ROLE_LABEL, ROLES } from "@/lib/auth/roles";
 import { can } from "@/lib/authz";
 import { loadPrincipal } from "@/lib/authz/load";
-import { getLocale } from "@/i18n/server";
+import { getLocale, pageTitle } from "@/i18n/server";
 import { listLayouts, listRoles, type RoleRef } from "@/lib/layouts/repo";
 import { pickLayout, scopeOf, type LayoutRow } from "@/lib/layouts/resolve";
 import { defaultSpec, normalizeSpec, type LayoutKind } from "@/lib/layouts/spec";
@@ -18,7 +18,7 @@ import { demoFields, demoLayouts, demoObject } from "../../o/_lib/demo";
 import { LayoutEditor } from "./_components/layout-editor";
 import { listCustomObjects } from "../objects/_lib/repo";
 
-export const metadata = { title: "Layouts" };
+export const generateMetadata = pageTitle("layouts");
 type SP = { object?: string; kind?: string; scope?: string; role?: string };
 
 export default async function LayoutsSettingsPage({ searchParams }: { searchParams: Promise<SP> }) {

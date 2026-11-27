@@ -12,8 +12,9 @@ import { loadAccess, type AccessData } from "./_lib/view";
 import { loadObjectPermissionDefs } from "../../o/_lib/perms";
 import Link from "next/link";
 import type { PermissionDef } from "@/lib/authz/types";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Users, roles and teams" };
+export const generateMetadata = pageTitle("roles");
 type SP = { tab?: string };
 const TABS = ["members", "roles", "teams"] as const;
 

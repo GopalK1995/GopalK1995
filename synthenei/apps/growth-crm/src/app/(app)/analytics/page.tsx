@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PlugZap } from "lucide-react";
 import { pageCtx } from "@/lib/data/context";
-import { getT } from "@/i18n/server";
+import { getT, pageTitle } from "@/i18n/server";
 import { CONSENT_RATE, isDemo } from "@/lib/data/metrics";
 import { dayKey, deltaOf, num, numCompact, pct, ratio, secsToHuman } from "@/lib/format";
 import { leadsInWindow } from "@/lib/data/lead-window";
@@ -28,7 +28,7 @@ import { attributionFromTouches, UNKNOWN_TOUCH } from "./_lib/touches";
 import { loadTouches } from "./_lib/load-touches";
 import { AttributionPanel } from "./_components/attribution";
 
-export const metadata = { title: "Web analytics" };
+export const generateMetadata = pageTitle("webAnalytics");
 // Four outcomes, each clearly separable: Won = accent, open after the demo = ochre, upcoming = light cobalt, Lost = grey.
 const STACK_COLOR = { won: "var(--chart-1)", open: "var(--chart-2)", booked: "var(--seq-2)", lost: OTHER } as const;
 const stackKey = (o: string) => (o === "proposal" || o === "done" ? "open" : o);

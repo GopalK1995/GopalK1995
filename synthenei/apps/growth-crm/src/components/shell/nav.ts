@@ -56,6 +56,29 @@ const MOBILE: Record<Role, string[]> = {
 export const mobileNavFor = (role: Role, tenant?: { id?: string; vertical?: Vertical }) => MOBILE[role].filter((h) => !tenant || !moduleForPath(h) || isModuleEnabled(tenant, moduleForPath(h)!)).map((h) => NAV.flatMap((g) => g.items).find((i) => i.href === h)!).filter(Boolean);
 export const isActive = (href: string, path: string) => (href === "/" || href === "/settings" ? path === href : path === href || path.startsWith(href + "/"));
 
-/** Vocabulary-aware nav label (legal output is unchanged). */
-export const navLabel = (v: Vocab, it: NavItem) => (it.href === "/leads" ? v.nav.leads : it.href === "/accounts" ? v.nav.accounts : it.label);
-export const navGroup = (v: Vocab, g: string) => (g === "Sell" ? v.nav.sell : g);
+/** Message keys (shell.nav.*) for the static nav. Custom-object entries and unknown labels have no key and render as given. */
+export const NAV_ITEM_KEYS: Record<string, string> = {
+  "/": "commandCenter", "/sales": "myDay", "/notifications": "notifications", "/leads": "leads", "/import": "import", "/pipeline": "pipeline", "/accounts": "lawFirms", "/inbox": "inbox", "/tasks": "tasks",
+  "/campaigns": "campaigns", "/audience": "audience", "/analytics": "webAnalytics", "/analytics/social": "social", "/ai": "copilot", "/integrations": "integrations", "/data-health": "dataHealth",
+  "/settings": "settings", "/settings/notifications": "notificationSettings", "/settings/roles": "rolesAccess", "/settings/audit": "auditLog", "/settings/billing": "billing", "/settings/api-keys": "apiKeys",
+  "/settings/webhooks": "webhooks", "/settings/pipelines": "pipelines", "/settings/email": "emailSending", "/settings/privacy": "privacyRequests", "/settings/fields": "customFields", "/settings/objects": "customObjects", "/settings/layouts": "layouts",
+};
+export const NAV_GROUP_KEYS: Record<string, string> = { Overview: "overview", Sell: "sell", Market: "market", Assist: "assist", Admin: "admin", [OBJECTS_GROUP]: "records" };
+/** A translator for the "shell" namespace (next-intl's useTranslations("shell") or getT("shell")). Optional: without it labels stay English. */
+export type ShellT = (key: string, values?: Record<string, string | number>) => string;
+
+/**
+ * Vocabulary-aware, locale-aware nav label. A tenant vocabulary that renames the entry (e.g. "Enquiries" for Leads) wins in every language,
+ * because vocabulary is tenant-authored; otherwise the label comes from messages so Tamil users see Tamil.
+ */
+export const navLabel = (v: Vocab, it: NavItem, t?: ShellT) => {
+  const vocab = it.href === "/leads" ? v.nav.leads : it.href === "/accounts" ? v.nav.accounts : it.label;
+  const key = NAV_ITEM_KEYS[it.href];
+  return t && key && vocab === it.label ? t(`nav.item.${key}`) : vocab;
+};
+export const navGroup = (v: Vocab, g: string, t?: ShellT) => {
+  const vocab = g === "Sell" ? v.nav.sell : g;
+  const key = NAV_GROUP_KEYS[g];
+  return t && key && vocab === g ? t(`nav.group.${key}`) : vocab;
+};
+export const navBadge = (badge: string, t?: ShellT) => (t && badge === "Showcase" ? t("nav.badge.showcase") : badge);

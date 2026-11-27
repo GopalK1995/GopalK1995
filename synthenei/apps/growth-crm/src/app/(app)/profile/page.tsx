@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { PageHeader } from "@/components/ui/misc";
 import { Prefs } from "./prefs";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Profile" };
+export const generateMetadata = pageTitle("profile");
 export default async function Profile() {
   const { session, active } = await requireActive();
   const rows = session.memberships.map((m) => { const w = workspaceById(m.ws)!; return { ...m, w, t: TENANTS.find((t) => t.id === w.tenantId)! }; });

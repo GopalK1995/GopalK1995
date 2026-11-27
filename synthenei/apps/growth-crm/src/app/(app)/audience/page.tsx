@@ -13,8 +13,9 @@ import { vocabFor } from "@/lib/vertical";
 import { segLeads, type SegLead } from "../campaigns/_lib/marketing";
 import { SegmentBuilder } from "./_components/segment-builder";
 import { RealAudience } from "./_components/real-audience";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Audience" };
+export const generateMetadata = pageTitle("audience");
 const SIZE_ORDER = ["Solo", "2–5", "6–20", "21–50", "50+"];
 
 type Seg = { id: string; name: string; rule: string; test: (l: SegLead) => boolean };

@@ -14,6 +14,11 @@ vi.mock("@/components/ui/submit-button", () => ({
   PendingButton: ({ children }: { children: React.ReactNode }) => <button type="submit">{children}</button>,
 }));
 vi.mock("@/components/legal/legal-page", () => ({ LegalFooter: () => null }));
+vi.mock("@/i18n/server", async () => {
+  const { createTranslator } = await import("next-intl");
+  const { BASE } = await import("@/i18n/registry");
+  return { getT: async (namespace: string) => createTranslator({ locale: "en", messages: BASE.en, namespace } as never), pageTitle: () => async () => ({}) };
+});
 
 import Login from "../../login/page";
 import Mfa from "../mfa/page";

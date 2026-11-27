@@ -8,8 +8,9 @@ import type { Role } from "@/lib/data/types";
 import { ak, akAll } from "./_lib/strings";
 import { loadKeys } from "./_lib/view";
 import { KeysView } from "./_components/keys-view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "API keys" };
+export const generateMetadata = pageTitle("apiKeys");
 
 export default async function ApiKeysPage() {
   const res = await loadKeys();

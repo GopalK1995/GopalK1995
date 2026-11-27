@@ -5,7 +5,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { requireActive } from "@/lib/auth/server";
 import { can } from "@/lib/authz";
 import { loadPrincipal } from "@/lib/authz/load";
-import { getLocale } from "@/i18n/server";
+import { getLocale, pageTitle } from "@/i18n/server";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { objectNoun } from "@/lib/metadata/labels";
 import { getEditableObjects, getObjectMeta } from "@/lib/metadata/meta";
@@ -14,7 +14,7 @@ import { ft, ftAll } from "@/lib/metadata/strings";
 import { vocabFor } from "@/lib/vertical";
 import { FieldsView } from "./_components/fields-view";
 
-export const metadata = { title: "Custom fields" };
+export const generateMetadata = pageTitle("customFields");
 
 export default async function FieldsSettingsPage({ searchParams }: { searchParams: Promise<{ object?: string }> }) {
   const { session, active } = await requireActive();

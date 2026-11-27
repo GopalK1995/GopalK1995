@@ -10,8 +10,9 @@ import { DueChip } from "../_components/due-chip";
 import { RequestActions } from "../_components/request-actions";
 import { loadDetail } from "../_lib/view";
 import { fmtIstDateTimeZ } from "@/lib/datetime";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Privacy request" };
+export const generateMetadata = pageTitle("privacyRequest");
 export const dynamic = "force-dynamic";
 
 export default async function PrivacyRequestPage({ params }: { params: Promise<{ id: string }> }) {

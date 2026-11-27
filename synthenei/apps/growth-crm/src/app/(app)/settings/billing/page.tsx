@@ -5,8 +5,9 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { bt, btAll } from "@/lib/billing/strings";
 import { loadOwnerBilling } from "./_lib/view";
 import { BillingView } from "./_components/billing-view";
+import { pageTitle } from "@/i18n/server";
 
-export const metadata = { title: "Billing" };
+export const generateMetadata = pageTitle("billing");
 export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
