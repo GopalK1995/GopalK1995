@@ -102,6 +102,10 @@ export function renderSql(eng, { diffs } = {}) {
   if (cells.length !== tsRows.length) throw new Error(`cell count ${cells.length} != matrix ${tsRows.length}`);
 
   const diverged = cells.filter((c) => c.tsAllow !== c.sqlAllow);
+  // AUD-115: the only allow-listed divergence is the 'assigned' record shape on LEAD objects (the leads table has no assignee_id,
+  // so SQL cannot represent it; tasks and conversations carry ownerId = assigneeId). Anything else is real drift and fails generation.
+  const unexpected = diverged.filter((c) => c.rec !== "assigned");
+  if (unexpected.length) throw new Error(`AUD-115: ${unexpected.length} unexpected TS/SQL decision divergence(s), first: ${unexpected[0].role}/${unexpected[0].perm}/${unexpected[0].rec}`);
   return render({ cells, diverged, diffs: diffs ?? [] });
 }
 
@@ -121,7 +125,7 @@ function render({ cells, diverged, diffs }) {
   for (let i = 0; i < cells.length; i += 400) {
     const vals = cells.slice(i, i + 400).map((c) => {
       const descr = `[sql] row ${c.n} ${c.role}/${c.support}/${c.tenant}/mod=${c.off || "-"}/${c.perm}/${c.rec}`
-        + (c.tsAllow !== c.sqlAllow ? ` [KNOWN TS-demo vs SQL divergence: fixture=${b(c.tsAllow)} sql=${b(c.sqlAllow)}]` : "");
+        + (c.tsAllow !== c.sqlAllow ? ` [ALLOW-LISTED harness gap, leads have no assignee_id: fixture=${b(c.tsAllow)} sql=${b(c.sqlAllow)}]` : "");
       return `  (${c.n}, ${q(c.actor)}, ${q(c.ws)}, ${q(c.perm)}, ${c.otype ? q(c.otype) : "null"}, ${c.oid ? q(c.oid) : "null"}, ${arr(c.off ? c.off.split(",") : [])}, ${b(c.sqlAllow)}, ${b(c.tsAllow)}, ${q(descr)})`;
     }).join(",\n");
     insertChunks.push(`insert into pg_temp.cases (n, actor, ws, perm, otype, oid, modoff, expected, fixture, descr) values\n${vals};`);
@@ -220,15 +224,13 @@ function HEADER(total, nDiverged, divByReason, diffs) {
 -- SQL side actually holds (role_permissions, seeded from SYSTEM_ROLES). A failing cell prints its row number, role,
 -- support state, tenant, module and record relationship, so the exact disagreeing combination is named.
 --
--- KNOWN TS-demo vs SQL DIVERGENCES (${nDiverged} of ${total} cells): the committed matrix.json fixture is built from the
--- DEMO engine's systemGrants() (src/lib/authz/system-grants.ts), while the SQL side reads role_permissions seeded from
--- SYSTEM_ROLES (src/lib/authz/catalog/system-roles.ts). These two grant tables were never reconciled -- system-grants.ts
--- still carries the note "TEMPORARY HOME ... when [system-roles.ts] lands, swap systemGrants to read it", a swap that
--- has not happened. So the demo app under-grants relative to the real/SQL authorization. Cells where the two disagree
--- are asserted against the SQL prediction and tagged "[KNOWN TS-demo vs SQL divergence: fixture=.. sql=..]" in their
--- description. Grant-table differences that drive them (${diffs.length}):
+-- ALLOW-LISTED DIVERGENCES (${nDiverged} of ${total} cells, AUD-115): since AUD-115 systemGrants() reads SYSTEM_ROLES (the SQL seed source),
+-- so the grant tables agree (see __tests__/sql-parity.test.ts, which fails on any role/permission/scope drift). The only
+-- cells where TS and SQL still differ are the 'assigned' record shape on LEAD objects, which SQL cannot represent (gap 3
+-- below). Owner: Krishna. Review by 2027-02-28. Any other divergence makes the generator, and so CI, fail. Grant-table
+-- differences (${diffs.length}):
 ${diffLines || "--     (none)"}
--- Resulting cell divergences, grouped:
+-- Allow-listed cells, grouped:
 ${divByReason || "--     (none)"}
 --
 -- Three further gaps are handled in the harness, not by authz.check, and are documented so a reviewer is not surprised:

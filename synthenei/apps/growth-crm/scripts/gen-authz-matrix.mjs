@@ -91,6 +91,7 @@ try {
   if (diffs.length) {
     console.error(`TS/SQL grant divergences (${diffs.length}): the TS engine (systemGrants) and the SQL seed (SYSTEM_ROLES) disagree.`);
     for (const d of diffs) console.error(`  ${d.role} ${d.perm}: TS=${d.ts} SQL=${d.sql}`);
+    process.exitCode = 1; throw new Error("AUD-115: grant divergence (fix system-roles.ts or the engine, no allow-list for grants)");
   } else {
     console.log("TS systemGrants and SQL SYSTEM_ROLES agree for all role x permission cells.");
   }
