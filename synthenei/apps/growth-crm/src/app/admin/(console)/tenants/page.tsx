@@ -15,6 +15,7 @@ import { roleCan } from "../../_lib/platform-authz";
 import { platformCtx } from "../../_lib/platform-session";
 import { at } from "../../_lib/strings";
 import { loadTenantSummaries } from "../../_lib/view";
+import { seatView } from "../../_lib/billing-truth";
 
 export const metadata = { title: "Tenants" };
 
@@ -32,9 +33,9 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
       <Link href={`/admin/tenants/${t.tenant.id}`} className="inline-flex items-center gap-2 font-medium text-ink hover:underline"><TenantMark tenant={t.tenant} size={22} />{t.tenant.name}</Link>
     ) },
     { key: "slug", header: "Slug", cell: (t) => <span className="font-mono text-[12px] text-ink-2">{t.tenant.id}</span> },
-    { key: "plan", header: "Plan", mobile: "fact", cell: (t) => t.tenant.plan },
+    { key: "plan", header: "Plan", mobile: "fact", cell: (t) => { const sv = seatView(t); return <span>{sv.plan}<span className="block text-[11px] text-ink-3">{sv.status}</span></span>; } },
     { key: "status", header: "Status", mobile: "fact", cell: (t) => <TenantStatus status={t.tenant.status} /> },
-    { key: "seats", header: "Seats", align: "right", cell: (t) => (t.tenant.seats ? `${t.seatsUsed} of ${t.tenant.seats}` : `${t.seatsUsed}, no cap`) },
+    { key: "seats", header: "Seats", align: "right", cell: (t) => seatView(t).label.replace(" seats", "").replace(" seat", "") },
     { key: "ws", header: "Workspaces", align: "right", cell: (t) => num(t.workspaces.length) },
     { key: "owner", header: "Primary owner", cell: (t) => <span className="text-ink-2">{t.owner}</span> },
     { key: "created", header: "Created", cell: (t) => <span className="num text-ink-2">{t.tenant.createdAt ? fmtDateY(t.tenant.createdAt) : "—"}</span> },
@@ -66,7 +67,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
           <Card>
             <DataTable rows={rows} columns={cols} rowKey={(t) => t.tenant.id} minWidth={960} caption="Tenants" empty={`No tenant matches "${q}".`} />
           </Card>
-          <p className="mt-3 text-[12px] text-ink-3">Seats count workspace memberships (distinct people in the demo). Suspend or reactivate from the tenant page.</p>
+          <p className="mt-3 text-[12px] text-ink-3">Plan, status and seats come from each tenant's billing subscription; seats used are distinct people with an active membership. Suspend or reactivate from the tenant page.</p>
         </>
       )}
     </>

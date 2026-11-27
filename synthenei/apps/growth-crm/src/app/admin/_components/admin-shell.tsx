@@ -30,6 +30,8 @@ export function AdminShell({ name, email, demo, support, children }: { name: str
   const reduce = useReducedMotion();
   // The console is never tenant-branded: pin the platform hue even if a tenant hue was applied earlier in this tab.
   useEffect(() => { document.documentElement.style.setProperty("--brand-h", "245"); }, []);
+  // On a narrow screen the section strip scrolls: keep the current section in view so the last items are never stranded off screen.
+  useEffect(() => { document.querySelector<HTMLElement>('nav[aria-label="Platform admin"] a[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "center" }); }, [path]);
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="bg-navy-950 text-navy-ink">
@@ -66,13 +68,13 @@ export function AdminShell({ name, email, demo, support, children }: { name: str
         </div>
       </header>
       <nav aria-label="Platform admin" className="border-b border-line bg-surface">
-        <ul className="scrollbar-thin mx-auto flex max-w-[1400px] gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6">
+        <ul className="scrollbar-thin mx-auto flex max-w-[1400px] snap-x gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6">
           {NAV.map((it) => {
             const on = isOn(it.href, path);
             return (
-              <li key={it.href} className="shrink-0">
+              <li key={it.href} className="shrink-0 snap-start">
                 <Link href={it.href} aria-current={on ? "page" : undefined}
-                  className={cn("relative flex h-11 items-center gap-2 px-3 text-[13px] font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring", on ? "text-ink" : "text-ink-3 hover:text-ink")}>
+                  className={cn("relative flex h-11 min-w-11 items-center gap-2 px-3 text-[13px] font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring", on ? "text-ink" : "text-ink-3 hover:text-ink")}>
                   <it.icon className={cn("size-4", on ? "text-accent" : "text-ink-3")} aria-hidden />{it.label}
                   {on && <motion.span layoutId="admin-nav" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" transition={reduce ? { duration: 0 } : { duration: 0.2, ease: [0.22, 1, 0.36, 1] }} />}
                 </Link>

@@ -23,6 +23,7 @@ import { platformCtx } from "../../../_lib/platform-session";
 import { at } from "../../../_lib/strings";
 import { loadConnectorMatrix, loadTenantSummary } from "../../../_lib/view";
 import { TenantAuditPanel } from "@/lib/audit/ui/platform-panel";
+import { seatView } from "../../../_lib/billing-truth";
 import { TenantConfigTab } from "./_components/config-tab";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -50,7 +51,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
   const suspended = tenant.status === "suspended";
   const matrix = await loadConnectorMatrix(demo);
   const connectors = matrix.ok ? matrix.data.map((c) => ({ id: c.id, name: c.name })) : [];
-  const seatsLabel = tenant.seats ? `${sum.seatsUsed} of ${tenant.seats}` : `${sum.seatsUsed}, no cap`;
+  const sv = seatView(sum);
   const gated = (label: string, perm: string, icon?: React.ReactNode) => <Button variant="secondary" disabled disabledReason={at("disabledNeedsPermission", { perm })}>{icon}{label}</Button>;
 
   const wsCols: Column<WorkspaceStats>[] = [
@@ -83,7 +84,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
             <h1 className="truncate text-[22px] font-semibold leading-7 tracking-[-0.02em] sm:text-[24px]">{tenant.name}</h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
               <span className="font-mono text-[12px] text-ink-3">{tenant.id}</span><TenantStatus status={tenant.status} />
-              <span>{tenant.plan} plan · {seatsLabel} seats · {sum.workspaces.length} workspace{sum.workspaces.length === 1 ? "" : "s"}</span>
+              <span>{sv.plan} plan · {sv.status} · {sv.label} · {sum.workspaces.length} workspace{sum.workspaces.length === 1 ? "" : "s"}</span>
             </p>
           </div>
         </div>
@@ -162,7 +163,7 @@ export default async function TenantPage({ params }: { params: Promise<{ id: str
         { value: "usage", label: "Usage", content: (
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { k: "Seats", v: sum.seatsUsed, max: tenant.seats || sum.seatsUsed || 1, fmt: seatsLabel, note: `${tenant.plan} plan` },
+              { k: "Seats", v: sv.used, max: sv.limit || sv.used || 1, fmt: sv.limit == null ? `${sv.used}, no cap` : `${sv.used} of ${sv.limit}`, note: `${sv.plan} plan · ${sv.status}` },
               ...(demo ? [
                 { k: "AI calls this month", v: usage.aiCalls, max: usage.aiCap, fmt: `${num(usage.aiCalls)} of ${num(usage.aiCap)}`, note: usage.aiCalls === 0 ? "AI features are off for this tenant" : "Cap resets on the 1st" },
                 { k: "Storage", v: usage.storageMb, max: usage.storageCapMb, fmt: `${num(usage.storageMb)} MB of ${num(usage.storageCapMb / 1024)} GB`, note: "Logos and CSV uploads" },

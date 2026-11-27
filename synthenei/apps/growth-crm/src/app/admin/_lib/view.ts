@@ -4,6 +4,9 @@ import { dbForRequest, type Db } from "@/lib/db/client";
 import type { Tenant, Workspace } from "@/lib/tenancy";
 import { allTenants, type TenantSummary, type WorkspaceStats } from "../_components/data";
 import * as repo from "./repo";
+import { billingDeps } from "@/lib/billing/runtime";
+import { snapshot } from "@/lib/billing/service";
+import { SUB_LABEL } from "./billing-truth";
 
 export type Loaded<T> = { ok: true; data: T; partial?: string } | { ok: false; error: string };
 const msg = (e: unknown) => (e instanceof Error ? e.message : "unknown error") + ((e as { detail?: string })?.detail ? `: ${(e as { detail?: string }).detail}` : "");
@@ -38,6 +41,19 @@ export function summariesFrom(tenants: repo.TenantRow[], stats: repo.WorkspaceSt
   });
 }
 
+/** Overlay the billing subscription (plan, status, seats used, effective seat limit) on each summary, so Overview, Tenants, the tenant page and Billing agree. */
+async function withBilling(rows: repo.TenantRow[], list: TenantSummary[]): Promise<{ list: TenantSummary[]; warn?: string }> {
+  try {
+    const d = billingDeps({ kind: "system" });
+    const snaps = await Promise.all(rows.map((r) => snapshot(d, r.id)));
+    return { list: list.map((t, i) => {
+      const sn = snaps[i];
+      if (!sn?.sub) return t;
+      return { ...t, seatsUsed: sn.seats.used, billing: { planName: sn.plan?.name ?? sn.sub.planId, statusLabel: SUB_LABEL[sn.sub.status] ?? sn.sub.status, seatsUsed: sn.seats.used, seatLimit: sn.seats.limit } };
+    }) };
+  } catch (e) { return { list, warn: `Plan and seat data could not be read from billing (${msg(e)}); seat counts below come from workspace memberships.` }; }
+}
+
 export async function loadTenantSummaries(demo: boolean): Promise<Loaded<TenantSummary[]>> {
   if (demo) return { ok: true, data: allTenants() };
   const db = await realDb();
@@ -46,9 +62,11 @@ export async function loadTenantSummaries(demo: boolean): Promise<Loaded<TenantS
   try { tenants = await repo.listTenants(db); } catch (e) { return { ok: false, error: msg(e) }; }
   try {
     const stats = await repo.workspaceStats(db);
-    return { ok: true, data: summariesFrom(tenants, stats, new Map()) };
+    const b = await withBilling(tenants, summariesFrom(tenants, stats, new Map()));
+    return { ok: true, data: b.list, ...(b.warn ? { partial: b.warn } : {}) };
   } catch (e) {
-    return { ok: true, data: summariesFrom(tenants, [], new Map()), partial: `Workspace counts could not be read (${msg(e)}).` };
+    const b = await withBilling(tenants, summariesFrom(tenants, [], new Map()));
+    return { ok: true, data: b.list, partial: `Workspace counts could not be read (${msg(e)}).${b.warn ? " " + b.warn : ""}` };
   }
 }
 
@@ -65,8 +83,9 @@ export async function loadTenantSummary(demo: boolean, slug: string): Promise<Lo
     let partial: string | undefined, stats: repo.WorkspaceStatRow[] = [], policy: repo.OrgPolicy | null = null, policyError: string | undefined;
     try { stats = await repo.workspaceStats(db); } catch (e) { partial = `Workspace counts could not be read (${msg(e)}).`; }
     try { policy = await repo.getPolicy(db, row.id); } catch (e) { policyError = msg(e); }
-    const [summary] = summariesFrom([row], stats, new Map([[row.id, policy?.maxSeats ?? null]]));
-    return { ok: true, data: { summary, policy, policyError }, partial };
+    const base = summariesFrom([row], stats, new Map([[row.id, policy?.maxSeats ?? null]]));
+    const b = await withBilling([row], base);
+    return { ok: true, data: { summary: b.list[0], policy, policyError }, partial: partial ?? b.warn };
   } catch (e) { return { ok: false, error: msg(e) }; }
 }
 

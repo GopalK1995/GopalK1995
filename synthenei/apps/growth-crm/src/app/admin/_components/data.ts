@@ -14,8 +14,8 @@ const DAY = 86400e3;
 
 export const wsLabel = (ws: Workspace) => `${TENANTS.find((t) => t.id === ws.tenantId)?.name.replace(" (demo)", "") ?? ws.tenantId} · ${ws.name}`;
 export const wsLabelById = (id: string) => { const w = WORKSPACES.find((x) => x.id === id); return w ? wsLabel(w) : id; };
-/** Personal data in the console is masked: first letter + domain. */
-export const maskEmail = (e: string) => e.replace(/^(.).*(@.*)$/, "$1•••$2");
+/** Personal data in the console is masked: first letter, last two letters of the local part and the domain, so two people stay distinguishable. */
+export const maskEmail = (e: string) => e.replace(/^(.)(.*?)(.{0,2})(@.*)$/, (_m, a: string, mid: string, tail: string, dom: string) => `${a}•••${mid ? tail : ""}${dom}`);
 
 export interface WorkspaceStats {
   ws: Workspace; members: number; leadsTotal: number; leads30d: number; integrationsAttention: number; failedSyncs24h: number; lastActivityAt: string | null; unavailable?: boolean;
@@ -45,8 +45,10 @@ export function workspaceStats(ws: Workspace): WorkspaceStats {
   return s;
 }
 
+/** Plan, status and seats from the billing subscription: the single source every console page reads (AUD-039). */
+export interface BillingTruth { planName: string; statusLabel: string; seatsUsed: number; seatLimit: number | null }
 export interface TenantSummary {
-  tenant: Tenant; workspaces: WorkspaceStats[]; seatsUsed: number; leads30d: number; owner: string; lastActivityAt: string | null;
+  tenant: Tenant; workspaces: WorkspaceStats[]; seatsUsed: number; leads30d: number; owner: string; lastActivityAt: string | null; billing?: BillingTruth;
 }
 export function tenantSummary(t: Tenant): TenantSummary {
   const workspaces = WORKSPACES.filter((w) => w.tenantId === t.id).map(workspaceStats);

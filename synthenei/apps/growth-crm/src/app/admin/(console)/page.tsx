@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ACTION_LABEL, ADMIN_NOW, adminNow, allTenants, auditRows, supportSessions, wsLabelById } from "../_components/data";
 import { SessionState, TenantMark } from "../_components/bits";
+import { seatView } from "../_lib/billing-truth";
 
 export const metadata = { title: "Overview" };
 
@@ -79,15 +80,16 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
           <CardHeader title="Seats used vs plan" sub="Distinct people with a membership in any of the tenant's workspaces." />
           <CardBody className="space-y-4">
             {tenants.map((t) => {
-              const ratio = t.seatsUsed / t.tenant.seats;
+              const sv = seatView(t);
+              const ratio = sv.ratio ?? 0;
               return (
                 <div key={t.tenant.id}>
                   <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
                     <Link href={`/admin/tenants/${t.tenant.id}`} className="flex min-w-0 items-center gap-2 font-medium text-ink hover:underline"><TenantMark tenant={t.tenant} size={20} /><span className="truncate">{t.tenant.name}</span></Link>
-                    <span className="shrink-0 num text-ink-2">{t.seatsUsed} of {t.tenant.seats} seats</span>
+                    <span className="shrink-0 num text-ink-2">{sv.label}</span>
                   </div>
-                  <Meter value={t.seatsUsed} max={t.tenant.seats} tone={ratio >= 0.9 ? "warn" : "accent"} />
-                  <div className="mt-1 text-[11px] text-ink-3">{t.tenant.plan} plan · {t.tenant.seats - t.seatsUsed} free</div>
+                  <Meter value={sv.used} max={sv.limit ?? Math.max(sv.used, 1)} tone={ratio >= 0.9 ? "warn" : "accent"} />
+                  <div className="mt-1 text-[11px] text-ink-3">{sv.plan} plan · {sv.status}{sv.free == null ? "" : ` · ${sv.free} free`}</div>
                 </div>
               );
             })}

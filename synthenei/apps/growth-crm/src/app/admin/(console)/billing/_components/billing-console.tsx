@@ -17,7 +17,7 @@ const t = (s: S, k: string, v?: Record<string, string | number>) => (s[k] ? fill
 const input = fieldCls;
 const limitsText = (l: Record<string, number>) => Object.entries(l).map(([k, v]) => `${k}=${v}`).join(", ");
 const parseLimits = (x: string): Record<string, number> => Object.fromEntries(x.split(",").map((p) => p.trim()).filter(Boolean).map((p) => { const [k, v] = p.split("="); return [k.trim(), Number(v)]; }).filter(([, v]) => Number.isFinite(v)));
-const rupees = (p: number) => (p / 100).toFixed(2);
+const rupees = (p: number) => (Number.isFinite(p) ? (p / 100).toFixed(2) : "0.00");
 
 export function BillingConsole({ view: v, strings: s }: { view: AdminView; strings: S }) {
   const router = useRouter();
@@ -52,7 +52,7 @@ export function BillingConsole({ view: v, strings: s }: { view: AdminView; strin
                       <td className="pr-3">{r.planName}</td><td className="pr-3">{t(s, `status_${r.sub.status}`)}</td>
                       <td className="pr-3 num">{r.seats.limit == null ? `${r.seats.used} / ${t(s, "unlimited")}` : `${r.seats.used} / ${r.seats.limit}`}</td>
                       <td className="pr-3">{r.sub.trialEndsAt?.slice(0, 10) ?? "-"}</td><td className="pr-3">{r.sub.currentPeriodEnd?.slice(0, 10) ?? "-"}</td><td className="pr-3">{r.sub.provider ?? t(s, "none")}</td>
-                      <td className="text-right"><Button size="sm" variant="quiet" disabled={ro} onClick={() => setEditing(editing === r.tenantId ? null : r.tenantId)}>{t(s, "editSubscription")}</Button></td>
+                      <td className="text-right"><Button size="sm" variant="quiet" disabled={ro} aria-label={`${t(s, "editSubscription")}: ${r.tenantName}`} onClick={() => setEditing(editing === r.tenantId ? null : r.tenantId)}>{t(s, "editSubscription")}</Button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -80,15 +80,16 @@ export function BillingConsole({ view: v, strings: s }: { view: AdminView; strin
         <CardHeader title={t(s, "plansAdminTitle")} sub={t(s, "plansAdminSub")} />
         <CardBody className="space-y-3">
           {[...v.plans.map((p) => ({ id: p.id, name: p.name, monthly: rupees(p.pricePaiseMonthly), yearly: rupees(p.pricePaiseYearly), limits: limitsText(p.limits), isPublic: p.isPublic })), { id: "", name: "", monthly: "0.00", yearly: "0.00", limits: "", isPublic: false }].map((p) => (
-            <form key={p.id || "new"} className="grid gap-2 sm:grid-cols-[110px_1fr_110px_110px_1.4fr_auto_auto] sm:items-end" data-testid={p.id ? `plan-${p.id}` : "plan-new"}
+            <form key={p.id || "new"} aria-label={p.id ? t(s, "planFormLabel", { name: p.name || p.id }) : t(s, "planNewHeading")} className="grid gap-2 border-t border-line pt-3 first:border-t-0 first:pt-0 sm:grid-cols-[110px_1fr_110px_110px_1.4fr_auto_auto] sm:items-end" data-testid={p.id ? `plan-${p.id}` : "plan-new"}
               onSubmit={(e) => { e.preventDefault(); const f = form(e); run(() => savePlan({ id: f.id, name: f.name, monthly: f.monthly, yearly: f.yearly, limits: parseLimits(f.limits), isPublic: f.isPublic === "on" })); }}>
+              <h3 className="text-[13px] font-semibold text-ink sm:col-span-full">{p.id ? p.name || p.id : t(s, "planNewHeading")}</h3>
               <label className="text-[12px] text-ink-3">{t(s, "colPlanId")}<input name="id" defaultValue={p.id} readOnly={!!p.id} disabled={ro} className={`${input} mt-1`} /></label>
               <label className="text-[12px] text-ink-3">{t(s, "colPlanName")}<input name="name" defaultValue={p.name} disabled={ro} className={`${input} mt-1`} /></label>
               <label className="text-[12px] text-ink-3">{t(s, "colMonthly")}<input name="monthly" defaultValue={p.monthly} inputMode="decimal" disabled={ro} className={`${input} mt-1`} /></label>
               <label className="text-[12px] text-ink-3">{t(s, "colYearly")}<input name="yearly" defaultValue={p.yearly} inputMode="decimal" disabled={ro} className={`${input} mt-1`} /></label>
               <label className="text-[12px] text-ink-3">{t(s, "colLimits")}<input name="limits" defaultValue={p.limits} disabled={ro} className={`${input} mt-1`} /></label>
               <label className="flex items-center gap-1.5 pb-2 text-[12px] text-ink-2"><input type="checkbox" name="isPublic" defaultChecked={p.isPublic} disabled={ro} />{t(s, "colPublic")}</label>
-              <Button type="submit" size="sm" variant={p.id ? "quiet" : "primary"} disabled={ro || pending}>{p.id ? t(s, "savePlan") : t(s, "newPlan")}</Button>
+              <Button type="submit" size="sm" variant={p.id ? "quiet" : "primary"} disabled={ro || pending} aria-label={p.id ? `${t(s, "savePlan")}: ${p.name || p.id}` : undefined}>{p.id ? t(s, "savePlan") : t(s, "newPlan")}</Button>
             </form>
           ))}
         </CardBody>

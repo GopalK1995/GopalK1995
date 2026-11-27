@@ -7,6 +7,7 @@ import type { OrgState, SeatStatus } from "@/lib/billing/state";
 import type { InvoiceRow, PlanRow, SubscriptionRow } from "@/lib/billing/types";
 import { ensureDemoTenant } from "@/lib/billing/demo";
 import { TENANTS } from "@/lib/tenancy";
+import { demoSeed } from "../../_lib/billing-truth";
 
 export interface SubRow { tenantId: string; tenantName: string; tenantStatus: string; sub: SubscriptionRow; planName: string; org: OrgState; seats: SeatStatus }
 export interface AdminView {
@@ -16,7 +17,7 @@ export interface AdminView {
 export async function loadAdminBilling(a: { uid: string; demo: boolean; canEdit: boolean }): Promise<{ ok: true; view: AdminView } | { ok: false; error: string }> {
   try {
     const d = billingDeps({ kind: "platform", uid: a.uid, demo: a.demo }, a.demo);
-    if (a.demo) for (const t of TENANTS) await ensureDemoTenant(d.store, t.id, t.name);
+    if (a.demo) for (const t of TENANTS) await ensureDemoTenant(d.store, t.id, t.name, demoSeed(t));
     const [tenants, plans, invoices] = await Promise.all([d.store.listTenants(), d.store.listPlans(), d.store.listInvoices(null)]);
     const snaps = await Promise.all(tenants.map((t) => snapshot(d, t.id)));
     const subs: SubRow[] = [];

@@ -16,6 +16,7 @@ import { adminNow } from "./data";
 import { roleCan, type PlatformRole } from "../_lib/platform-authz";
 import { at } from "../_lib/strings";
 import { realDb, loadTenantSummaries } from "../_lib/view";
+import { seatView } from "../_lib/billing-truth";
 import * as repo from "../_lib/repo";
 
 export async function RealOverview({ role }: { role: PlatformRole }) {
@@ -64,6 +65,7 @@ export async function RealOverview({ role }: { role: PlatformRole }) {
         <Card>
           <CardHeader title="Which workspaces are bringing in leads?" sub="New leads created in the last 30 days, per workspace. Aggregate count only." />
           <CardBody>
+            {ws.length && ws.every((w) => w.leads30d === 0) ? <p className="mb-3 text-[13px] text-ink-3">No new leads in the last 30 days in any workspace yet.</p> : null}
             {ws.length ? (
               <ul aria-label="New leads in the last 30 days by workspace" className="space-y-3">
                 {ws.map((w) => (
@@ -78,17 +80,21 @@ export async function RealOverview({ role }: { role: PlatformRole }) {
           </CardBody>
         </Card>
         <Card>
-          <CardHeader title="Seats used vs policy cap" sub="Workspace memberships per tenant against max_seats in the org-admin policy." />
+          <CardHeader title="Seats used vs plan" sub="Distinct people with an active membership, against the seat limit on each tenant's billing subscription. Same numbers as Billing." />
           <CardBody className="space-y-4">
-            {tenants.map((t) => (
-              <div key={t.tenant.id}>
-                <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
-                  <Link href={`/admin/tenants/${t.tenant.id}`} className="flex min-w-0 items-center gap-2 font-medium text-ink hover:underline"><TenantMark tenant={t.tenant} size={20} /><span className="truncate">{t.tenant.name}</span></Link>
-                  <span className="shrink-0 num text-ink-2">{t.seatsUsed} seats</span>
+            {tenants.map((t) => {
+              const sv = seatView(t);
+              return (
+                <div key={t.tenant.id}>
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
+                    <Link href={`/admin/tenants/${t.tenant.id}`} className="flex min-w-0 items-center gap-2 font-medium text-ink hover:underline"><TenantMark tenant={t.tenant} size={20} /><span className="truncate">{t.tenant.name}</span></Link>
+                    <span className="shrink-0 num text-ink-2">{sv.label}</span>
+                  </div>
+                  <Meter value={sv.used} max={sv.limit ?? Math.max(sv.used, 1)} tone={(sv.ratio ?? 0) >= 0.9 ? "warn" : "accent"} />
+                  <div className="mt-1 text-[11px] text-ink-3">{sv.plan} plan · {sv.status}{sv.free == null ? "" : ` · ${sv.free} free`}</div>
                 </div>
-                <Meter value={t.seatsUsed} max={Math.max(t.seatsUsed, 1)} tone="accent" />
-              </div>
-            ))}
+              );
+            })}
           </CardBody>
         </Card>
       </div>

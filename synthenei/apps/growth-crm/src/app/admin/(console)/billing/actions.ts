@@ -7,6 +7,7 @@ import { failResult, okResult, runAction, type ActionResult } from "@/lib/action
 import { billingDeps, invalidateBilling } from "@/lib/billing/runtime";
 import { adminSavePlan, adminSetSubscription, createManualInvoice, setInvoiceStatus } from "@/lib/billing/service";
 import { ensureDemoTenant } from "@/lib/billing/demo";
+import { demoSeed } from "../../_lib/billing-truth";
 import { rupeesToPaise } from "@/lib/billing/gst";
 import { bt, errText } from "@/lib/billing/strings";
 import { SUB_STATUSES } from "@/lib/billing/types";
@@ -17,7 +18,7 @@ async function gate() {
   const { session } = await assertPlatform("platform.billing");
   const demo = session.demo === true;
   const deps = billingDeps({ kind: "platform", uid: session.uid, demo }, demo);
-  if (demo) for (const t of TENANTS) await ensureDemoTenant(deps.store, t.id, t.name);
+  if (demo) for (const t of TENANTS) await ensureDemoTenant(deps.store, t.id, t.name, demoSeed(t));
   return { deps };
 }
 const done = (tenantId?: string) => { if (tenantId) invalidateBilling(tenantId); revalidatePath("/admin/billing"); };
