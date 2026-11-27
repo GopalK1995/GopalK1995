@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { supabaseConfigured } from "@/lib/supabase/server";
 import { buildNotice } from "@/lib/privacy/notice";
 import { prAll } from "@/lib/privacy/strings";
@@ -26,7 +26,13 @@ export default async function PrivacyPage({ params }: { params: Promise<{ ws: st
     );
   }
   const { intakeDeps } = await import("@/lib/privacy/runtime");
-  const ws = await intakeDeps(t).store.workspaceBySlug(slug);
+  const store = intakeDeps(t).store;
+  const ws = await store.workspaceBySlug(slug);
+  // A link printed with the workspace id (older builds) still lands on the notice, at its canonical slug address.
+  if (!ws && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+    const byId = await store.workspaceById(slug);
+    if (byId) redirect(`/privacy/${byId.wsSlug}`);
+  }
   if (!ws) notFound();
   const notice = buildNotice(ws, t);
   return (

@@ -5,6 +5,8 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { dueState } from "@/lib/privacy/due";
 import { getPrT } from "@/lib/privacy/strings-server";
+import { headers } from "next/headers";
+import { PublicLinks } from "./_components/public-links";
 import { DueChip } from "./_components/due-chip";
 import { PrivacyNav } from "./_components/privacy-nav";
 import { loadInbox } from "./_lib/view";
@@ -26,6 +28,10 @@ export default async function PrivacyInboxPage() {
     return <>{header}<ErrorState source={t("owner.loadErrorSource")} message={t("owner.loadErrorBody")} retry={<Link href="/settings/privacy"><Button>{t("owner.retry")}</Button></Link>} /></>;
   }
   const { rows, now } = res;
+  // Absolute URLs: what is shown is exactly what works when pasted elsewhere. Falls back to a relative path only if the host is unknown.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : "";
   const open = rows.filter((r) => dueState(r.status, r.dueAt, now) !== "closed");
   const overdue = open.filter((r) => dueState(r.status, r.dueAt, now) === "overdue").length;
   const soon = open.filter((r) => dueState(r.status, r.dueAt, now) === "due_soon").length;
@@ -35,11 +41,10 @@ export default async function PrivacyInboxPage() {
       {header}
       <PrivacyNav t={t} current="requests" />
       {res.demo && <p className="mb-3 text-13 text-ink-3" role="note">{t("owner.demoNotice")}</p>}
-      <div className="mb-4 grid gap-1 rounded-card border border-line bg-surface p-3">
-        <p className="text-13 font-medium text-ink">{t("owner.publicPage")}</p>
-        <p className="text-13 text-ink-2">{t("owner.publicPageHelp")}</p>
-        <p className="num text-13 text-ink" data-testid="public-path">{res.publicPath || "Not available: this workspace has no public slug yet."}</p>
-      </div>
+      <PublicLinks s={{ copy: t("owner.link.copy"), copied: t("owner.link.copied"), copyFailed: t("owner.link.copyFailed"), open: t("owner.link.open") }} items={[
+        { id: "notice", label: t("owner.publicPage"), help: t("owner.publicPageHelp"), url: res.publicPath ? `${origin}${res.publicPath}` : null, missing: t("owner.publicPageNone") },
+        { id: "platform", label: t("owner.platformPolicy"), help: t("owner.platformPolicyHelp"), url: `${origin}/legal/privacy` },
+      ]} />
       {rows.length === 0 ? <EmptyState title={t("owner.empty")} body={t("owner.emptyBody")} /> : (
         <>
           <p className="mb-2 text-13 text-ink-2" data-testid="inbox-summary">{t("owner.summary", { open: open.length, overdue, soon })}</p>

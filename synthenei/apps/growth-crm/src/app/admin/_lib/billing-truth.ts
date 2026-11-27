@@ -4,7 +4,7 @@
 import type { Tenant } from "@/lib/tenancy";
 import { TENANTS } from "@/lib/tenancy";
 import type { DemoSeed } from "@/lib/billing/demo";
-import { tenantSummary, type BillingTruth, type TenantSummary } from "../_components/data";
+import { tenantSummary, type TenantSummary } from "../_components/data";
 
 /** Seed for the in-memory demo subscription: the demo tenancy's plan, seat cap and distinct-member count. */
 export function demoSeed(t: Tenant): DemoSeed {
